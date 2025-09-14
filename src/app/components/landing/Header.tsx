@@ -5,10 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
 import { serviceCategories } from '@/lib/servicesData';
 import Image from 'next/image';
+// We NO LONGER import LoginModal here
 
-export default function Header() {
+// The component now accepts a prop to handle the click
+export default function Header({ onLoginClick }: { onLoginClick: () => void }) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isServicesMenuOpen, setServicesMenuOpen] = useState(false);
+  // The isModalOpen state has been REMOVED from this component
   const navLinks = ["HOME", "ABOUT US", "PACKAGES", "NEWS", "CONTACT"];
 
   useEffect(() => {
@@ -54,13 +57,14 @@ export default function Header() {
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
-          <a
-            href="#"
+          {/* This button now calls the prop passed from the parent page */}
+          <button
+            onClick={onLoginClick}
             className="group relative inline-flex items-center gap-2 rounded-md border border-border px-5 py-3 font-heading text-sm font-bold uppercase text-foreground shadow-sm transition-colors duration-300 hover:border-primary hover:bg-primary/5"
           >
             <LogIn className="h-4 w-4" />
             <span>Login</span>
-          </a>
+          </button>
           <a
             href="#"
             className="group relative inline-flex items-center gap-2 overflow-hidden rounded-md bg-primary px-5 py-3 font-heading text-sm font-bold uppercase text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-primary/80 transition-all duration-300 hover:bg-white hover:text-primary"
@@ -105,6 +109,8 @@ export default function Header() {
           </motion.div>
         )}
       </AnimatePresence>
+      
+      
     </header>
   );
 }

@@ -33,7 +33,7 @@ export default function Hero() {
       bgImage: '/slides/hero-bg-2.jpg',
       line1: '10 YEARS',
       line2: 'OF EXCELLENCE',
-      line3: 'SINCE 1994',
+      line3: 'SINCE 2005',
       buttonText: 'Our History',
     },
     {
