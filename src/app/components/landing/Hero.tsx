@@ -13,10 +13,7 @@ const textVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.4, 0.0, 0.2, 1] } },
 };
-const breakoutImageVariants: Variants = {
-  hidden: { opacity: 0, x: 50, scale: 0.9 },
-  visible: { opacity: 1, x: 0, scale: 1, transition: { duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.4 } },
-};
+// Removed unused breakoutImageVariants to satisfy eslint no-unused-vars
 
 export default function Hero() {
   const slides = useMemo(() => [
