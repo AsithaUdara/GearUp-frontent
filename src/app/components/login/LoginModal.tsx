@@ -3,85 +3,80 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 import React, { useState } from 'react';
-
-
+import { auth } from '@/lib/firebase';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-// Reusable Input Component with validation state
-const FormInput = ({ id, type, placeholder, icon: Icon, error, value, onChange }: { 
-  id: string, 
-  type: string, 
-  placeholder: string, 
-  icon: React.ElementType,
-  error?: string,
-  value: string,
+const FormInput = ({ id, type, placeholder, icon: Icon, value, onChange }: { 
+  id: string, type: string, placeholder: string, icon: React.ElementType, value: string,
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void,
 }) => (
-  <div>
-    <div className="relative">
-      <Icon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-      <input
-        id={id}
-        name={id}
-        type={type}
-        placeholder={placeholder}
-        value={value}
-        onChange={onChange}
-        className={`w-full rounded-md border bg-background py-2 pl-10 pr-4 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 ${
-          error ? 'border-red-500 focus:ring-red-500/20' : 'border-border focus:border-primary focus:ring-primary/20'
-        }`}
-        required
-      />
-    </div>
-    {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+  <div className="relative">
+    <Icon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+    <input
+      id={id}
+      name={id}
+      type={type}
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+      className="w-full rounded-md border border-border bg-background py-2 pl-10 pr-4 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+      required
+    />
   </div>
 );
 
-// --- The Main Modal Component ---
 export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const [isLoginView, setIsLoginView] = useState(true);
-  
-  // State for password visibility
   const [showPassword, setShowPassword] = useState(false);
-  
-  // State for form fields
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   
-  // State for email validation
-  const [emailError, setEmailError] = useState('');
+  const router = useRouter();
 
-  const validateEmail = (emailInput: string) => {
-    if (!emailInput) {
-      setEmailError('');
-      return;
-    }
-    // Simple regex for email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(emailInput)) {
-      setEmailError('Please enter a valid email address.');
-    } else {
-      setEmailError('');
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccessMessage('');
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      setSuccessMessage('Account created successfully! Please log in.');
+      setIsLoginView(true);
+      setPassword(''); // Clear password field for login
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to create account.';
+      setError(message);
     }
   };
 
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEmail(e.target.value);
-    validateEmail(e.target.value);
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      onClose();
+      router.push('/dashboard');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Login failed.';
+      setError(message);
+    }
   };
   
   const toggleView = () => {
-    // Reset fields and errors when switching views
     setIsLoginView(!isLoginView);
     setEmail('');
     setPassword('');
     setName('');
-    setEmailError('');
+    setError('');
+    setSuccessMessage('');
     setShowPassword(false);
   };
 
@@ -115,15 +110,17 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                 {isLoginView ? 'Log in to access your dashboard.' : 'Sign up to get started.'}
               </p>
             </div>
+            
+            {successMessage && <div className="mt-4 p-3 rounded-md bg-green-100 text-green-800 text-center text-sm">{successMessage}</div>}
+            {error && <div className="mt-4 p-3 rounded-md bg-red-100 text-red-800 text-center text-sm">{error}</div>}
 
-            <form className="mt-8 space-y-4">
+            <form className="mt-6 space-y-4" onSubmit={isLoginView ? handleLogin : handleSignUp}>
               {!isLoginView && (
                 <FormInput id="name" type="text" placeholder="Full Name" icon={User} value={name} onChange={(e) => setName(e.target.value)} />
               )}
               
-              <FormInput id="email" type="email" placeholder="Email Address" icon={Mail} value={email} onChange={handleEmailChange} error={emailError} />
+              <FormInput id="email" type="email" placeholder="Email Address" icon={Mail} value={email} onChange={(e) => setEmail(e.target.value)} />
 
-              {/* Password Field with Visibility Toggle */}
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <input
@@ -137,7 +134,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                   required
                 />
                 <button
-                  type="button" // Important: prevents form submission
+                  type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >

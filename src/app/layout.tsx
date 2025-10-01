@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import { Oswald, Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/context/AuthContext";
 
 const oswald = Oswald({ 
   subsets: ["latin"],
@@ -28,7 +29,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="!scroll-smooth" suppressHydrationWarning>
       <body className={`${oswald.variable} ${notoSansKR.variable} antialiased`} suppressHydrationWarning>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
