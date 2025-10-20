@@ -11,13 +11,11 @@ export default function EmployeeLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1">
-          <Header />
-          <div className="p-8">{children}</div>
-        </main>
-      </div>
+      <Sidebar />
+      <main className="ml-64 flex-1">
+        <Header />
+        <div className="p-8">{children}</div>
+      </main>
     </div>
   );
 }

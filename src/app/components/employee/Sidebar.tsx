@@ -27,14 +27,14 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 shrink-0 bg-white border-r border-white shadow-md flex flex-col h-screen">
-      <div className="h-16 flex items-center justify-center border-b border-white">
+    <aside className="w-64 shrink-0 bg-white border-r border-gray-200 shadow-md flex flex-col h-screen fixed left-0 top-0 z-10">
+      <div className="h-16 flex items-center justify-center border-b border-gray-200">
         <div className="flex items-center gap-2">
           <Image src="/logos/gearup_logo.png" alt="GearUp logo" width={24} height={24} />
           <span className="text-xl font-bold tracking-tight text-gray-900">GearUp</span>
         </div>
       </div>
-      <nav className="flex-1 px-3 py-4 space-y-2">
+      <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto">
         <ul className="space-y-2">
           {items.map(({ key, href, label, icon: Icon, enabled }) => {
             const active =
@@ -71,7 +71,7 @@ export default function Sidebar() {
           })}
         </ul>
       </nav>
-      <div className="px-3 py-3 border-t border-white">
+      <div className="px-3 py-3 border-t border-gray-200">
         <button
           type="button"
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-200"

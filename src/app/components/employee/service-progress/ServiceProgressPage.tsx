@@ -3,8 +3,6 @@
 import { useState } from "react";
 import CurrentServiceTask from "./CurrentServiceTask";
 import DailySummary from "./DailySummary";
-import Sidebar from "../Sidebar";
-import Header from "../Header";
 
 export default function ServiceProgressPage() {
   const [currentTask, setCurrentTask] = useState({
@@ -30,34 +28,18 @@ export default function ServiceProgressPage() {
   ]);
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Employee Sidebar */}
-      <Sidebar />
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* Current Service Task - Takes up 2 columns */}
+      <div className="lg:col-span-2">
+        <CurrentServiceTask 
+          task={currentTask}
+          onTaskUpdate={handleTaskUpdate}
+        />
+      </div>
       
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <Header />
-        
-        {/* Page Content */}
-        <main className="flex-1 overflow-auto">
-          <div className="px-8 py-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Current Service Task - Takes up 2 columns */}
-              <div className="lg:col-span-2">
-                <CurrentServiceTask 
-                  task={currentTask}
-                  onTaskUpdate={handleTaskUpdate}
-                />
-              </div>
-              
-              {/* Daily Summary - Takes up 1 column */}
-              <div className="lg:col-span-1">
-                <DailySummary summary={dailySummary} />
-              </div>
-            </div>
-          </div>
-        </main>
+      {/* Daily Summary - Takes up 1 column */}
+      <div className="lg:col-span-1">
+        <DailySummary summary={dailySummary} />
       </div>
     </div>
   );

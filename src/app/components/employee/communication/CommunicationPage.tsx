@@ -3,8 +3,6 @@
 import { useState } from "react";
 import ChatWindow from "./ChatWindow";
 import ContactList from "./ContactList";
-import Sidebar from "../Sidebar";
-import Header from "../Header";
 
 interface Contact {
   id: string;
@@ -176,37 +174,25 @@ export default function CommunicationPage() {
   const currentMessages = messagesByContact[selectedContact?.id] || [];
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Employee Sidebar */}
-      <Sidebar />
-      
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <Header />
+    <div className="flex-1 overflow-hidden bg-gray-50">
+      <div className="h-full flex">
+        {/* Contact List - Left Side */}
+        <div className="w-80 bg-white border-r border-gray-200">
+          <ContactList 
+            contacts={contacts}
+            selectedContact={selectedContact}
+            onContactSelect={handleContactSelect}
+          />
+        </div>
         
-        {/* Chat Content */}
-        <main className="flex-1 overflow-hidden bg-gray-50">
-          <div className="h-full flex">
-            {/* Contact List - Left Side */}
-            <div className="w-80 bg-white border-r border-gray-200">
-              <ContactList 
-                contacts={contacts}
-                selectedContact={selectedContact}
-                onContactSelect={handleContactSelect}
-              />
-            </div>
-            
-            {/* Chat Window - Right Side */}
-            <div className="flex-1">
-              <ChatWindow 
-                contact={selectedContact}
-                messages={currentMessages}
-                onSendMessage={handleSendMessage}
-              />
-            </div>
-          </div>
-        </main>
+        {/* Chat Window - Right Side */}
+        <div className="flex-1">
+          <ChatWindow 
+            contact={selectedContact}
+            messages={currentMessages}
+            onSendMessage={handleSendMessage}
+          />
+        </div>
       </div>
     </div>
   );
