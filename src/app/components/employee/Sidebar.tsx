@@ -59,7 +59,7 @@ export default function Sidebar() {
                     className={cn(
                       "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium",
                       "cursor-not-allowed opacity-50",
-                      active ? "bg-red-600 text-white" : "text-gray-900 hover:bg-gray-200"
+                      "text-gray-900"
                     )}
                   >
                     <Icon className="h-4 w-4" />
