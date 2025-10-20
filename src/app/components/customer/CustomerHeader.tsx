@@ -57,12 +57,30 @@ export default function CustomerHeader() {
         </a>
         
         <nav className="hidden items-center gap-10 lg:flex">
-          {navLinks.map((link) => (
-            <a key={link} href="/" className="group relative font-heading text-sm font-semibold tracking-wider uppercase text-foreground transition-colors hover:text-primary">
-              {link}
-              <span className="absolute -bottom-2 left-1/2 h-0.5 w-0 -translate-x-1/2 bg-primary transition-all duration-300 group-hover:w-full" />
-            </a>
-          ))}
+          {navLinks.map((link) => {
+            // Map navigation links to appropriate routes
+            const getHref = (linkName: string) => {
+              switch(linkName) {
+                case 'HOME': return '/';
+                case 'ABOUT US': return '/#about';
+                case 'PACKAGES': return '/#services';
+                case 'NEWS': return '/#news';
+                case 'CONTACT': return '/#contact';
+                default: return '/';
+              }
+            };
+            
+            return (
+              <a 
+                key={link} 
+                href={getHref(link)}
+                className="group relative font-heading text-sm font-semibold tracking-wider uppercase text-foreground transition-colors hover:text-primary"
+              >
+                {link}
+                <span className="absolute -bottom-2 left-1/2 h-0.5 w-0 -translate-x-1/2 bg-primary transition-all duration-300 group-hover:w-full" />
+              </a>
+            );
+          })}
           <div onMouseEnter={() => setServicesMenuOpen(true)}>
             <button className="group relative flex items-center gap-1 font-heading text-sm font-semibold tracking-wider uppercase text-foreground transition-colors hover:text-primary">
               SERVICES <ChevronDown className="h-4 w-4 transition-transform group-hover:rotate-180" />
@@ -138,7 +156,7 @@ export default function CustomerHeader() {
                   <ul className="mt-6 space-y-4">
                     {category.services.map((service) => (
                       <li key={service.name}>
-                        <a href="#" className="group flex items-center gap-4 text-muted-foreground transition-colors hover:text-primary">
+                        <a href="/#services" className="group flex items-center gap-4 text-muted-foreground transition-colors hover:text-primary">
                           <service.icon className="h-6 w-6 text-primary/70 transition-colors group-hover:text-primary" />
                           <span className="font-body text-base">{service.name}</span>
                           <span className="ml-auto h-px flex-1 bg-border/50" />

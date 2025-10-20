@@ -3,6 +3,9 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import { LucideCar, LucideCalendar, LucideHistory, LucideSettings, LucideLogOut, LucideBot, LucideKey, LucideSearch, LucideCheck, LucideWrench, LucidePlus } from "lucide-react";
 import CustomerLayout from "@/app/components/customer/CustomerLayout";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
 
 // Sidebar navigation items
 const navItems = [
@@ -15,6 +18,17 @@ const navItems = [
 ];
 
 export default function CustomerDashboard() {
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.push('/');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
   return (
     <CustomerLayout>
       <div className="flex min-h-screen bg-[#f8f6f6] font-display">
@@ -56,10 +70,13 @@ export default function CustomerDashboard() {
             </nav>
           </div>
           <div>
-            <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 cursor-pointer">
+            <button 
+              onClick={handleLogout}
+              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 cursor-pointer w-full"
+            >
               <LucideLogOut className="text-[#181111]" />
               <p className="text-[#181111] text-sm font-medium leading-normal">Log Out</p>
-            </div>
+            </button>
           </div>
         </aside>
 
