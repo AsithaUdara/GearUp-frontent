@@ -62,7 +62,7 @@ export default function CurrentServiceTask({ task, onTaskUpdate }: CurrentServic
           <div>
             <label className="text-sm font-medium text-gray-500">Customer</label>
             <div className="flex items-center gap-2 mt-1">
-              <User className="h-4 w-4 text-gray-400" />
+              <User className="h-4 w-4 text-red-600" />
               <p className="text-gray-900 font-medium">{task.customer}</p>
             </div>
           </div>
@@ -72,7 +72,7 @@ export default function CurrentServiceTask({ task, onTaskUpdate }: CurrentServic
           <div>
             <label className="text-sm font-medium text-gray-500">Vehicle</label>
             <div className="flex items-center gap-2 mt-1">
-              <Car className="h-4 w-4 text-gray-400" />
+              <Car className="h-4 w-4 text-red-600" />
               <p className="text-gray-900 font-medium">{task.vehicle}</p>
             </div>
           </div>
@@ -80,7 +80,7 @@ export default function CurrentServiceTask({ task, onTaskUpdate }: CurrentServic
           <div>
             <label className="text-sm font-medium text-gray-500">Service Type</label>
             <div className="flex items-center gap-2 mt-1">
-              <Wrench className="h-4 w-4 text-gray-400" />
+              <Wrench className="h-4 w-4 text-red-600" />
               <p className="text-gray-900 font-medium">{task.serviceType}</p>
             </div>
           </div>
@@ -140,7 +140,7 @@ export default function CurrentServiceTask({ task, onTaskUpdate }: CurrentServic
       <div className="flex gap-4 justify-end">
         <button
           onClick={handleUpdateStatus}
-          className="px-6 py-2 bg-black text-white rounded-md hover:bg-gray-200 transition-colors font-medium"
+          className="px-6 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors font-medium"
         >
           Update Status
         </button>
