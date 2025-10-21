@@ -11,7 +11,7 @@ export default function Header() {
     <header className="px-8 py-5">
       <div className="flex items-center justify-between gap-6">
         <div>
-          <h1 className="text-2xl font-semibold">{title}</h1>
+          <h1 className="font-heading text-2xl font-semibold">{title}</h1>
           <p className="text-xs text-gray-500">Here's what's happening today.</p>
         </div>
         <div className="flex items-center gap-4">

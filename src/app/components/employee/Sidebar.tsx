@@ -28,11 +28,10 @@ export default function Sidebar() {
 
   return (
     <aside className="w-64 shrink-0 bg-white border-r border-white shadow-md flex flex-col h-screen">
-      <div className="h-16 flex items-center justify-center border-b border-white">
-        <div className="flex items-center gap-2">
-          <Image src="/logos/gearup_logo.png" alt="GearUp logo" width={24} height={24} />
-          <span className="text-xl font-bold tracking-tight text-gray-900">GearUp</span>
-        </div>
+      <div className="h-20 flex items-center justify-center border-b border-white px-4">
+        <a href="/employee" className="flex items-center w-full">
+          <Image src="/logos/gearup_logo.png" alt="GearUp" width={200} height={72} className="h-30 w-full object-contain" />
+        </a>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-2">
         <ul className="space-y-2">

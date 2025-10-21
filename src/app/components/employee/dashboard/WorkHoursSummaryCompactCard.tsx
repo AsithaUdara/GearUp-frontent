@@ -1,7 +1,7 @@
 export default function WorkHoursSummaryCompactCard() {
   return (
-    <div className="rounded-lg border border-white bg-white p-5 shadow-md transition hover:shadow-lg hover:-translate-y-0.5">
-      <h3 className="text-lg font-semibold mb-3">Log Work Hours</h3>
+    <div className="rounded-lg border border-white bg-white p-6 shadow-sm transition-transform hover:shadow-md hover:-translate-y-0.5">
+      <h3 className="font-heading text-lg font-semibold mb-3">Log Work Hours</h3>
       <div className="flex items-center justify-between mb-3">
         <p className="text-sm">
           Today's Hours: <span className="text-red-600 font-medium">4h 30m</span>
