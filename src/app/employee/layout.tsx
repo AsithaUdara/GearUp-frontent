@@ -1,6 +1,5 @@
 "use client";
 
-import type { Metadata } from "next";
 import Sidebar from "@/app/components/employee/Sidebar";
 import Header from "@/app/components/employee/Header";
 import { usePathname } from "next/navigation";
