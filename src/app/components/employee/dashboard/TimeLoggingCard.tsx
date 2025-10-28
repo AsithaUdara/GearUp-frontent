@@ -4,8 +4,8 @@ import { Pause, Square, PenSquare } from "lucide-react";
 
 export default function TimeLoggingCard() {
   return (
-    <div className="rounded-lg border border-white bg-white p-5 shadow-md transition hover:shadow-lg hover:-translate-y-0.5">
-      <h3 className="text-lg font-semibold mb-3">Time Logging</h3>
+    <div className="rounded-lg border border-white bg-white p-6 shadow-sm transition-transform hover:shadow-md hover:-translate-y-0.5">
+      <h3 className="font-heading text-lg font-semibold mb-3">Time Logging</h3>
       <div className="rounded-lg bg-white">
         <div className="flex items-start justify-between gap-4">
           <div>
