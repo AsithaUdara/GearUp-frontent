@@ -1,3 +1,4 @@
+// src/app/components/employee/Sidebar.tsx
 "use client";
 
 import Link from "next/link";
@@ -17,7 +18,7 @@ import {
 const items = [
   { key: "dashboard", href: "/employee", label: "Dashboard", icon: Home, enabled: true },
   { key: "schedule", href: "/employee/schedule", label: "View Work Schedule", icon: CalendarClock, enabled: true },
-  { key: "log-hours", href: "#", label: "Log Hours", icon: Clock8, enabled: false },
+  { key: "log-hours", href: "/employee/log-hours", label: "Log Hours", icon: Clock8, enabled: true },
   { key: "progress", href: "#", label: "Service Progress", icon: GaugeCircle, enabled: false },
   { key: "appointments", href: "#", label: "Appointments", icon: CalendarDays, enabled: false },
   { key: "communication", href: "#", label: "Communication", icon: MessageSquareText, enabled: false }
@@ -37,23 +38,32 @@ export default function Sidebar() {
       <nav className="flex-1 px-3 py-4 space-y-2">
         <ul className="space-y-2">
           {items.map(({ key, href, label, icon: Icon, enabled }) => {
-            const active =
-              (key === "dashboard" && pathname === "/employee") ||
-              pathname.startsWith(`/employee/${key}`);
-            const Comp = enabled ? Link : ("div" as any);
+            const active = (key === "dashboard" && pathname === "/employee") || (key !== "dashboard" && pathname.startsWith(href));
+            
             return (
               <li key={key}>
-                <Comp
-                  {...(enabled ? { href } : {})}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium",
-                    enabled ? "cursor-pointer" : "cursor-not-allowed opacity-50",
-                    active ? "bg-red-600 text-white" : "text-gray-900 hover:bg-gray-200"
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </Comp>
+                {/* --- MODIFICATION: Using clearer conditional rendering --- */}
+                {enabled ? (
+                  <Link
+                    href={href}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium cursor-pointer",
+                      active ? "bg-red-600 text-white" : "text-gray-900 hover:bg-gray-200"
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </Link>
+                ) : (
+                  <div
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium cursor-not-allowed opacity-50 text-gray-900"
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </div>
+                )}
               </li>
             );
           })}
@@ -63,7 +73,6 @@ export default function Sidebar() {
         <button
           type="button"
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-200"
-          // onClick={handleSignOut}
         >
           <LogOut className="h-4 w-4" /> Logout
         </button>

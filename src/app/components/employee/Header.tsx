@@ -1,11 +1,16 @@
+// src/app/components/employee/Header.tsx
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Bell, Search } from "lucide-react";
+import { Bell } from "lucide-react"; // Removed 'Search' as it's no longer used
 
 export default function Header() {
   const pathname = usePathname();
-  const title = pathname === "/employee" ? "Welcome, Employee!" : pathname.startsWith("/employee/schedule") ? "Schedule" : "";
+  // Simple logic to set the title based on the current page
+  const title = pathname === "/employee" ? "Welcome, Employee!" 
+              : pathname.startsWith("/employee/log-hours") ? "Log Hours" 
+              : pathname.startsWith("/employee/schedule") ? "Schedule" 
+              : "Employee Portal"; // A good default
 
   return (
     <header className="px-8 py-5">
@@ -15,14 +20,9 @@ export default function Header() {
           <p className="text-xs text-gray-500">Here's what's happening today.</p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search tasks..."
-              className="w-64 rounded-full border border-gray-200 bg-white py-2 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-red-600"
-            />
-          </div>
+
+          {/* --- SEARCH BAR DIV REMOVED FROM HERE --- */}
+
           <button className="rounded-full p-2 hover:bg-gray-100" aria-label="Notifications">
             <Bell className="h-5 w-5" />
           </button>
