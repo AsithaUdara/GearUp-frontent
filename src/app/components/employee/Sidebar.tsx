@@ -10,9 +10,9 @@ import {
   CalendarClock,
   Clock8,
   GaugeCircle,
-  CalendarDays,
   MessageSquareText,
-  LogOut
+  LogOut,
+  Wrench // --- MODIFICATION: Added a more appropriate icon ---
 } from "lucide-react";
 
 const items = [
@@ -20,7 +20,11 @@ const items = [
   { key: "schedule", href: "/employee/schedule", label: "View Work Schedule", icon: CalendarClock, enabled: true },
   { key: "log-hours", href: "/employee/log-hours", label: "Log Hours", icon: Clock8, enabled: true },
   { key: "progress", href: "#", label: "Service Progress", icon: GaugeCircle, enabled: false },
-  { key: "appointments", href: "#", label: "Appointments", icon: CalendarDays, enabled: false },
+  
+  // --- FIX APPLIED HERE ---
+  // Key, href, icon, and enabled status are now correct.
+  { key: "parts-request", href: "/employee/parts-request", label: "Materials and Parts Request", icon: Wrench, enabled: true },
+  
   { key: "communication", href: "#", label: "Communication", icon: MessageSquareText, enabled: false }
 ];
 
@@ -38,11 +42,11 @@ export default function Sidebar() {
       <nav className="flex-1 px-3 py-4 space-y-2">
         <ul className="space-y-2">
           {items.map(({ key, href, label, icon: Icon, enabled }) => {
-            const active = (key === "dashboard" && pathname === "/employee") || (key !== "dashboard" && pathname.startsWith(href));
-            
+            // Updated logic to properly check for active state
+            const active = (pathname === href) || (href !== '/employee' && pathname.startsWith(href));
+
             return (
               <li key={key}>
-                {/* --- MODIFICATION: Using clearer conditional rendering --- */}
                 {enabled ? (
                   <Link
                     href={href}

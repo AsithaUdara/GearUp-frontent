@@ -4,8 +4,8 @@
 import React, { useState, useMemo } from 'react';
 import TimeLoggingCard from "@/app/components/employee/dashboard/TimeLoggingCard";
 import AssignedTasksList, { Task } from "@/app/components/employee/dashboard/AssignedTasksList";
-import WorkHoursSummaryCompactCard from "@/app/components/employee/dashboard/WorkHoursSummaryCompactCard";
 import { Search } from "lucide-react";
+// --- MODIFICATION: The WorkHoursSummaryCompactCard is no longer imported ---
 
 const mockTasks: Task[] = [
   { id: "1", title: "Oil Change - Toyota Camry", customer: "John Doe", vehicle: "V-XYZ123", status: "In Progress" },
@@ -25,8 +25,7 @@ export default function LogHoursPage() {
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     
-    // The "clocked in" status is now managed by this parent page
-    const [isClockedIn, setIsClockedIn] = useState(false);
+    // --- MODIFICATION: The `isClockedIn` state and its handler functions have been removed ---
 
     const filteredTasks = useMemo(() => {
       if (!searchQuery) return mockTasks;
@@ -37,40 +36,20 @@ export default function LogHoursPage() {
       );
     }, [searchQuery]);
 
-    // Handler functions that will be passed down to the Shift Timer
-    const handleClockIn = () => {
-        console.log("Shift started.");
-        setIsClockedIn(true);
-    };
-
-    const handleClockOut = () => {
-        console.log("Shift ended.");
-        setIsClockedIn(false);
-    };
-
     return (
-        <section className="space-y-8 p-8">
+        <section className="p-8 space-y-8">
             <SectionHeader 
-                title="Time & Task Logging" 
-                subtitle="Manage your shift and log progress on assigned tasks." 
+                title="Task Time Logging" 
+                subtitle="Select a task and use the timer to log your work." 
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
-                <div>
-                     <h2 className="text-lg font-semibold text-gray-800 mb-2">My Shift</h2>
-                     <WorkHoursSummaryCompactCard 
-                        isClockedIn={isClockedIn}
-                        onClockIn={handleClockIn}
-                        onClockOut={handleClockOut}
-                     />
-                </div>
-                <div>
-                     <h2 className="text-lg font-semibold text-gray-800 mb-2">Current Task Timer</h2>
-                    <TimeLoggingCard 
-                        task={selectedTask} 
-                        isClockedIn={isClockedIn} 
-                    />
-                </div>
+            {/* --- MODIFICATION: The layout is now a single column focused on the task timer --- */}
+            <div className="max-w-2xl mx-auto">
+                 <h2 className="text-lg font-semibold text-gray-800 mb-2">Current Task Timer</h2>
+                <TimeLoggingCard 
+                    task={selectedTask}
+                    // The `isClockedIn` prop is no longer passed
+                />
             </div>
 
             <div className="mt-12">
@@ -81,13 +60,7 @@ export default function LogHoursPage() {
                     </div>
                      <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search tasks..."
-                            className="w-64 pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                        />
+                        <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search tasks..." className="w-64 pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"/>
                     </div>
                  </div>
 

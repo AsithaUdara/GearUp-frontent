@@ -3,11 +3,10 @@
 
 import { Pause, Square, PenSquare, Play } from "lucide-react";
 import React, { useState, useEffect, useRef } from 'react';
-import { cn } from "@/lib/utils";
 
+// --- MODIFICATION: `isClockedIn` is no longer part of the props ---
 type TaskProps = {
   task: { id: string; title: string; } | null;
-  isClockedIn: boolean; // Receives the global shift status
 };
 
 const formatTime = (totalSeconds: number): string => {
@@ -17,7 +16,8 @@ const formatTime = (totalSeconds: number): string => {
     return [hours, minutes, seconds].map(v => v.toString().padStart(2, '0')).join(':');
 };
 
-export default function TimeLoggingCard({ task, isClockedIn }: TaskProps) {
+// --- MODIFICATION: The component no longer accepts `isClockedIn` ---
+export default function TimeLoggingCard({ task }: TaskProps) {
     const [isActive, setIsActive] = useState(false);
     const [timeElapsed, setTimeElapsed] = useState(0);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -28,12 +28,7 @@ export default function TimeLoggingCard({ task, isClockedIn }: TaskProps) {
         setTimeElapsed(0);
     }, [task]);
     
-    // Automatically stop the task timer if the shift ends
-    useEffect(() => {
-        if (!isClockedIn && isActive) {
-            setIsActive(false);
-        }
-    }, [isClockedIn, isActive]);
+    // --- MODIFICATION: The useEffect that watched for `isClockedIn` has been removed ---
 
     // Timer logic
     useEffect(() => {
@@ -62,16 +57,17 @@ export default function TimeLoggingCard({ task, isClockedIn }: TaskProps) {
             </div>
           </div>
           <div className="mt-3 flex items-center gap-2">
+             {/* --- MODIFICATION: Button is only disabled if no task is selected --- */}
              <button 
                   onClick={() => setIsActive(!isActive)}
-                  disabled={!isClockedIn || !task} // Disabled if not clocked in OR no task is selected
+                  disabled={!task}
                   className="inline-flex w-24 justify-center items-center gap-2 rounded-lg bg-black text-white px-3 py-1.5 text-xs hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed">
                   {isActive ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
                   {isActive ? 'Pause' : 'Start'}
              </button>
              <button 
                   onClick={() => { setIsActive(false); setTimeElapsed(0); }}
-                  disabled={!isClockedIn || !task}
+                  disabled={!task}
                   className="inline-flex w-24 justify-center items-center gap-2 rounded-lg bg-red-600 text-white px-3 py-1.5 text-xs hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
                   <Square className="h-3.5 w-3.5" /> Stop
              </button>
@@ -87,13 +83,8 @@ export default function TimeLoggingCard({ task, isClockedIn }: TaskProps) {
     );
     
     return (
+        // --- MODIFICATION: The overlay has been removed ---
         <div className="rounded-lg border border-white bg-white p-6 shadow-sm transition-transform hover:shadow-md hover:-translate-y-0.5 h-full relative">
-            {!isClockedIn && (
-                <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center rounded-lg z-10">
-                    <p className="text-sm font-semibold text-gray-600 p-4 text-center">Start your shift to begin logging task time.</p>
-                </div>
-            )}
-            
             {task ? mainContent : placeholderContent}
         </div>
     );
