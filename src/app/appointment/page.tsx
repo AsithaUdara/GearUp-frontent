@@ -217,10 +217,7 @@ export default function AppointmentBooking() {
                     <span className="font-semibold">Duration:</span>
                     <span>{selectedService?.duration} minutes</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="font-semibold">Price:</span>
-                    <span className="text-primary font-bold">LKR {selectedService?.price.toLocaleString()}</span>
-                  </div>
+
                 </div>
               </div>
 
@@ -329,10 +326,7 @@ export default function AppointmentBooking() {
                         <p className="text-muted-foreground text-sm mb-4">
                           {service.description}
                         </p>
-                        <div className="flex justify-between items-center">
-                          <span className="text-2xl font-bold text-primary">
-                            LKR {service.price.toLocaleString()}
-                          </span>
+                        <div className="text-right">
                           <span className="text-sm text-muted-foreground">
                             {service.duration} min
                           </span>
@@ -527,10 +521,7 @@ export default function AppointmentBooking() {
                           <span>Duration:</span>
                           <span className="font-semibold">{selectedService?.duration} minutes</span>
                         </div>
-                        <div className="flex justify-between text-lg font-bold text-primary">
-                          <span>Total:</span>
-                          <span>LKR {selectedService?.price.toLocaleString()}</span>
-                        </div>
+
                       </div>
                     </div>
 
