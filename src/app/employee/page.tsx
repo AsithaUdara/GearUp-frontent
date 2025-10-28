@@ -5,7 +5,7 @@ import { useState } from 'react';
 import AssignedTasksList, { Task } from "@/app/components/employee/dashboard/AssignedTasksList"; 
 import ScheduleCard from "@/app/components/employee/dashboard/ScheduleCard";
 import AppointmentManagementCard from "@/app/components/employee/dashboard/AppointmentManagementCard";
-import WorkHoursSummaryCompactCard from "@/app/components/employee/dashboard/WorkHoursSummaryCompactCard";
+// --- FIX: The WorkHoursSummaryCompactCard is no longer imported ---
 import TimeLoggingCard from "@/app/components/employee/dashboard/TimeLoggingCard";
 import StatsCards from "@/app/components/employee/dashboard/StatsCards";
 import QuickActionsBar from "@/app/components/employee/dashboard/QuickActionsBar";
@@ -18,45 +18,27 @@ const mockTasks: Task[] = [
 
 export default function EmployeeOverviewPage() {
   const [tasks] = useState<Task[]>(mockTasks);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(tasks[0] || null); // Default to first task
+  const [selectedTask, setSelectedTask] = useState<Task | null>(tasks[0] || null); // Default to the first task for the timer
 
-  // --- FIX: Add the state for shift management, just like in log-hours ---
-  const [isClockedIn, setIsClockedIn] = useState(false);
+  // --- FIX: All state and handlers for `isClockedIn` have been removed ---
 
-  // Handler functions for the Shift Timer component
-  const handleClockIn = () => {
-    console.log("Dashboard shift started.");
-    setIsClockedIn(true);
-  };
-  const handleClockOut = () => {
-    console.log("Dashboard shift ended.");
-    setIsClockedIn(false);
-  };
-  
-  // Handler for the Task List component
   const handleTaskSelect = (task: Task) => {
     setSelectedTask(task); 
-    console.log("Task selected on dashboard:", task.title);
   };
   
   return (
-    <section className="grid grid-cols-1 gap-6 p-8 lg:grid-cols-3">
+    <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div className="lg:col-span-2 space-y-6">
         <StatsCards />
         <QuickActionsBar />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* --- FIX: Pass required props to the Shift Timer --- */}
-          <WorkHoursSummaryCompactCard 
-            isClockedIn={isClockedIn}
-            onClockIn={handleClockIn}
-            onClockOut={handleClockOut}
-          />
-          {/* --- FIX: Pass required props to the Task Timer --- */}
-          <TimeLoggingCard 
-            task={selectedTask}
-            isClockedIn={isClockedIn} 
-          />
-        </div>
+        
+        {/* --- FIX: The grid and the WorkHoursSummaryCompactCard have been removed --- */}
+        {/* The TimeLoggingCard can now sit directly in the layout */}
+        <TimeLoggingCard 
+          task={selectedTask} 
+          // The `isClockedIn` prop is correctly removed
+        />
+        
         <AssignedTasksList 
           tasks={tasks} 
           onTaskSelect={handleTaskSelect} 

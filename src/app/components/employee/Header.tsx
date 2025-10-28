@@ -7,18 +7,17 @@ import { Bell } from "lucide-react";
 export default function Header() {
   const pathname = usePathname();
   
-  // --- FIX APPLIED HERE ---
-  // Added a new condition to specifically handle the task details page.
   const title = 
       pathname === "/employee" ? "Welcome, Employee!" 
     : pathname.startsWith("/employee/schedule") ? "Schedule" 
     : pathname.startsWith("/employee/log-hours") ? "Log Hours"
     : pathname.startsWith("/employee/parts-request") ? "Parts & Materials Request"
-    : pathname.startsWith("/employee/tasks") ? "Task Information" // This is the new line
-    : "Employee Portal"; // Default fallback
+    : pathname.startsWith("/employee/tasks") ? "Task Information"
+    : "Employee Portal";
 
   return (
-    <header className="px-8 py-5 bg-white border-b">
+    // Replaced `border-b` with `shadow-sm`
+    <header className="px-8 py-5 bg-white shadow-sm">
       <div className="flex items-center justify-between gap-6">
         <div>
           <h1 className="text-2xl font-semibold">{title}</h1>
