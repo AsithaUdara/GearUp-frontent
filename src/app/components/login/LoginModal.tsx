@@ -76,7 +76,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     try {
       await mockSignIn(email, password);
       onClose();
-      router.push('/dashboard');
+      router.push('/customer/dashboard');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Login failed.';
       setError(message);

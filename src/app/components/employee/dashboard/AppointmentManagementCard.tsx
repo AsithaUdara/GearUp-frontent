@@ -17,8 +17,8 @@ const items: AppointmentItem[] = [
 
 export default function AppointmentManagementCard() {
   return (
-    <div className="rounded-lg border border-white bg-white p-5 shadow-md transition hover:shadow-lg hover:-translate-y-0.5">
-      <h3 className="text-lg font-semibold mb-3">Appointment Management</h3>
+    <div className="rounded-lg border border-white bg-white p-6 shadow-sm transition-transform hover:shadow-md hover:-translate-y-0.5">
+      <h3 className="font-heading text-lg font-semibold mb-3">Appointment Management</h3>
       <ul className="space-y-3">
         {items.map((a) => (
           <li

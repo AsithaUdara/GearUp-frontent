@@ -28,7 +28,7 @@ export default function AppointmentDetailsModal({ open, details, onClose }: Prop
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 sm:p-8">
   <div className="w-full max-w-5xl rounded-xl border border-blue-200 bg-white shadow-xl transition-transform hover:shadow-2xl">
         <div className="flex items-center justify-between border-b px-6 py-4">
-          <h2 className="text-lg font-semibold">Appointment Details</h2>
+          <h2 className="font-heading text-lg font-semibold">Appointment Details</h2>
           <div className="flex items-center gap-2">
             <button className="inline-flex items-center gap-2 rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700">
               <Pencil className="h-4 w-4" /> Edit Appointment
