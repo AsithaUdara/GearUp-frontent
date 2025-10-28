@@ -1,3 +1,4 @@
+// src/app/components/employee/Sidebar.tsx
 "use client";
 
 import Link from "next/link";
@@ -9,18 +10,22 @@ import {
   CalendarClock,
   Clock8,
   GaugeCircle,
-  CalendarDays,
   MessageSquareText,
-  LogOut
+  LogOut,
+  Wrench // --- MODIFICATION: Added a more appropriate icon ---
 } from "lucide-react";
 
 const items = [
   { key: "dashboard", href: "/employee", label: "Dashboard", icon: Home, enabled: true },
   { key: "schedule", href: "/employee/schedule", label: "View Work Schedule", icon: CalendarClock, enabled: true },
-  { key: "log-hours", href: "#", label: "Log Hours", icon: Clock8, enabled: false },
-  { key: "service-progress", href: "/employee/service-progress", label: "Service Progress", icon: GaugeCircle, enabled: true },
-  { key: "appointments", href: "#", label: "Appointments", icon: CalendarDays, enabled: false },
-  { key: "communication", href: "/employee/communication", label: "Communication", icon: MessageSquareText, enabled: true }
+  { key: "log-hours", href: "/employee/log-hours", label: "Log Hours", icon: Clock8, enabled: true },
+  { key: "progress", href: "#", label: "Service Progress", icon: GaugeCircle, enabled: false },
+  
+  // --- FIX APPLIED HERE ---
+  // Key, href, icon, and enabled status are now correct.
+  { key: "parts-request", href: "/employee/parts-request", label: "Materials and Parts Request", icon: Wrench, enabled: true },
+  
+  { key: "communication", href: "#", label: "Communication", icon: MessageSquareText, enabled: false }
 ];
 
 export default function Sidebar() {
@@ -37,17 +42,16 @@ export default function Sidebar() {
       <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto">
         <ul className="space-y-2">
           {items.map(({ key, href, label, icon: Icon, enabled }) => {
-            const active =
-              (key === "dashboard" && pathname === "/employee") ||
-              pathname.startsWith(`/employee/${key}`);
+            // Updated logic to properly check for active state
+            const active = (pathname === href) || (href !== '/employee' && pathname.startsWith(href));
+
             return (
               <li key={key}>
                 {enabled ? (
                   <Link
                     href={href}
                     className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium",
-                      "cursor-pointer",
+                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium cursor-pointer",
                       active ? "bg-red-600 text-white" : "text-gray-900 hover:bg-gray-200"
                     )}
                   >
@@ -57,9 +61,7 @@ export default function Sidebar() {
                 ) : (
                   <div
                     className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium",
-                      "cursor-not-allowed opacity-50",
-                      "text-gray-900"
+                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium cursor-not-allowed opacity-50 text-gray-900"
                     )}
                   >
                     <Icon className="h-4 w-4" />
@@ -75,7 +77,6 @@ export default function Sidebar() {
         <button
           type="button"
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-200"
-          // onClick={handleSignOut}
         >
           <LogOut className="h-4 w-4" /> Logout
         </button>
