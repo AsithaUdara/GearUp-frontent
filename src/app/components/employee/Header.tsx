@@ -22,16 +22,18 @@ export default function Header() {
       <div className="flex items-center justify-between gap-6">
         <div>
           <h1 className="text-2xl font-semibold">{title}</h1>
-          <p className="text-xs text-gray-500">Here's what's happening today.</p>
+          <p className="text-xs text-gray-500">{subtitle}</p>
         </div>
         <div className="flex items-center gap-4">
           <button className="rounded-full p-2 hover:bg-gray-100" aria-label="Notifications">
             <Bell className="h-5 w-5" />
           </button>
-          <img
+          <Image
             alt="Employee avatar"
             className="h-10 w-10 rounded-full object-cover"
             src="https://i.pravatar.cc/80?img=13"
+            width={40}
+            height={40}
           />
         </div>
       </div>

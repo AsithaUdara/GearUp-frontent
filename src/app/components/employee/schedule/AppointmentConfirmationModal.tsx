@@ -24,7 +24,7 @@ export default function AppointmentConfirmationModal({ open, confirmationNumber,
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
             <CheckCircle2 className="h-7 w-7 text-green-600" />
           </div>
-          <h3 className="mb-2 text-center text-lg font-semibold">Appointment Confirmed!</h3>
+          <h3 className="font-heading mb-2 text-center text-lg font-semibold">Appointment Confirmed!</h3>
           <p className="mx-auto mb-6 max-w-md text-center text-sm text-gray-600">
             Your appointment has been successfully confirmed. Your confirmation number is
             {" "}
