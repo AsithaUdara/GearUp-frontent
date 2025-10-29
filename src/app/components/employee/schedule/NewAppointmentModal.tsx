@@ -39,7 +39,7 @@ export default function NewAppointmentModal({ open, onClose, onSubmit }: Props) 
         aria-modal="true"
       >
         <div className="flex items-center justify-between border-b px-6 py-4">
-          <h2 className="text-lg font-semibold">Add New Appointment</h2>
+          <h2 className="font-heading text-lg font-semibold">Add New Appointment</h2>
           <button aria-label="Close" onClick={onClose} className="rounded-md p-1 hover:bg-gray-100">
             <X className="h-5 w-5" />
           </button>

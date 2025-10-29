@@ -24,8 +24,8 @@ const mockTasks: Task[] = [
 
 export default function AssignedTasksList() {
   return (
-    <div className="rounded-lg border border-white bg-white p-5 shadow-md transition hover:shadow-lg hover:-translate-y-0.5">
-      <h3 className="text-lg font-semibold mb-3">Assigned Tasks</h3>
+    <div className="rounded-lg border border-white bg-white p-6 shadow-sm transition-transform hover:shadow-md hover:-translate-y-0.5">
+      <h3 className="font-heading text-lg font-semibold mb-3">Assigned Tasks</h3>
       <ul className="space-y-4">
         {mockTasks.map((t, idx) => (
           <li id={idx === 0 ? "task-1" : undefined} key={t.id} className="p-3 border border-gray-200 rounded-lg flex justify-between items-center transition">
