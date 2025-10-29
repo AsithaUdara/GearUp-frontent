@@ -3,7 +3,7 @@ import { CalendarClock } from "lucide-react";
 export default function ScheduleCard() {
   return (
     <div className="rounded-lg border border-white bg-white p-5 shadow-md transition hover:shadow-lg hover:-translate-y-0.5">
-      <h3 className="text-lg font-semibold mb-3">My Schedule</h3>
+      <h3 className="font-heading text-lg font-semibold mb-3">My Schedule</h3>
       <div className="space-y-2.5">
         <div className="flex items-start gap-3">
           <CalendarClock className="mt-0.5 h-4 w-4 text-gray-500" />
