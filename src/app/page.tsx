@@ -12,6 +12,8 @@ import CallToAction from "@/app/components/landing/CallToAction";
 import Footer from "@/app/components/landing/Footer";
 import LoginModal from '@/app/components/login/LoginModal'; // <-- Import the modal here
 
+
+
 export default function Home() {
   // 1. The state is now "lifted up" to the parent page component
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -36,3 +38,6 @@ export default function Home() {
     </>
   );
 }
+
+
+

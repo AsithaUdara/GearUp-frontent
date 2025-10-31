@@ -3,9 +3,22 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 import React, { useState } from 'react';
-import { auth } from '@/lib/firebase';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+// import { auth } from '@/lib/firebase';
+// import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+
+// Temporary mock functions for Firebase auth (to be replaced when Firebase is installed)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const mockCreateUser = async (email: string, _password: string) => {
+  console.log('Mock signup:', email);
+  return Promise.resolve();
+};
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const mockSignIn = async (email: string, _password: string) => {
+  console.log('Mock login:', email);
+  return Promise.resolve();
+};
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -47,7 +60,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     setError('');
     setSuccessMessage('');
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      await mockCreateUser(email, password);
       setSuccessMessage('Account created successfully! Please log in.');
       setIsLoginView(true);
       setPassword(''); // Clear password field for login
@@ -61,9 +74,9 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     e.preventDefault();
     setError('');
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await mockSignIn(email, password);
       onClose();
-      router.push('/dashboard');
+      router.push('/customer/dashboard');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Login failed.';
       setError(message);
