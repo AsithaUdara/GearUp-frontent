@@ -1,31 +1,14 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { LucideCar, LucideCalendar, LucideHistory, LucideSettings, LucideLogOut, LucideBot, LucidePlus, LucideEdit, LucideTrash2 } from "lucide-react";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import CustomerLayout from "@/app/components/customer/CustomerLayout";
+import { useAuth } from "@/context/AuthContext";
+import { subscribeVehicles, deleteVehicle, type VehicleDoc } from "@/lib/vehicles";
 
-// Sample vehicles data - in real app, this would come from an API
-const sampleVehicles = [
-  {
-    id: 1,
-    make: "Tesla",
-    model: "Model 3",
-    year: "2023",
-    numberPlate: "TESLA-EV",
-    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuC96kFC2N6X_QEBz7fhbchg_BIHb0r09fqvP2hUm6PSxxh_wVXn7RhTdRQPb4nTfRfQ2cbivXH3ZY1m2m8AZI9KdN6znubj6esOtlDcbwj9bApNhtUgiQtAYdqJO68BCQsBrJ4wOnsSm_LMlPoDYCFLPc_2ec2Psux0R1a7hBpequgECXCTZ_rU210Jjs8fpbLL9WdrZtywDVmATnNYYssr0unmy2wIyEUk3iVCxigAESl-vEN_Boa5wT_7KJD1_zcnsfl3PdcN3P4"
-  },
-  {
-    id: 2,
-    make: "Toyota",
-    model: "Camry",
-    year: "2022",
-    numberPlate: "ABC-1234",
-    image: "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=500&h=300&fit=crop"
-  }
-];
 
 const navItems = [
   { icon: LucideCar, label: "Dashboard", href: "/customer/dashboard" },
@@ -37,8 +20,15 @@ const navItems = [
 ];
 
 export default function MyVehicles() {
-  const [vehicles, setVehicles] = useState(sampleVehicles);
+  const [vehicles, setVehicles] = useState<VehicleDoc[]>([]);
   const router = useRouter();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user) return;
+    const unsub = subscribeVehicles(user.uid, (items) => setVehicles(items));
+    return () => unsub && unsub();
+  }, [user]);
 
   const handleLogout = async () => {
     try {
@@ -51,21 +41,27 @@ export default function MyVehicles() {
 
   return (
     <CustomerLayout>
-      <div className="flex min-h-screen bg-[#f8f6f6] font-display">
+      <div className="flex min-h-screen font-display">
         {/* Sidebar */}
-        <aside className="w-72 bg-white border-r border-gray-200 flex-shrink-0 flex flex-col justify-between p-4">
+  <aside className="w-72 rounded-2xl m-4 border border-glass-border bg-glass-bg/80 backdrop-blur-lg shadow-md flex-shrink-0 flex flex-col justify-between p-4 transition-all duration-300 hover:shadow-lg hover:bg-glass-bg/90 hover:ring-1 hover:ring-white/10">
           <div>
-            <div className="flex items-center gap-3 p-2 mb-6">
-              <div className="flex items-center justify-center size-10 bg-primary rounded-full">
-                <LucideCar className="text-white" />
-              </div>
-              <h2 className="text-[#181111] text-xl font-bold">AutoCare</h2>
+            <div className="flex items-center justify-center p-2 mb-6">
+              <img 
+                src="https://res.cloudinary.com/dgyqfax25/image/upload/v1730351497/gearup_logo_nwij8d.webp" 
+                alt="GearUp Logo" 
+                className="h-16 w-auto object-contain"
+              />
             </div>
             <div className="flex items-center gap-3 mb-6">
-              <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" style={{ backgroundImage: `url('https://lh3.googleusercontent.com/aida-public/AB6AXuDprZ0np2z1F4LbIms0gu2QjPMO0i-d8SJObWlfbTX-BuKMHC_1nbxtzLZfONaXhf6_50BdX0fGX3IUUAw3ehweGS7aMn-Zhsh0NWy_stCMsuIc35jiM9lAX6B8RXw2nqUjHx0fhGsm8uU2tJXuG6vUL1i3Bg4-CV-w5wFog2Ylku75Lgca01vwEmTmuMxgj-qXbMYjRPCE4ti9TRODZGDCIv68NLXRDsnG2gd8XnKUk-Tko7bCpJCLsN6aAh7D_LWMRp5IQcNpgmA')` }} />
+              <div
+                className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
+                style={{
+                  backgroundImage: `url('${(user?.photoURL) || (user?.displayName || user?.email ? "https://api.dicebear.com/7.x/initials/svg?seed=" + encodeURIComponent(user?.displayName || user?.email || "User") : "https://api.dicebear.com/7.x/initials/svg?seed=User")}')`
+                }}
+              />
               <div className="flex flex-col">
-                <h1 className="text-[#181111] text-base font-medium leading-normal">John Doe</h1>
-                <p className="text-gray-500 text-sm font-normal leading-normal">john.doe@email.com</p>
+                <h1 className="text-[#181111] text-base font-medium leading-normal">{user?.displayName || "Your name"}</h1>
+                <p className="text-gray-500 text-sm font-normal leading-normal">{user?.email}</p>
               </div>
             </div>
             <nav className="flex flex-col gap-2 mb-6">
@@ -76,10 +72,10 @@ export default function MyVehicles() {
                     key={item.label}
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer",
+                      "flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200",
                       item.active
-                        ? "bg-primary/20 text-primary"
-                        : "hover:bg-gray-100 text-[#181111]"
+                        ? "bg-primary/20 text-primary backdrop-blur-sm"
+                        : "hover:bg-white/10 hover:backdrop-blur-sm hover:shadow text-[#181111]"
                     )}
                   >
                     <IconComponent className={item.active ? "text-primary" : "text-[#181111]"} />
@@ -92,7 +88,7 @@ export default function MyVehicles() {
           <div>
             <button 
               onClick={handleLogout}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 cursor-pointer w-full"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/50 hover:backdrop-blur-sm hover:shadow-sm cursor-pointer w-full transition-all duration-200"
             >
               <LucideLogOut className="text-[#181111]" />
               <p className="text-[#181111] text-sm font-medium leading-normal">Log Out</p>
@@ -101,7 +97,7 @@ export default function MyVehicles() {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 bg-[#f8f6f6]">
+  <main className="flex-1">
           <div className="p-8">
             {/* Header Section */}
             <div className="flex flex-wrap justify-between items-center gap-3 mb-8">
@@ -122,11 +118,11 @@ export default function MyVehicles() {
             {vehicles.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {vehicles.map((vehicle) => (
-                  <div key={vehicle.id} className="bg-white rounded-lg shadow-sm overflow-hidden">
+                  <div key={vehicle.id} className="group bg-white rounded-lg shadow-sm overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
                     {/* Vehicle Image */}
                     <div 
-                      className="w-full h-48 bg-center bg-cover bg-no-repeat"
-                      style={{ backgroundImage: `url('${vehicle.image}')` }}
+                      className="w-full h-48 bg-center bg-cover bg-no-repeat transition-transform duration-300 group-hover:scale-[1.02]"
+                      style={{ backgroundImage: `url('${vehicle.photoURL || "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800&auto=format&fit=crop"}')` }}
                     />
                     
                     {/* Vehicle Info */}
@@ -143,10 +139,14 @@ export default function MyVehicles() {
                         
                         {/* Action Buttons */}
                         <div className="flex gap-2">
-                          <button className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors">
+                          <button className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors" title="Edit (coming soon)">
                             <LucideEdit size={16} className="text-gray-600" />
                           </button>
-                          <button className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 hover:bg-red-200 transition-colors">
+                          <button
+                            onClick={async () => { if (user) await deleteVehicle(user.uid, vehicle.id); }}
+                            className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 hover:bg-red-200 transition-colors"
+                            title="Delete"
+                          >
                             <LucideTrash2 size={16} className="text-red-600" />
                           </button>
                         </div>

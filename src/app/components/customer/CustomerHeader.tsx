@@ -8,12 +8,14 @@ import Image from 'next/image';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 
 export default function CustomerHeader() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isServicesMenuOpen, setServicesMenuOpen] = useState(false);
   const [isUserMenuOpen, setUserMenuOpen] = useState(false);
   const router = useRouter();
+  const { user } = useAuth();
   
   const navLinks = ["HOME", "ABOUT US", "PACKAGES", "NEWS", "CONTACT"];
 
@@ -93,7 +95,7 @@ export default function CustomerHeader() {
           <div className="relative" onMouseEnter={() => setUserMenuOpen(true)}>
             <button className="group relative inline-flex items-center gap-2 rounded-md border border-border px-5 py-3 font-heading text-sm font-bold uppercase text-foreground shadow-sm transition-colors duration-300 hover:border-primary hover:bg-primary/5">
               <User className="h-4 w-4" />
-              <span>John Doe</span>
+              <span>{user?.displayName || user?.email?.split('@')[0] || 'User'}</span>
               <ChevronDown className="h-4 w-4 transition-transform group-hover:rotate-180" />
             </button>
             
