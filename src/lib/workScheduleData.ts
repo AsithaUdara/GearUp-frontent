@@ -115,13 +115,24 @@ export type ModificationRequest = {
   type: 'add_service' | 'remove_service' | 'change_service' | 'urgent_repair';
   title: string;
   description: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'pending' | 'approved' | 'rejected' | 'in_progress' | 'completed';
   requestedBy: string;
   requestedAt: string;
   estimatedCost?: number;
   estimatedDuration?: number;
   assignedToEmployeeId?: string;
+};
+
+// Parts/Material Request type
+export type PartsRequest = {
+  id: string;
+  material: string;
+  quantity: number;
+  status: 'Approved' | 'Pending' | 'Rejected';
+  date: string;
+  vehicle?: string;
+  serviceId?: string;
+  notes?: string;
 };
 
 // Mock modification requests
@@ -134,13 +145,46 @@ const MODIFICATION_REQUESTS: ModificationRequest[] = [
     type: "add_service",
     title: "Brake Fluid Replacement",
     description: "Customer requested brake fluid replacement during brake pad service",
-    priority: "medium",
     status: "approved",
     requestedBy: "Jane Smith",
     requestedAt: new Date().toLocaleString(),
     estimatedCost: 3500,
     estimatedDuration: 20,
     assignedToEmployeeId: "emp-1"
+  }
+];
+
+// Mock parts requests
+const PARTS_REQUESTS: PartsRequest[] = [
+  {
+    id: "REQ-2024-001",
+    material: "Brake Pads",
+    quantity: 4,
+    status: "Approved",
+    date: new Date().toISOString().split('T')[0],
+    vehicle: "Toyota Camry - 2021",
+    serviceId: "SVC-2024-00789",
+    notes: "Front brake pads required"
+  },
+  {
+    id: "REQ-2024-002",
+    material: "Engine Oil 5L",
+    quantity: 2,
+    status: "Approved",
+    date: new Date().toISOString().split('T')[0],
+    vehicle: "Honda Civic - 2019",
+    serviceId: "SVC-2024-00785",
+    notes: "Synthetic oil"
+  },
+  {
+    id: "REQ-2024-003",
+    material: "Brake Fluid",
+    quantity: 1,
+    status: "Approved",
+    date: new Date().toISOString().split('T')[0],
+    vehicle: "Toyota Camry - 2021",
+    serviceId: "SVC-2024-00789",
+    notes: "DOT 4 brake fluid"
   }
 ];
 
@@ -165,6 +209,12 @@ export async function notifyCustomerTaskCompleted(taskId: string): Promise<boole
   // In a real app, this would send a notification via API/WebSocket
   console.log(`Customer notified: Task ${taskId} completed`);
   return true;
+}
+
+// Fetch parts requests for a vehicle
+export async function fetchPartsRequestsByVehicle(vehicle: string): Promise<PartsRequest[]> {
+  await new Promise((r) => setTimeout(r, 100));
+  return PARTS_REQUESTS.filter((p) => p.vehicle === vehicle);
 }
 
 // Create new task from customer request (modification or new service)

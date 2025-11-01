@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Download, X, User, Car, Wrench, CheckCircle2 } from "lucide-react";
+import { FileText, Download, X, User, Car, Wrench, CheckCircle2, Package } from "lucide-react";
 import type { WorkTask } from "@/lib/workScheduleData";
 
 interface ModificationRequest {
@@ -9,7 +9,6 @@ interface ModificationRequest {
   type: 'add_service' | 'remove_service' | 'change_service' | 'urgent_repair';
   title: string;
   description: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'pending' | 'approved' | 'rejected' | 'in_progress' | 'completed';
   requestedBy: string;
   requestedAt: string;
@@ -17,11 +16,21 @@ interface ModificationRequest {
   estimatedDuration?: number;
 }
 
+interface PartsRequest {
+  id: string;
+  material: string;
+  quantity: number;
+  status: 'Approved' | 'Pending' | 'Rejected';
+  date: string;
+  notes?: string;
+}
+
 interface ServiceCompletionReportProps {
   vehicle: string;
   customer: string;
   allServices: WorkTask[];
   modificationRequests: ModificationRequest[];
+  partsRequests: PartsRequest[];
   onClose: () => void;
   onNotifyCustomer?: () => void;
 }
@@ -31,6 +40,7 @@ export default function ServiceCompletionReport({
   customer,
   allServices,
   modificationRequests,
+  partsRequests,
   onClose,
   onNotifyCustomer
 }: ServiceCompletionReportProps) {
@@ -46,6 +56,7 @@ export default function ServiceCompletionReport({
   
   const completedModifications = modificationRequests.filter(m => m.status === 'completed' || m.status === 'approved');
   const pendingModifications = modificationRequests.filter(m => m.status === 'pending' || m.status === 'in_progress');
+  const approvedParts = partsRequests.filter(p => p.status === 'Approved');
 
   const handleDownload = () => {
     // Generate PDF report (mock implementation)
@@ -69,6 +80,15 @@ ${i + 1}. ${m.title}
    Type: ${m.type}
    Status: ${m.status}
    Requested: ${m.requestedAt}
+`).join('\n')}
+
+PARTS & MATERIALS REQUESTS:
+${approvedParts.map((p, i) => `
+${i + 1}. ${p.material}
+   Quantity: ${p.quantity}
+   Status: ${p.status}
+   Date: ${p.date}
+   ${p.notes ? `Notes: ${p.notes}` : ''}
 `).join('\n')}
 
 TOTAL SERVICES: ${completedServices.length}
@@ -131,7 +151,7 @@ TOTAL COST: LKR ${totalCost.toLocaleString()}
           </div>
 
           {/* Summary Stats */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-4 gap-4">
             <div className="bg-gray-50 p-4 rounded-lg">
               <div className="text-sm text-gray-500 mb-1">Total Services</div>
               <div className="text-2xl font-bold text-gray-900">{completedServices.length}</div>
@@ -143,6 +163,10 @@ TOTAL COST: LKR ${totalCost.toLocaleString()}
             <div className="bg-red-50 p-4 rounded-lg">
               <div className="text-sm text-gray-500 mb-1">Modifications</div>
               <div className="text-2xl font-bold text-red-700">{completedModifications.length}</div>
+            </div>
+            <div className="bg-green-50 p-4 rounded-lg">
+              <div className="text-sm text-gray-500 mb-1">Parts Requests</div>
+              <div className="text-2xl font-bold text-green-700">{approvedParts.length}</div>
             </div>
           </div>
 
@@ -219,6 +243,55 @@ TOTAL COST: LKR ${totalCost.toLocaleString()}
                         <div className="font-medium text-gray-900">{mod.title}</div>
                         <div className="text-xs text-gray-500 mt-1">
                           Status: <span className="font-medium">{mod.status}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Parts & Materials Requests */}
+          {partsRequests.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Package className="h-5 w-5 text-red-600" />
+                Parts & Materials Requests
+              </h3>
+              <div className="space-y-3">
+                {approvedParts.map((part) => (
+                  <div key={part.id} className="border border-gray-200 rounded-lg p-4 bg-green-50">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <div className="font-semibold text-gray-900">{part.material}</div>
+                        <div className="text-sm text-gray-600 mt-1">Quantity: {part.quantity}</div>
+                        {part.notes && (
+                          <div className="text-sm text-gray-600 mt-1">Notes: {part.notes}</div>
+                        )}
+                      </div>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        part.status === 'Approved' ? 'bg-green-50 text-green-700' :
+                        part.status === 'Pending' ? 'bg-gray-100 text-gray-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
+                        {part.status}
+                      </span>
+                    </div>
+                    <div className="mt-2 text-xs text-gray-500">
+                      Request ID: {part.id} • Date: {part.date}
+                    </div>
+                  </div>
+                ))}
+                
+                {partsRequests.filter(p => p.status !== 'Approved').length > 0 && (
+                  <div className="mt-4">
+                    <div className="text-sm font-medium text-gray-700 mb-2">Other Requests:</div>
+                    {partsRequests.filter(p => p.status !== 'Approved').map((part) => (
+                      <div key={part.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50 mb-2">
+                        <div className="font-medium text-gray-900">{part.material}</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Quantity: {part.quantity} • Status: <span className="font-medium">{part.status}</span>
                         </div>
                       </div>
                     ))}

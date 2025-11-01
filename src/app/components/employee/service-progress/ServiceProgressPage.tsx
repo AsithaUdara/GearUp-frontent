@@ -9,11 +9,13 @@ import {
   updateTaskProgress, 
   fetchServicesByVehicle,
   fetchModificationRequestsByVehicle,
+  fetchPartsRequestsByVehicle,
   fetchPendingModificationRequestsForEmployee,
   createTaskFromRequest,
   notifyCustomerTaskCompleted,
   WorkTask,
-  ModificationRequest
+  ModificationRequest,
+  PartsRequest
 } from "@/lib/workScheduleData";
 import { ClipboardList, Clock, CheckCircle2, Bell, Car, User } from "lucide-react";
 
@@ -29,6 +31,7 @@ export default function ServiceProgressPage() {
   const [reportCustomer, setReportCustomer] = useState<string | null>(null);
   const [reportServices, setReportServices] = useState<WorkTask[]>([]);
   const [reportModifications, setReportModifications] = useState<ModificationRequest[]>([]);
+  const [reportPartsRequests, setReportPartsRequests] = useState<PartsRequest[]>([]);
   const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
   const [pendingRequests, setPendingRequests] = useState<ModificationRequest[]>([]);
 
@@ -113,6 +116,10 @@ export default function ServiceProgressPage() {
     // Fetch modification requests for this vehicle
     const modifications = await fetchModificationRequestsByVehicle(task.vehicle);
     setReportModifications(modifications);
+    
+    // Fetch parts requests for this vehicle
+    const partsRequests = await fetchPartsRequestsByVehicle(task.vehicle);
+    setReportPartsRequests(partsRequests);
     
     setShowReport(true);
   };
@@ -247,12 +254,13 @@ export default function ServiceProgressPage() {
           )}
 
           {/* Daily Summary - Moved to left column */}
-          <DailySummary 
-            summaryByVehicle={dailySummaryByVehicle}
-            onViewReport={handleViewCompletionReport}
-            fetchServicesByVehicle={fetchServicesByVehicle}
-            fetchModificationRequestsByVehicle={fetchModificationRequestsByVehicle}
-          />
+            <DailySummary 
+              summaryByVehicle={dailySummaryByVehicle}
+              onViewReport={handleViewCompletionReport}
+              fetchServicesByVehicle={fetchServicesByVehicle}
+              fetchModificationRequestsByVehicle={fetchModificationRequestsByVehicle}
+              fetchPartsRequestsByVehicle={fetchPartsRequestsByVehicle}
+            />
         </div>
         
         {/* Right: Assigned Tasks + New Customer Requests - 6/12 width */}
@@ -391,13 +399,6 @@ export default function ServiceProgressPage() {
                         <div className="text-sm text-gray-600 mt-1">{request.description}</div>
                         <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
                           <span>{request.customer} • {request.vehicle}</span>
-                          <span className={`px-2 py-1 rounded-full ${
-                            request.priority === 'urgent' ? 'bg-red-100 text-red-700' :
-                            request.priority === 'high' ? 'bg-red-100 text-red-700' :
-                            'bg-gray-100 text-gray-700'
-                          }`}>
-                            {request.priority}
-                          </span>
                         </div>
                       </div>
                     </div>
@@ -436,6 +437,7 @@ export default function ServiceProgressPage() {
           customer={reportCustomer}
           allServices={reportServices}
           modificationRequests={reportModifications}
+          partsRequests={reportPartsRequests}
           onClose={() => setShowReport(false)}
           onNotifyCustomer={handleNotifyCustomer}
         />

@@ -1,7 +1,7 @@
 "use client";
 
 import { BarChart3, Download, FileText } from "lucide-react";
-import type { WorkTask, ModificationRequest } from "@/lib/workScheduleData";
+import type { WorkTask, ModificationRequest, PartsRequest } from "@/lib/workScheduleData";
 import { useState } from "react";
 
 interface DailySummaryProps {
@@ -9,13 +9,15 @@ interface DailySummaryProps {
   onViewReport: (task: WorkTask) => void;
   fetchServicesByVehicle: (vehicle: string) => Promise<WorkTask[]>;
   fetchModificationRequestsByVehicle: (vehicle: string) => Promise<ModificationRequest[]>;
+  fetchPartsRequestsByVehicle?: (vehicle: string) => Promise<PartsRequest[]>;
 }
 
 export default function DailySummary({ 
   summaryByVehicle,
   onViewReport,
   fetchServicesByVehicle,
-  fetchModificationRequestsByVehicle
+  fetchModificationRequestsByVehicle,
+  fetchPartsRequestsByVehicle
 }: DailySummaryProps) {
   const [generatingPdf, setGeneratingPdf] = useState<string | null>(null);
 
@@ -25,9 +27,10 @@ export default function DailySummary({
       // Dynamic import for jsPDF
       const { default: jsPDF } = await import('jspdf');
       
-      // Fetch all services and modifications for this vehicle
+      // Fetch all services, modifications, and parts requests for this vehicle
       const allServices = await fetchServicesByVehicle(vehicle);
       const modifications = await fetchModificationRequestsByVehicle(vehicle);
+      const partsRequests = fetchPartsRequestsByVehicle ? await fetchPartsRequestsByVehicle(vehicle) : [];
       
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -134,6 +137,49 @@ export default function DailySummary({
           yPos += 3;
         });
       }
+
+      // Parts & Materials Requests
+      const approvedParts = partsRequests.filter((p: PartsRequest) => p.status === 'Approved');
+      if (approvedParts.length > 0) {
+        if (yPos > pageHeight - 40) {
+          doc.addPage();
+          yPos = 20;
+        }
+        
+        yPos += 5;
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.text('Parts & Materials Requests', 20, yPos);
+        yPos += 8;
+        
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
+        
+        approvedParts.forEach((part: PartsRequest, index: number) => {
+          if (yPos > pageHeight - 30) {
+            doc.addPage();
+            yPos = 20;
+          }
+          
+          doc.setFont(undefined, 'bold');
+          doc.text(`${index + 1}. ${part.material}`, 25, yPos);
+          yPos += 5;
+          
+          doc.setFont(undefined, 'normal');
+          doc.text(`   Quantity: ${part.quantity}`, 25, yPos);
+          yPos += 5;
+          doc.text(`   Status: ${part.status}`, 25, yPos);
+          yPos += 5;
+          doc.text(`   Date: ${part.date}`, 25, yPos);
+          yPos += 5;
+          if (part.notes) {
+            const notesLines = doc.splitTextToSize(`   Notes: ${part.notes}`, pageWidth - 50);
+            doc.text(notesLines, 25, yPos);
+            yPos += notesLines.length * 5;
+          }
+          yPos += 3;
+        });
+      }
       
       // Summary
       const totalServices = allServices.filter(s => s.status === 'completed').length;
@@ -153,6 +199,8 @@ export default function DailySummary({
       doc.text(`Total Services Completed: ${totalServices}`, 20, yPos);
       yPos += 6;
       doc.text(`Modification Requests: ${modifications.filter(m => m.status === 'completed' || m.status === 'approved').length}`, 20, yPos);
+      yPos += 6;
+      doc.text(`Parts & Materials Requests: ${approvedParts.length}`, 20, yPos);
       
       // Save PDF
       const fileName = `Service-Report-${vehicle.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
@@ -223,21 +271,21 @@ export default function DailySummary({
                         </>
                       )}
                     </button>
-                  </div>
-                </div>
-                
+        </div>
+      </div>
+
                 {/* Services list for this vehicle */}
                 <div className="space-y-2 mt-3 pt-3 border-t border-gray-100">
                   {tasks.map((task) => (
                     <div key={task.id} className="flex items-center justify-between text-xs">
-                      <div>
+              <div>
                         <span className="font-medium text-gray-900">{task.serviceType}</span>
                         <span className="text-gray-500 ml-2">({task.serviceId})</span>
-                      </div>
+              </div>
                       <span className="text-gray-500">{task.time || 'N/A'}</span>
-                    </div>
-                  ))}
-                </div>
+          </div>
+        ))}
+      </div>
               </div>
             );
           })
