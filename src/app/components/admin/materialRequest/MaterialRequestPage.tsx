@@ -181,7 +181,7 @@ export default function MaterialRequestPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Material Request Management</h1>
-          <p className="mt-1 text-sm text-gray-600">Filter requests and check inventory status.</p>
+          <p className="mt-1 text-sm text-gray-600">View and process material requests.</p>
         </div>
         <div className="hidden sm:flex gap-2">
           <button onClick={exportCSV} className="inline-flex items-center gap-2 rounded-md bg-black text-white px-3 py-2 text-sm hover:bg-neutral-800">
@@ -222,136 +222,7 @@ export default function MaterialRequestPage() {
         </div>
       </div>
 
-      {/* Quick filter chips to make the page feel fuller and speed up filtering */}
-      <div className="mt-4 flex flex-wrap gap-2">
-        {([
-          {key: 'all', label: 'All'},
-          {key: 'pending', label: 'Pending'},
-          {key: 'available', label: 'Available'},
-          {key: 'low', label: 'Low Stock'},
-          {key: 'out', label: 'Out of Stock'},
-          {key: 'fulfilled', label: 'Fulfilled'}
-        ] as const).map(opt => (
-          <button
-            key={opt.key}
-            onClick={() => { setPage(1); setFilters(f => ({...f, status: opt.key as Filters['status']})); }}
-            className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
-              filters.status === opt.key ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-900 border-black'
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Filters + Inventory Check */}
-      <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white shadow-sm p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-900 inline-flex items-center gap-2"><Filter className="h-4 w-4 text-red-600"/> Filter Requests</h2>
-            <button onClick={clearFilters} className="inline-flex items-center gap-2 rounded-md border border-black bg-white px-3 py-1.5 text-xs hover:bg-gray-50">
-              <Eraser className="h-3.5 w-3.5 text-red-600"/> Clear Filters
-            </button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Status */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Status</label>
-              <select
-                className="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:ring-2 focus:ring-red-600"
-                value={filters.status}
-                onChange={(e) => { setPage(1); setFilters({ ...filters, status: e.target.value as Filters['status'] }); }}
-              >
-                <option value="all">All</option>
-                <option value="pending">Pending</option>
-                <option value="available">Available</option>
-                <option value="low">Low Stock</option>
-                <option value="out">Out of Stock</option>
-                <option value="fulfilled">Fulfilled</option>
-              </select>
-            </div>
-            {/* Employee */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Employee</label>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-500" />
-                <input
-                  type="text"
-                  placeholder="Search by name..."
-                  value={filters.employee}
-                  onChange={(e) => { setPage(1); setFilters({ ...filters, employee: e.target.value }); }}
-                  className="mt-1 w-full rounded-md border-gray-300 pl-9 shadow-sm focus:ring-2 focus:ring-red-600"
-                />
-              </div>
-            </div>
-            {/* Date Range */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">From</label>
-                <div className="relative">
-                  <Calendar className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-500" />
-                  <input
-                    type="date"
-                    value={filters.from || ''}
-                    onChange={(e) => { setPage(1); setFilters({ ...filters, from: e.target.value || undefined }); }}
-                    className="mt-1 w-full rounded-md border-gray-300 pl-9 shadow-sm focus:ring-2 focus:ring-red-600"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">To</label>
-                <div className="relative">
-                  <Calendar className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-500" />
-                  <input
-                    type="date"
-                    value={filters.to || ''}
-                    onChange={(e) => { setPage(1); setFilters({ ...filters, to: e.target.value || undefined }); }}
-                    className="mt-1 w-full rounded-md border-gray-300 pl-9 shadow-sm focus:ring-2 focus:ring-red-600"
-                  />
-                </div>
-              </div>
-            </div>
-            {/* Quick ranges */}
-            <div className="md:col-span-3 mt-1 flex flex-wrap gap-2">
-              <button onClick={() => setQuickRange(0)} className="rounded-full border border-black px-3 py-1 text-xs hover:bg-gray-50">Today</button>
-              <button onClick={() => setQuickRange(7)} className="rounded-full border border-black px-3 py-1 text-xs hover:bg-gray-50">Last 7 days</button>
-              <button onClick={() => setQuickRange(30)} className="rounded-full border border-black px-3 py-1 text-xs hover:bg-gray-50">Last 30 days</button>
-              <button onClick={clearFilters} className="rounded-full border border-red-600 text-red-600 px-3 py-1 text-xs hover:bg-red-50">Reset</button>
-            </div>
-          </div>
-        </div>
-
-        {/* Inventory Check */}
-        <form onSubmit={(e) => { e.preventDefault(); doCheck(); }} className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
-          <h2 className="text-base font-semibold text-gray-900 mb-3">Inventory Check</h2>
-          <label className="block text-sm font-medium text-gray-700">Enter Part Number</label>
-          <div className="mt-1 flex gap-2">
-            <div className="relative flex-1">
-              <Package className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-500" />
-              <input
-                type="text"
-                placeholder="e.g. BP-12345"
-                value={checkPN}
-                onChange={(e) => setCheckPN(e.target.value)}
-                className="w-full rounded-md border-gray-300 pl-9 shadow-sm focus:ring-2 focus:ring-red-600"
-              />
-            </div>
-            <button
-              className="inline-flex items-center rounded-md bg-red-600 text-white text-sm px-4 py-2 hover:bg-red-700"
-              type="submit"
-            >
-              Check
-            </button>
-          </div>
-          {checkResult && (
-            <div className="mt-3 text-sm">
-              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium ${badge(checkResult).cls}`}>
-                {badge(checkResult).label}
-              </span>
-            </div>
-          )}
-        </form>
-      </div>
+      {/* Filters and inventory check removed per request */}
 
       {/* Table */}
       <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">

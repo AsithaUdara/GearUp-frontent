@@ -32,7 +32,7 @@ export default function AvailableSlotsPage() {
   const [editing, setEditing] = useState<Slot | null>(null);
 
   function addSlot(input: SlotInput) {
-  const id = rid(8);
+    const id = rid(8);
     setSlots((prev) => [{ id, available: input.available ?? input.capacity, ...input }, ...prev]);
   }
 
@@ -67,7 +67,11 @@ export default function AvailableSlotsPage() {
         </div>
 
         <div className="lg:col-span-2">
-          <SlotList slots={slots} onEdit={setEditing} onDelete={deleteSlot} />
+          <SlotList
+            slots={slots}
+            onEdit={setEditing}
+            onDelete={deleteSlot}
+          />
         </div>
       </div>
     </div>

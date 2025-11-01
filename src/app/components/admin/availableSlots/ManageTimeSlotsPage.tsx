@@ -4,7 +4,7 @@ import React, { useMemo, useRef, useState } from "react";
 import { Plus, Ban, Search, ChevronLeft, ChevronRight, MoreHorizontal, CheckCircle2, CalendarDays, Pencil, Trash2 } from "lucide-react";
 import AddSlotForm from "./AddSlotForm";
 import EditSlotForm from "./EditSlotForm";
-import { Slot, SlotInput, ServiceType } from "./types";
+import { Slot, SlotInput, ServiceType, Booking } from "./types";
 
 // Small helpers
 const rid = (len = 8) => Math.random().toString(36).slice(2, 2 + len);
@@ -62,7 +62,7 @@ export default function ManageTimeSlotsPage() {
     const base = new Date();
     return [0,1,2,4,6].map(i => {
       const d = new Date(base); d.setDate(d.getDate()+i);
-      return { id: rid(), date: ymd(d), startTime: "10:00", endTime:"11:00", capacity: 5, available: Math.max(1,5-i), notes: undefined, serviceType: (i%2? 'Oil Change':'General Service') as ServiceType, bay: `Bay ${1 + (i%3)}`, technician: i%2? 'Alex' : 'Jordan' } as Slot;
+      return { id: rid(), date: ymd(d), startTime: "10:00", endTime:"11:00", serviceType: (i%2? 'Oil Change':'General Service') as ServiceType, bay: `Bay ${1 + (i%3)}`, technician: i%2? 'Alex' : 'Jordan', bookings: [] } as Slot;
     });
   });
   const [blocks, setBlocks] = useState<string[]>(() => {
@@ -77,7 +77,7 @@ export default function ManageTimeSlotsPage() {
 
   function addSlot(input: SlotInput) {
     const id = rid();
-    setSlots(prev => [{ id, available: input.available ?? input.capacity, ...input }, ...prev]);
+    setSlots(prev => [{ id, ...input }, ...prev]);
     setShowAdd(false);
   }
 
@@ -91,26 +91,51 @@ export default function ManageTimeSlotsPage() {
     setSlots(prev => prev.filter(s => s.id !== id));
   }
 
-  // Create a booking for a slot if time is available and slot has capacity
-  // Try to create a booking for a slot. Returns true on success, or a string reason on failure.
-  function addBooking(slotId: string, date: string, time: string, title: string): true | 'conflict' | 'no-capacity' | 'tech-unavailable' {
-    // prevent duplicate booking at same date/time
-    if (bookings.some(b => b.date === date && b.time === time)) {
-      return 'conflict';
-    }
+  // Fixed conflict check to use actual booking time ranges
+  function addBooking(slotId: string, date: string, time: string, title: string): true | 'conflict' | 'tech-unavailable' {
     const slot = slots.find(s => s.id === slotId && s.date === date);
-    if (!slot) return 'no-capacity';
-    const availableSeats = slot.available ?? slot.capacity ?? 0;
-    if (availableSeats <= 0) return 'no-capacity';
+    if (!slot) return 'conflict';
+
+    // prevent overlapping bookings within the same slot
+    if (slot.bookings.some(b => {
+        const bookingStart = b.time;
+        const bookingEnd = addMinutes(bookingStart, 60); // Assuming each booking lasts 60 minutes
+        return time >= bookingStart && time < bookingEnd;
+    })) {
+        return 'conflict';
+    }
+
     // check technician availability for requested time
     if (slot.technician && !isTechAvailable(slot.technician, date, time)) {
-      return 'tech-unavailable';
+        return 'tech-unavailable';
     }
+
     const id = rid();
-    setBookings(prev => [{ id, date, time, title }, ...prev]);
-    // decrement slot available count
-    setSlots(prev => prev.map(s => s.id === slotId ? { ...s, available: Math.max(0, (s.available ?? s.capacity) - 1) } : s));
+    const newBooking: Booking = {
+        id,
+        slotId,
+        date,
+        time,
+        customer: title.split(' — ')[0],
+        serviceType: title.split(' — ')[1] as ServiceType,
+        bay: slot.bay || '',
+        technician: slot.technician || '',
+        title,
+    };
+
+    setBookings(prev => [...prev, newBooking]);
+    setSlots(prev => prev.map(s => s.id === slotId ? { ...s, bookings: [...s.bookings, newBooking] } : s));
+
     return true;
+  }
+
+  // Helper function to add minutes to a time string
+  function addMinutes(time: string, minutes: number): string {
+    const [hours, mins] = time.split(':').map(Number);
+    const totalMinutes = hours * 60 + mins + minutes;
+    const newHours = Math.floor(totalMinutes / 60) % 24;
+    const newMinutes = totalMinutes % 60;
+    return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
   }
 
   // expose a simple hook for child items to open booking modal (avoids prop drilling inside map)
@@ -159,7 +184,7 @@ export default function ManageTimeSlotsPage() {
         const day = d.getDate();
         const key = monthStr(day);
         const arr = map.get(key) ?? [];
-        const label = `${s.startTime}-${s.endTime} ${s.serviceType ?? 'Service'}${s.bay ? ` — ${s.bay}`:''} • ${Math.max(0,s.available)}/${s.capacity}`;
+        const label = `${s.startTime}-${s.endTime} ${s.serviceType ?? 'Service'}${s.bay ? ` — ${s.bay}`:''}`;
         arr.push({ id: s.id, type: "available", label });
         map.set(key, arr);
       }
@@ -199,21 +224,6 @@ export default function ManageTimeSlotsPage() {
   const monthLabel = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" }).format(current);
   const todayKey = ymd(new Date());
 
-  // Summary counts for current month
-  const summary = useMemo(() => {
-    const start = new Date(current.getFullYear(), current.getMonth(), 1);
-    const end = new Date(current.getFullYear(), current.getMonth()+1, 0);
-    const inMonth = (iso: string) => {
-      const d = fromYmd(iso);
-      return d >= start && d <= end;
-    };
-    return {
-      available: slots.filter(s => inMonth(s.date)).length,
-      blocked: blocks.filter(b => inMonth(b)).length,
-      booked: bookings.filter(b => inMonth(b.date)).length,
-    };
-  }, [current, slots, blocks, bookings]);
-
   return (
     <div className="w-full pl-4 pr-4 sm:pl-6 sm:pr-6 lg:pl-64 lg:pr-8 xl:pr-10 2xl:pr-12 pt-4 sm:pt-6 flex flex-col min-h-screen">
       {/* Header */}
@@ -223,24 +233,19 @@ export default function ManageTimeSlotsPage() {
           <p className="text-sm text-gray-600">Oversee the appointment calendar. Add, block, or unblock time slots for customer self-booking.</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => { setAddInitial({ date: selectedDate }); setShowAdd(true); }} className="inline-flex items-center gap-2 rounded-md bg-black text-white px-3 py-2 text-sm hover:bg-neutral-800">
-            <Plus className="h-4 w-4 text-red-500"/> Add Slot
-          </button>
+          {/* top Add Slot button removed per UX request */}
         </div>
       </div>
 
-      {/* Top controls row: search + view toggle + actions */}
+      {/* Top controls row: search + actions */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <div className="relative flex-1 min-w-[260px] max-w-xl">
           <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-500" />
           <input placeholder="Search appointments..." className="w-full rounded-md border border-gray-300 pl-9 pr-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-red-600"/>
         </div>
         <div className="flex items-center gap-2">
-          {(['day','week','month'] as const).map(v => (
-            <button key={v} onClick={() => setView(v)} className={`rounded-md px-3 py-2 text-sm border ${view===v ? 'bg-red-600 text-white border-red-600' : 'bg-white border-black hover:bg-gray-50'}`}>{v[0].toUpperCase()+v.slice(1)}</button>
-          ))}
           <button onClick={() => availRef.current?.scrollIntoView({ behavior: 'smooth' })} className="rounded-md border border-black bg-white px-3 py-2 text-sm hover:bg-gray-50">Manage Slots</button>
-          <button className="rounded-md bg-red-600 text-white px-3 py-2 text-sm hover:bg-red-700">New Appointment</button>
+          <button onClick={() => setShowBooking(true)} className="rounded-md bg-red-600 text-white px-3 py-2 text-sm hover:bg-red-700">New Appointment</button>
         </div>
       </div>
 
@@ -280,31 +285,6 @@ export default function ManageTimeSlotsPage() {
         </div>
       </div>
 
-      {/* Summary chips */}
-      <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
-        <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm flex items-center gap-2.5">
-          <CheckCircle2 className="h-4 w-4 text-red-600"/>
-          <div>
-            <div className="text-xs text-gray-500">Available (this month)</div>
-            <div className="text-base font-semibold text-gray-900">{summary.available}</div>
-          </div>
-        </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm flex items-center gap-2.5">
-          <Ban className="h-4 w-4 text-red-600"/>
-          <div>
-            <div className="text-xs text-gray-500">Blocked days</div>
-            <div className="text-base font-semibold text-gray-900">{summary.blocked}</div>
-          </div>
-        </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm flex items-center gap-2.5">
-          <CalendarDays className="h-4 w-4 text-red-600"/>
-          <div>
-            <div className="text-xs text-gray-500">Bookings</div>
-            <div className="text-base font-semibold text-gray-900">{summary.booked}</div>
-          </div>
-        </div>
-      </div>
-
       {/* Toolbar */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -315,9 +295,6 @@ export default function ManageTimeSlotsPage() {
             Unblock Selected
           </button>
           <button onClick={() => setShowBlockRange(true)} className="inline-flex items-center gap-2 rounded-md border border-black bg-white px-3 py-2 text-sm hover:bg-gray-50">Block Range</button>
-          <button className="inline-flex items-center gap-2 rounded-md border border-black bg-white px-3 py-2 text-sm hover:bg-gray-50">
-            View Options <MoreHorizontal className="h-4 w-4"/>
-          </button>
         </div>
         <div className="flex items-center gap-4 text-sm">
           <div className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-black inline-block"/> Booked</div>
@@ -401,7 +378,6 @@ export default function ManageTimeSlotsPage() {
                     )}
                     {(() => {
                       const bookings = evts.filter(x => x.type === 'booking') as Array<{ id: string; type: 'booking'; label: string; time: string }>;
-                      const avail = evts.filter(x => x.type === 'available') as Array<{ id: string; type: 'available'; label: string }>;
                       return (
                         <div className="flex flex-col gap-1">
                           {bookings.map(b => (
@@ -410,11 +386,6 @@ export default function ManageTimeSlotsPage() {
                               <div className="truncate">{b.label}</div>
                             </div>
                           ))}
-                          {avail.length > 0 && (
-                            <div className="inline-flex items-center rounded-full bg-emerald-100 text-emerald-700 px-2.5 py-0.5 text-[10px]">
-                              {avail.length} slot{avail.length > 1 ? 's' : ''} available
-                            </div>
-                          )}
                         </div>
                       );
                     })()}
@@ -428,10 +399,8 @@ export default function ManageTimeSlotsPage() {
         {/* Manage slots side panel */}
         <div ref={availRef} className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-base font-semibold text-gray-900">Manage Slots — {selectedDate}</h3>
-            <button onClick={() => { setAddInitial({ date: selectedDate }); setShowAdd(true); }} className="inline-flex items-center gap-1 rounded-md border border-black bg-white px-2.5 py-1.5 text-xs hover:bg-gray-50">
-              <Plus className="h-3 w-3 text-red-600"/> Add Slot
-            </button>
+            <h3 className="text-base font-semibold text-gray-900">Manage Appointments — {selectedDate}</h3>
+            {/* side panel Add Slot button removed per UX request */}
           </div>
           <SlotsForDate
             date={selectedDate}
@@ -487,22 +456,21 @@ export default function ManageTimeSlotsPage() {
       )}
 
       {/* Booking Modal */}
-      {showBooking && bookingSlot && (
+      {showBooking && (
         <BookingModal
-          slot={bookingSlot}
-          onCreate={(time, customer) => {
-            const title = `${customer} — ${bookingSlot.serviceType ?? 'Service'}`;
-            const res = addBooking(bookingSlot.id, bookingSlot.date, time, title);
-            if (res !== true) {
-              if (res === 'conflict') alert('The selected time is already booked. Choose another time.');
-              else if (res === 'no-capacity') alert('This slot has no available capacity.');
-              else if (res === 'tech-unavailable') alert('The assigned technician is unavailable at that time.');
-              return;
-            }
-            setShowBooking(false);
-            setBookingSlot(null);
+          slot={{
+            id: rid(),
+            date: selectedDate,
+            startTime: "09:00",
+            endTime: "17:00",
+            serviceType: "General Service",
+            bay: "Bay 1",
+            technician: "Alex",
+            notes: "",
+            bookings: [], // Added bookings property
           }}
-          onClose={() => { setShowBooking(false); setBookingSlot(null); }}
+          onCreate={addBooking}
+          onClose={() => setShowBooking(false)}
         />
       )}
     </div>
@@ -515,42 +483,69 @@ function SlotsForDate({ date, slots, onEdit, onDelete }: { date: string; slots: 
     .filter(s => s.date === date)
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
-  if (items.length === 0) {
-    return (
-      <div className="text-sm text-gray-600">
-        No slots for this date. Use Add Slot to create availability with a time range, capacity, and service details.
-      </div>
-    );
+  function toMinutes(t: string) {
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + m;
   }
+  function toTime(mins: number) {
+    const h = Math.floor(mins / 60).toString().padStart(2, '0');
+    const m = (mins % 60).toString().padStart(2, '0');
+    return `${h}:${m}`;
+  }
+  function generateHourly(start: string, end: string) {
+    const res: Array<{ start: string; end: string }> = [];
+    for (let t = toMinutes(start); t + 60 <= toMinutes(end); t += 60) {
+      res.push({ start: toTime(t), end: toTime(t + 60) });
+    }
+    return res;
+  }
+
+  const oneHourSlots = generateHourly('09:00', '17:00');
 
   return (
     <div className="space-y-3">
-      {items.map(s => (
-        <div key={s.id} className="rounded-lg border border-gray-200 p-3 hover:bg-gray-50">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-sm font-semibold text-gray-900">{s.startTime}–{s.endTime} • {s.serviceType || 'Service'}</div>
-              <div className="text-xs text-gray-600">{s.bay || 'Bay'} {s.technician ? `• ${s.technician}` : ''}</div>
-              {!isTechAvailable(s.technician, s.date, s.startTime) && (
-                <div className="mt-1 inline-flex items-center rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs">Technician unavailable</div>
-              )}
-              <div className="mt-1 text-xs text-gray-700">Capacity: {s.available}/{s.capacity}</div>
-              {s.notes && <div className="mt-1 text-xs text-gray-500">{s.notes}</div>}
-            </div>
-              <div className="flex items-center gap-1">
-                <button className="inline-flex items-center rounded-md border border-black bg-white px-2 py-1 text-xs hover:bg-gray-100" onClick={() => onEdit(s)}>
-                  <Pencil className="h-3 w-3 mr-1"/> Edit
-                </button>
-                <button className="inline-flex items-center rounded-md border border-red-600 text-red-600 bg-white px-2 py-1 text-xs hover:bg-red-50" onClick={() => onDelete(s.id)}>
-                  <Trash2 className="h-3 w-3 mr-1"/> Delete
-                </button>
-                <button className="inline-flex items-center rounded-md border border-emerald-600 text-emerald-600 bg-white px-2 py-1 text-xs hover:bg-emerald-50" onClick={() => { (window as any).__openBookingModal?.(s); }}>
-                  Book
-                </button>
+      {oneHourSlots.map(({ start, end }) => {
+        const existing = items.find(s => s.startTime === start && s.endTime === end);
+        const key = `${date}-${start}-${end}`;
+        return (
+          <div key={key} className="rounded-lg border border-gray-200 p-3 hover:bg-gray-50">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-gray-900">{start}–{end} {existing?.serviceType ? `• ${existing.serviceType}` : ''}</div>
+                <div className="text-xs text-gray-600">
+                  {existing ? (
+                    <>
+                      {(existing.bay || 'Bay')} {existing.technician ? `• ${existing.technician}` : ''}
+                    </>
+                  ) : (
+                    'No slot configured'
+                  )}
+                </div>
+                {existing && !isTechAvailable(existing.technician, existing.date, existing.startTime) && (
+                  <div className="mt-1 inline-flex items-center rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs">Technician unavailable</div>
+                )}
               </div>
+              <div className="flex items-center gap-1">
+                {existing ? (
+                  <>
+                    <button className="inline-flex items-center rounded-md border border-black bg-white px-2 py-1 text-xs hover:bg-gray-100" onClick={() => onEdit(existing)}>
+                      <Pencil className="h-3 w-3 mr-1"/> Edit
+                    </button>
+                    <button className="inline-flex items-center rounded-md border border-red-600 text-red-600 bg-white px-2 py-1 text-xs hover:bg-red-50" onClick={() => onDelete(existing.id)}>
+                      <Trash2 className="h-3 w-3 mr-1"/> Delete
+                    </button>
+                    <button className="inline-flex items-center rounded-md border border-emerald-600 text-emerald-600 bg-white px-2 py-1 text-xs hover:bg-emerald-50" onClick={() => { (window as any).__openBookingModal?.(existing); }}>
+                      Book
+                    </button>
+                  </>
+                ) : (
+                  <div className="text-xs text-gray-500">—</div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -588,35 +583,38 @@ function BlockRangeModal({ defaultStart, defaultEnd, onSubmit, onClose }: { defa
 }
 
 // Booking modal used by admin to create a booking within a slot
-function BookingModal({ slot, onCreate, onClose }: { slot: Slot; onCreate: (time: string, customer: string) => void; onClose: () => void }) {
+function BookingModal({ slot, onCreate, onClose }: { slot: Slot; onCreate: (slotId: string, date: string, time: string, title: string) => true | 'conflict' | 'tech-unavailable'; onClose: () => void }) {
   const [time, setTime] = useState<string>(slot.startTime);
   const [customer, setCustomer] = useState<string>('');
-  const techOk = isTechAvailable(slot.technician, slot.date, time);
+  const [serviceType, setServiceType] = useState<ServiceType>('General Service');
+  const [bay, setBay] = useState<string>('Bay 1');
+  const [technician, setTechnician] = useState<string>('Alex');
+  const [error, setError] = useState<string | null>(null);
+
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    // basic validation: time within slot range
-    if (time < slot.startTime || time >= slot.endTime) {
-      alert('Please pick a time within the slot range.');
+    const title = `${customer.trim()} — ${serviceType}`;
+    const result = onCreate(slot.id, slot.date, time, title);
+    if (result === 'conflict') {
+      setError('This time slot is already booked.');
       return;
     }
-    if (!customer.trim()) {
-      alert('Enter customer name');
+    if (result === 'tech-unavailable') {
+      setError('The assigned technician is unavailable at this time.');
       return;
     }
-    if (!isTechAvailable(slot.technician, slot.date, time)) {
-      alert('The assigned technician is unavailable at this time.');
-      return;
-    }
-    onCreate(time, customer.trim());
+    setError(null);
+    onClose();
   }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog">
       <form onSubmit={submit} className="w-full max-w-md rounded-xl border border-gray-200 bg-white shadow-xl p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-base font-semibold">Book Slot — {slot.date} {slot.startTime}-{slot.endTime}</h3>
+          <h3 className="text-base font-semibold">Book Appointment — {slot.date} {slot.startTime}-{slot.endTime}</h3>
           <button type="button" className="rounded-md px-2 py-1 text-sm hover:bg-gray-50" onClick={onClose}>Close</button>
         </div>
-          <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 gap-3">
           <div>
             <label className="block text-sm text-gray-700">Customer name</label>
             <input value={customer} onChange={(e) => setCustomer(e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 focus:ring-2 focus:ring-red-600" />
@@ -625,10 +623,34 @@ function BookingModal({ slot, onCreate, onClose }: { slot: Slot; onCreate: (time
             <label className="block text-sm text-gray-700">Time</label>
             <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 focus:ring-2 focus:ring-red-600" />
             <div className="text-xs text-gray-500 mt-1">Must be within {slot.startTime} — {slot.endTime}</div>
-              {!techOk && (
-                <div className="mt-2 text-xs text-red-600">Warning: Assigned technician ({slot.technician}) is unavailable at this time.</div>
-              )}
           </div>
+          <div>
+            <label className="block text-sm text-gray-700">Service Type</label>
+            <select value={serviceType} onChange={(e) => setServiceType(e.target.value as ServiceType)} className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 focus:ring-2 focus:ring-red-600">
+              {['General Service', 'Oil Change', 'Diagnostics', 'Tire Rotation', 'Brake Service'].map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm text-gray-700">Bay</label>
+            <select value={bay} onChange={(e) => setBay(e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 focus:ring-2 focus:ring-red-600">
+              {['Bay 1', 'Bay 2', 'Bay 3'].map(b => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm text-gray-700">Technician</label>
+            <select value={technician} onChange={(e) => setTechnician(e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 focus:ring-2 focus:ring-red-600">
+              {['Alex', 'Jordan', 'Mike'].map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+          {error && (
+            <div className="text-sm text-red-600">{error}</div>
+          )}
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" className="rounded-md border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50" onClick={onClose}>Cancel</button>
             <button type="submit" className="rounded-md bg-emerald-600 text-white px-4 py-2 text-sm hover:bg-emerald-700">Confirm Booking</button>

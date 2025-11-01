@@ -10,19 +10,15 @@ type Props = {
 };
 
 export default function SlotCard({ slot, onEdit, onDelete }: Props) {
-  const { date, startTime, endTime, capacity, available, notes } = slot;
-  const full = available <= 0;
+  const { date, startTime, endTime, notes } = slot;
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 flex flex-col gap-3">
+    <div className="rounded-xl border border-gray-200 bg-emerald-100 shadow-sm p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-base font-semibold text-gray-900">{new Date(date).toDateString()}</h3>
           <p className="text-sm text-gray-600">{startTime} - {endTime}</p>
         </div>
-        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${full ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
-          {full ? 'Full' : `${available}/${capacity} available`}
-        </span>
       </div>
 
       {notes && <p className="text-sm text-gray-700">{notes}</p>}

@@ -25,7 +25,7 @@ export default function AddSlotForm({ onSubmit, initial }: Props) {
     notes: initial?.notes ?? '',
     serviceType: (initial?.serviceType as ServiceType) ?? 'General Service',
     bay: initial?.bay ?? 'Bay 1',
-    technician: initial?.technician ?? ''
+    technician: initial?.technician ?? '',
   });
 
   function handleChange(
@@ -40,7 +40,10 @@ export default function AddSlotForm({ onSubmit, initial }: Props) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (form.endTime <= form.startTime) return;
+    if (form.endTime <= form.startTime) {
+      alert('End Time must be later than Start Time');
+      return;
+    }
     onSubmit(form);
   }
 
@@ -60,7 +63,7 @@ export default function AddSlotForm({ onSubmit, initial }: Props) {
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Start</label>
+            <label className="block text-sm font-medium text-gray-700">Start Time</label>
             <input
               type="time"
               name="startTime"
@@ -71,7 +74,7 @@ export default function AddSlotForm({ onSubmit, initial }: Props) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">End</label>
+            <label className="block text-sm font-medium text-gray-700">End Time</label>
             <input
               type="time"
               name="endTime"
