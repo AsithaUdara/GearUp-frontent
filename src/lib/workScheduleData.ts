@@ -89,8 +89,104 @@ export async function updateTaskProgress(
   const t = TASKS.find((x) => x.id === taskId);
   if (!t) return;
   t.progressStep = progressStep;
-  if (status) t.status = status;
+  if (status) {
+    t.status = status;
+    if (status === "completed" && !t.time) {
+      t.time = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    }
+  }
   // Simulate async persistence
   await new Promise((r) => setTimeout(r, 100));
   return t;
+}
+
+// Fetch all services for a specific vehicle
+export async function fetchServicesByVehicle(vehicle: string): Promise<WorkTask[]> {
+  await new Promise((r) => setTimeout(r, 100));
+  return TASKS.filter((t) => t.vehicle === vehicle);
+}
+
+// Modification Request type
+export type ModificationRequest = {
+  id: string;
+  serviceId: string;
+  vehicle: string;
+  customer: string;
+  type: 'add_service' | 'remove_service' | 'change_service' | 'urgent_repair';
+  title: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  status: 'pending' | 'approved' | 'rejected' | 'in_progress' | 'completed';
+  requestedBy: string;
+  requestedAt: string;
+  estimatedCost?: number;
+  estimatedDuration?: number;
+  assignedToEmployeeId?: string;
+};
+
+// Mock modification requests
+const MODIFICATION_REQUESTS: ModificationRequest[] = [
+  {
+    id: "mod-1",
+    serviceId: "SVC-2024-00789",
+    vehicle: "Toyota Camry - 2021",
+    customer: "Jane Smith",
+    type: "add_service",
+    title: "Brake Fluid Replacement",
+    description: "Customer requested brake fluid replacement during brake pad service",
+    priority: "medium",
+    status: "approved",
+    requestedBy: "Jane Smith",
+    requestedAt: new Date().toLocaleString(),
+    estimatedCost: 3500,
+    estimatedDuration: 20,
+    assignedToEmployeeId: "emp-1"
+  }
+];
+
+// Fetch modification requests for a vehicle
+export async function fetchModificationRequestsByVehicle(vehicle: string): Promise<ModificationRequest[]> {
+  await new Promise((r) => setTimeout(r, 100));
+  return MODIFICATION_REQUESTS.filter((m) => m.vehicle === vehicle);
+}
+
+// Fetch pending/approved modification requests that need to be converted to tasks
+export async function fetchPendingModificationRequestsForEmployee(employeeId: string): Promise<ModificationRequest[]> {
+  await new Promise((r) => setTimeout(r, 100));
+  return MODIFICATION_REQUESTS.filter((m) => 
+    (m.status === 'pending' || m.status === 'approved') && 
+    (!m.assignedToEmployeeId || m.assignedToEmployeeId === employeeId)
+  );
+}
+
+// Notify customer when task is completed
+export async function notifyCustomerTaskCompleted(taskId: string): Promise<boolean> {
+  await new Promise((r) => setTimeout(r, 200));
+  // In a real app, this would send a notification via API/WebSocket
+  console.log(`Customer notified: Task ${taskId} completed`);
+  return true;
+}
+
+// Create new task from customer request (modification or new service)
+export async function createTaskFromRequest(
+  vehicle: string,
+  customer: string,
+  serviceType: string,
+  assigneeId: string,
+  modificationRequestId?: string
+): Promise<WorkTask> {
+  await new Promise((r) => setTimeout(r, 150));
+  const newTask: WorkTask = {
+    id: `task-${Date.now()}`,
+    serviceId: `SVC-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`,
+    vehicle,
+    customer,
+    serviceType,
+    assigneeId,
+    status: "pending",
+    progressStep: 1,
+    time: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+  };
+  TASKS.push(newTask);
+  return newTask;
 }
