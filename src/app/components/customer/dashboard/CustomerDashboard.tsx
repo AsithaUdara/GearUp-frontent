@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { cn } from "@/lib/utils";
-import { LucideCar, LucideCalendar, LucideHistory, LucideSettings, LucideLogOut, LucideBot,LucideStar, LucideKey, LucideSearch, LucideCheck, LucideWrench, LucidePlus } from "lucide-react";
+import { LucideCar, LucideCalendar, LucideHistory, LucideSettings,LucideCreditCard, LucideLogOut, LucideBot,LucideStar, LucideKey, LucideSearch, LucideCheck, LucideWrench, LucidePlus } from "lucide-react";
 import CustomerLayout from "@/app/components/customer/CustomerLayout";
 
 // Sidebar navigation items
@@ -12,7 +12,8 @@ const navItems = [
   { icon: LucideCar, label: "My Vehicles", href: "/customer/vehicles" },
   { icon: LucideSettings, label: "Settings", href: "/customer/settings" },
   { icon: LucideBot, label: "AI Chatbot", href: "/customer/chatbot" },
-  { icon: LucideStar, label: "Feedback", href: "/feedback" }
+  { icon: LucideStar, label: "Feedback", href: "/feedback" },
+  { icon: LucideCreditCard, label: "Payment", href: "/customer/payment" }
 ];
 
 export default function CustomerDashboard() {
