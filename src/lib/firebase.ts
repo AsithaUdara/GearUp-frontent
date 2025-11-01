@@ -1,6 +1,7 @@
 // src/lib/firebase.ts
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+// Mock Firebase configuration until real Firebase is set up
+// import { initializeApp, getApps, getApp } from 'firebase/app';
+// import { getAuth } from 'firebase/auth';
 
 // IMPORTANT: For client bundles, Next.js only inlines env vars when referenced statically
 // as process.env.NEXT_PUBLIC_*. Dynamic indexing like process.env[name] will be undefined

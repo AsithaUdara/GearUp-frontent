@@ -6,6 +6,9 @@ import path from "path";
 // on the machine, e.g., in parent folders).
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname),
+  images: {
+    domains: ['i.pravatar.cc'],
+  },
 };
 
 export default nextConfig;
