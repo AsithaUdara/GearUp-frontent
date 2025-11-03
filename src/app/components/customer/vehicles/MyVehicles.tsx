@@ -1,27 +1,11 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { cn } from "@/lib/utils";
-import { LucideCar, LucideCalendar, LucideHistory, LucideSettings, LucideLogOut, LucideBot, LucidePlus, LucideEdit, LucideTrash2 } from "lucide-react";
-import { auth } from "@/lib/firebase";
-import { signOut } from "firebase/auth";
-import { useRouter } from "next/navigation";
-import CustomerLayout from "@/app/components/customer/CustomerLayout";
+import { LucideCar, LucidePlus, LucideEdit, LucideTrash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { subscribeVehicles, deleteVehicle, type VehicleDoc } from "@/lib/vehicles";
 
-
-const navItems = [
-  { icon: LucideCar, label: "Dashboard", href: "/customer/dashboard" },
-  { icon: LucideCalendar, label: "Book Appointment", href: "/customer/book-appointment" },
-  { icon: LucideHistory, label: "Service History", href: "/customer/service-history" },
-  { icon: LucideCar, label: "My Vehicles", active: true, href: "/customer/vehicles" },
-  { icon: LucideSettings, label: "Settings", href: "/customer/settings" },
-  { icon: LucideBot, label: "AI Chatbot", href: "/customer/chatbot" },
-];
-
 export default function MyVehicles() {
   const [vehicles, setVehicles] = useState<VehicleDoc[]>([]);
-  const router = useRouter();
   const { user } = useAuth();
 
   useEffect(() => {
@@ -30,74 +14,8 @@ export default function MyVehicles() {
     return () => unsub && unsub();
   }, [user]);
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      router.push('/');
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
-  };
-
   return (
-    <CustomerLayout>
-      <div className="flex min-h-screen font-display">
-        {/* Sidebar */}
-  <aside className="w-72 rounded-2xl m-4 border border-glass-border bg-glass-bg/80 backdrop-blur-lg shadow-md flex-shrink-0 flex flex-col justify-between p-4 transition-all duration-300 hover:shadow-lg hover:bg-glass-bg/90 hover:ring-1 hover:ring-white/10">
-          <div>
-            <div className="flex items-center justify-center p-2 mb-6">
-              <img 
-                src="https://res.cloudinary.com/dgyqfax25/image/upload/v1730351497/gearup_logo_nwij8d.webp" 
-                alt="GearUp Logo" 
-                className="h-16 w-auto object-contain"
-              />
-            </div>
-            <div className="flex items-center gap-3 mb-6">
-              <div
-                className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
-                style={{
-                  backgroundImage: `url('${(user?.photoURL) || (user?.displayName || user?.email ? "https://api.dicebear.com/7.x/initials/svg?seed=" + encodeURIComponent(user?.displayName || user?.email || "User") : "https://api.dicebear.com/7.x/initials/svg?seed=User")}')`
-                }}
-              />
-              <div className="flex flex-col">
-                <h1 className="text-[#181111] text-base font-medium leading-normal">{user?.displayName || "Your name"}</h1>
-                <p className="text-gray-500 text-sm font-normal leading-normal">{user?.email}</p>
-              </div>
-            </div>
-            <nav className="flex flex-col gap-2 mb-6">
-              {navItems.map((item, idx) => {
-                const IconComponent = item.icon;
-                return (
-                  <a
-                    key={item.label}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200",
-                      item.active
-                        ? "bg-primary/20 text-primary backdrop-blur-sm"
-                        : "hover:bg-white/10 hover:backdrop-blur-sm hover:shadow text-[#181111]"
-                    )}
-                  >
-                    <IconComponent className={item.active ? "text-primary" : "text-[#181111]"} />
-                    <p className={cn("text-sm font-medium leading-normal", item.active ? "text-primary" : "text-[#181111]")}>{item.label}</p>
-                  </a>
-                );
-              })}
-            </nav>
-          </div>
-          <div>
-            <button 
-              onClick={handleLogout}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/50 hover:backdrop-blur-sm hover:shadow-sm cursor-pointer w-full transition-all duration-200"
-            >
-              <LucideLogOut className="text-[#181111]" />
-              <p className="text-[#181111] text-sm font-medium leading-normal">Log Out</p>
-            </button>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-  <main className="flex-1">
+    <>
           <div className="p-8">
             {/* Header Section */}
             <div className="flex flex-wrap justify-between items-center gap-3 mb-8">
@@ -183,8 +101,6 @@ export default function MyVehicles() {
               </div>
             )}
           </div>
-        </main>
-      </div>
-    </CustomerLayout>
+    </>
   );
 }
