@@ -37,7 +37,7 @@ interface ModificationRequest {
   type: 'add_service' | 'remove_service' | 'change_service' | 'urgent_repair';
   title: string;
   description: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  
   estimatedCost: number;
   estimatedDuration: number;
   status: 'pending' | 'approved' | 'rejected' | 'in_progress' | 'completed';
@@ -112,7 +112,7 @@ const mockServiceModification: ServiceModification = {
       type: 'add_service',
       title: 'Brake Pad Replacement',
       description: 'Customer requested brake pad replacement after inspection revealed 20% wear',
-      priority: 'high',
+      
       estimatedCost: 8500,
       estimatedDuration: 45,
       status: 'approved',
@@ -129,7 +129,7 @@ const mockServiceModification: ServiceModification = {
       type: 'add_service',
       title: 'Air Filter Replacement',
       description: 'Air filter is dirty and affecting engine performance',
-      priority: 'medium',
+      
       estimatedCost: 2500,
       estimatedDuration: 15,
       status: 'pending',
@@ -172,7 +172,7 @@ export default function ServiceModification() {
       title: newRequest.title,
       description: newRequest.description,
       // Customers shouldn't set priority/cost/duration — default these for staff to update
-      priority: 'medium',
+      
       estimatedCost: 0,
       estimatedDuration: 0,
       status: 'pending',
@@ -250,7 +250,18 @@ export default function ServiceModification() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onLoginClick={() => {}} />
+      <Header 
+        showDefaultActions={false}
+        customActions={(
+          <button
+            onClick={() => router.push('/customer/progress')}
+            className="group relative inline-flex items-center gap-2 overflow-hidden rounded-md bg-primary px-5 py-3 font-heading text-sm font-bold uppercase text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-primary/80 transition-all duration-300 hover:bg-white hover:text-primary"
+          >
+            <span className="absolute inset-0 bg-white/0 transition-colors duration-300 group-hover:bg-white/10" />
+            <span className="relative">View Progress</span>
+          </button>
+        )}
+      />
       
       <div className="pt-24 pb-16">
         <div className="container mx-auto px-6">
@@ -403,11 +414,7 @@ export default function ServiceModification() {
                         <div className="flex items-center gap-2">
                           {request.status === 'pending' ? (
                             <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-600">PENDING</span>
-                          ) : (
-                            <span className={`px-2 py-1 text-xs rounded-full ${getPriorityColor(request.priority)}`}>
-                              {request.priority.toUpperCase()}
-                            </span>
-                          )}
+                          ) : null}
                           <span className={`px-3 py-1 text-sm rounded-full ${getStatusColor(request.status)}`}>
                             {getStatusIcon(request.status)}
                             {request.status.toUpperCase()}
@@ -416,14 +423,6 @@ export default function ServiceModification() {
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Estimated Cost</p>
-                          {request.estimatedCost && request.estimatedCost > 0 ? (
-                            <p className="font-semibold">LKR {request.estimatedCost.toLocaleString()}</p>
-                          ) : (
-                            <p className="font-semibold text-yellow-600">Pending</p>
-                          )}
-                        </div>
                         <div>
                           <p className="text-sm text-muted-foreground">Duration</p>
                           {request.estimatedDuration && request.estimatedDuration > 0 ? (
@@ -512,35 +511,7 @@ export default function ServiceModification() {
                 </div>
               </motion.div>
 
-              {/* Quick Actions */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="bg-white rounded-lg shadow-lg p-6"
-              >
-                <h3 className="text-lg font-bold font-heading text-foreground mb-4">Quick Actions</h3>
-                
-                <div className="space-y-3">
-                  {/* Add Service removed from Quick Actions (customers request via 'Request Modification' above) */}
-                  
-                  <button
-                    onClick={() => router.push('/progress')}
-                    className="w-full flex items-center gap-3 p-3 border border-gray-300 text-foreground rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <Clock className="h-5 w-5" />
-                    <span>View Progress</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => router.push('/appointment')}
-                    className="w-full flex items-center gap-3 p-3 border border-gray-300 text-foreground rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <Calendar className="h-5 w-5" />
-                    <span>Book New Service</span>
-                  </button>
-                </div>
-              </motion.div>
+              
 
               {/* Service Summary */}
               <motion.div
