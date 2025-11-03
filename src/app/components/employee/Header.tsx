@@ -3,6 +3,7 @@
 
 import { usePathname } from "next/navigation";
 import { Bell } from "lucide-react";
+import Image from "next/image";
 
 export default function Header() {
   const pathname = usePathname();
@@ -11,6 +12,8 @@ export default function Header() {
       pathname === "/employee" ? "Welcome, Employee!" 
     : pathname.startsWith("/employee/schedule") ? "Schedule" 
     : pathname.startsWith("/employee/log-hours") ? "Log Hours"
+    : pathname.startsWith("/employee/service-progress") ? "Service Progress"
+    : pathname.startsWith("/employee/communication") ? "Communication"
     : pathname.startsWith("/employee/parts-request") ? "Parts & Materials Request"
     : pathname.startsWith("/employee/tasks") ? "Task Information"
     : "Employee Portal";
@@ -21,7 +24,6 @@ export default function Header() {
       <div className="flex items-center justify-between gap-6">
         <div>
           <h1 className="text-2xl font-semibold">{title}</h1>
-          <p className="text-xs text-gray-500">{subtitle}</p>
         </div>
         <div className="flex items-center gap-4">
           <button className="rounded-full p-2 hover:bg-gray-100" aria-label="Notifications">

@@ -1,45 +1,57 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Upload, Clock, User, Car, Wrench } from "lucide-react";
-
-interface Task {
-  serviceId: string;
-  vehicle: string;
-  customer: string;
-  serviceType: string;
-  status: string;
-  notes: string;
-  attachments: File[];
-}
+import type { WorkTask } from "@/lib/workScheduleData";
 
 interface CurrentServiceTaskProps {
-  task: Task;
-  onTaskUpdate: (task: Task) => void;
+  task: WorkTask;
+  onTaskUpdate: (task: WorkTask) => void;
 }
 
 export default function CurrentServiceTask({ task, onTaskUpdate }: CurrentServiceTaskProps) {
-  const [notes, setNotes] = useState(task.notes);
+  const [notes, setNotes] = useState(task.notes ?? "");
   const [status, setStatus] = useState(task.status);
+  const [progressStep, setProgressStep] = useState<1 | 2 | 3 | 4 | 5>(task.progressStep ?? 1);
+
+  // Sync local state when parent passes a different task
+  useEffect(() => {
+    setNotes(task.notes ?? "");
+    setStatus(task.status);
+    setProgressStep((task.progressStep as 1 | 2 | 3 | 4 | 5) ?? 1);
+  }, [task.serviceId, task.status, task.notes, task.progressStep]);
 
   const handleNotesChange = (value: string) => {
     setNotes(value);
     onTaskUpdate({ ...task, notes: value });
   };
 
-  const handleStatusChange = (value: string) => {
+  const handleStatusChange = (value: WorkTask["status"]) => {
     setStatus(value);
-    onTaskUpdate({ ...task, status: value });
+    const updated: WorkTask = { ...task, status: value };
+    if (value === "in-progress") {
+      const nextStep = (task.progressStep as 1 | 2 | 3 | 4 | 5) || 1;
+      setProgressStep(nextStep);
+      updated.progressStep = nextStep;
+    } else {
+      updated.progressStep = undefined as unknown as 1 | 2 | 3 | 4 | 5;
+    }
+    onTaskUpdate(updated);
+  };
+
+  const handleProgressChange = (value: 1 | 2 | 3 | 4 | 5) => {
+    setProgressStep(value);
+    onTaskUpdate({ ...task, progressStep: value, status });
   };
 
   const handleMarkComplete = () => {
-    // Handle completion logic
-    console.log("Marking task as complete");
+    setStatus("completed");
+    setProgressStep(5);
+    onTaskUpdate({ ...task, status: "completed", progressStep: 5 });
   };
 
   const handleUpdateStatus = () => {
-    // Handle status update logic
-    console.log("Updating status");
+    onTaskUpdate({ ...task, status, progressStep });
   };
 
   return (
@@ -94,16 +106,34 @@ export default function CurrentServiceTask({ task, onTaskUpdate }: CurrentServic
         </label>
         <select
           value={status}
-          onChange={(e) => handleStatusChange(e.target.value)}
+          onChange={(e) => handleStatusChange(e.target.value as WorkTask["status"])}
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
         >
-          <option value="Started">Started</option>
-          <option value="Parts Replacement">Parts Replacement</option>
-          <option value="Testing">Testing</option>
-          <option value="Quality Check">Quality Check</option>
-          <option value="Completed">Completed</option>
+          <option value="pending">Pending</option>
+          <option value="in-progress">In Progress</option>
+          <option value="completed">Completed</option>
         </select>
       </div>
+
+      {/* Progress 1-5 - only visible when in progress */}
+      {status === "in-progress" && (
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Progress (1–5)</label>
+          <div className="flex items-center gap-2">
+            {[1,2,3,4,5].map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => handleProgressChange(n as 1|2|3|4|5)}
+                className={`h-8 w-8 rounded-full border text-sm font-semibold ${progressStep >= n ? "bg-red-600 text-white border-red-600" : "bg-white text-gray-700 border-gray-300"}`}
+                aria-pressed={progressStep === n}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Notes */}
       <div className="mb-6">
