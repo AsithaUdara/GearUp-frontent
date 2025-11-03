@@ -46,7 +46,7 @@ function startOffset(d: Date) { return firstDayOfMonth(d).getDay(); }
 export type DayEvent =
   | { id: string; type: "available"; label: string }
   | { id: string; type: "blocked"; label: string }
-  | { id: string; type: "booking"; label: string; time: string };
+  | { id: string; type: "booking"; label: string; time: string; startTime?: string; endTime?: string };
 
 export default function ManageTimeSlotsPage() {
   const [current, setCurrent] = useState(() => new Date());
@@ -68,9 +68,9 @@ export default function ManageTimeSlotsPage() {
   const [blocks, setBlocks] = useState<string[]>(() => {
     const d = new Date(); d.setDate(d.getDate()+3); return [ ymd(d) ];
   });
-  const [bookings, setBookings] = useState<Array<{ id: string; date: string; time: string; title: string }>>([
-    { id: rid(), date: ymd(new Date()), time: "10:00", title: "John Doe — Oil Change" },
-    { id: rid(), date: ymd(new Date(new Date().setDate(new Date().getDate()+1))), time: "14:00", title: "Jane Smith — Tire Rotation" }
+  const [bookings, setBookings] = useState<Array<{ id: string; date: string; time: string; title: string; startTime?: string; endTime?: string }>>([
+    { id: rid(), date: ymd(new Date()), time: "10:00", title: "John Doe — Oil Change", startTime: "10:00", endTime: "11:00" },
+    { id: rid(), date: ymd(new Date(new Date().setDate(new Date().getDate()+1))), time: "14:00", title: "Jane Smith — Tire Rotation", startTime: "14:00", endTime: "15:00" }
   ]);
   const [selectedDate, setSelectedDate] = useState<string>(ymd(new Date()));
   const availRef = useRef<HTMLDivElement>(null);
@@ -92,21 +92,68 @@ export default function ManageTimeSlotsPage() {
   }
 
   // Fixed conflict check to use actual booking time ranges
-  function addBooking(slotId: string, date: string, time: string, title: string): true | 'conflict' | 'tech-unavailable' {
-    const slot = slots.find(s => s.id === slotId && s.date === date);
-    if (!slot) return 'conflict';
+  function addBooking(slotId: string, date: string, startTime: string, endTime: string, title: string, serviceType?: ServiceType, bay?: string, technician?: string): true | 'conflict' | 'tech-unavailable' {
+    // Validate that endTime is after startTime
+    if (endTime <= startTime) {
+        return 'conflict';
+    }
+
+    let slot = slots.find(s => s.id === slotId && s.date === date);
+    let isNewSlot = false;
+    
+    // If slot doesn't exist, check if we should create it or find a matching one
+    // For "New Appointment" flow, we'll create a new slot with the booking's time range
+    if (!slot) {
+      // Try to find an existing slot on the same date that could contain this booking
+      const matchingSlot = slots.find(s => 
+        s.date === date && 
+        startTime >= s.startTime && 
+        endTime <= s.endTime
+      );
+      
+      if (matchingSlot) {
+        slot = matchingSlot;
+        slotId = matchingSlot.id;
+      } else {
+        // Create a new slot for this booking
+        const newSlotId = rid();
+        const [customerName, serviceTypeStr] = title.split(' — ');
+        const newSlot: Slot = {
+          id: newSlotId,
+          date,
+          startTime, // Use booking's start time as slot start
+          endTime,   // Use booking's end time as slot end
+          serviceType: serviceType || (serviceTypeStr as ServiceType) || 'General Service',
+          bay: bay || 'Bay 1',
+          technician: technician || 'Alex',
+          bookings: [],
+        };
+        setSlots(prev => [...prev, newSlot]);
+        slot = newSlot;
+        slotId = newSlotId;
+        isNewSlot = true;
+      }
+    }
+
+    // For existing slots, validate that the time range is within the slot's time range
+    // For new slots, we already set the slot range to match the booking
+    if (!isNewSlot && (startTime < slot.startTime || endTime > slot.endTime)) {
+        return 'conflict';
+    }
 
     // prevent overlapping bookings within the same slot
     if (slot.bookings.some(b => {
-        const bookingStart = b.time;
-        const bookingEnd = addMinutes(bookingStart, 60); // Assuming each booking lasts 60 minutes
-        return time >= bookingStart && time < bookingEnd;
+        const bookingStart = b.startTime || b.time;
+        const bookingEnd = b.endTime || addMinutes(bookingStart, 60);
+        // Check for overlap: new booking starts before existing ends AND new booking ends after existing starts
+        return startTime < bookingEnd && endTime > bookingStart;
     })) {
         return 'conflict';
     }
 
     // check technician availability for requested time
-    if (slot.technician && !isTechAvailable(slot.technician, date, time)) {
+    const techToCheck = technician || slot.technician;
+    if (techToCheck && !isTechAvailable(techToCheck, date, startTime)) {
         return 'tech-unavailable';
     }
 
@@ -115,16 +162,36 @@ export default function ManageTimeSlotsPage() {
         id,
         slotId,
         date,
-        time,
+        time: startTime, // Keep for backward compatibility
+        startTime,
+        endTime,
         customer: title.split(' — ')[0],
-        serviceType: title.split(' — ')[1] as ServiceType,
-        bay: slot.bay || '',
-        technician: slot.technician || '',
+        serviceType: serviceType || (title.split(' — ')[1] as ServiceType) || 'General Service',
+        bay: bay || slot.bay || 'Bay 1',
+        technician: technician || slot.technician || 'Alex',
         title,
     };
 
-    setBookings(prev => [...prev, newBooking]);
-    setSlots(prev => prev.map(s => s.id === slotId ? { ...s, bookings: [...s.bookings, newBooking] } : s));
+    setBookings(prev => [...prev, { id, date, time: startTime, title, startTime, endTime }]);
+    
+    // Update slot with booking and optionally update bay/technician if provided
+    setSlots(prev => prev.map(s => {
+      if (s.id === slotId) {
+        const updated: Slot = { ...s, bookings: [...s.bookings, newBooking] };
+        // Update slot's bay and technician if new values were provided
+        if (bay && bay !== s.bay) {
+          updated.bay = bay;
+        }
+        if (technician && technician !== s.technician) {
+          updated.technician = technician;
+        }
+        if (serviceType && serviceType !== s.serviceType) {
+          updated.serviceType = serviceType;
+        }
+        return updated;
+      }
+      return s;
+    }));
 
     return true;
   }
@@ -205,7 +272,7 @@ export default function ManageTimeSlotsPage() {
       if (d.getMonth() === current.getMonth() && d.getFullYear() === current.getFullYear()) {
         const key = monthStr(d.getDate());
         const arr = map.get(key) ?? [];
-        arr.push({ id: a.id, type: "booking", label: a.title, time: a.time });
+        arr.push({ id: a.id, type: "booking", label: a.title, time: a.time, startTime: a.startTime, endTime: a.endTime });
         map.set(key, arr);
       }
     }
@@ -377,12 +444,12 @@ export default function ManageTimeSlotsPage() {
                       <div className="inline-flex items-center rounded-full bg-red-100 text-red-700 px-2.5 py-0.5 text-xs">Blocked</div>
                     )}
                     {(() => {
-                      const bookings = evts.filter(x => x.type === 'booking') as Array<{ id: string; type: 'booking'; label: string; time: string }>;
+                      const bookings = evts.filter(x => x.type === 'booking') as Array<{ id: string; type: 'booking'; label: string; time: string; startTime?: string; endTime?: string }>;
                       return (
                         <div className="flex flex-col gap-1">
                           {bookings.map(b => (
                             <div key={b.id} className="rounded-md bg-neutral-100 text-black px-2 py-1 text-xs border border-black/10">
-                              <div className="font-medium">{b.time}</div>
+                              <div className="font-medium">{b.startTime && b.endTime ? `${b.startTime}-${b.endTime}` : b.time}</div>
                               <div className="truncate">{b.label}</div>
                             </div>
                           ))}
@@ -583,28 +650,54 @@ function BlockRangeModal({ defaultStart, defaultEnd, onSubmit, onClose }: { defa
 }
 
 // Booking modal used by admin to create a booking within a slot
-function BookingModal({ slot, onCreate, onClose }: { slot: Slot; onCreate: (slotId: string, date: string, time: string, title: string) => true | 'conflict' | 'tech-unavailable'; onClose: () => void }) {
-  const [time, setTime] = useState<string>(slot.startTime);
+function BookingModal({ slot, onCreate, onClose }: { slot: Slot; onCreate: (slotId: string, date: string, startTime: string, endTime: string, title: string, serviceType?: ServiceType, bay?: string, technician?: string) => true | 'conflict' | 'tech-unavailable'; onClose: () => void }) {
+  const [startTime, setStartTime] = useState<string>(slot.startTime);
+  const [endTime, setEndTime] = useState<string>(addMinutesToTime(slot.startTime, 60));
   const [customer, setCustomer] = useState<string>('');
   const [serviceType, setServiceType] = useState<ServiceType>('General Service');
   const [bay, setBay] = useState<string>('Bay 1');
   const [technician, setTechnician] = useState<string>('Alex');
   const [error, setError] = useState<string | null>(null);
 
+  // Helper to add minutes to time string
+  function addMinutesToTime(time: string, minutes: number): string {
+    const [hours, mins] = time.split(':').map(Number);
+    const totalMinutes = hours * 60 + mins + minutes;
+    const newHours = Math.floor(totalMinutes / 60) % 24;
+    const newMinutes = totalMinutes % 60;
+    return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
+  }
+
   function submit(e: React.FormEvent) {
     e.preventDefault();
+    setError(null);
+    
+    if (!customer.trim()) {
+      setError('Customer name is required.');
+      return;
+    }
+    
+    if (endTime <= startTime) {
+      setError('End time must be after start time.');
+      return;
+    }
+    
+    // For existing slots, validate time range is within slot bounds
+    // For new appointments, allow any valid time range
     const title = `${customer.trim()} — ${serviceType}`;
-    const result = onCreate(slot.id, slot.date, time, title);
+    const result = onCreate(slot.id, slot.date, startTime, endTime, title, serviceType, bay, technician);
     if (result === 'conflict') {
-      setError('This time slot is already booked.');
+      setError('This time slot is already booked or time range is invalid.');
       return;
     }
     if (result === 'tech-unavailable') {
       setError('The assigned technician is unavailable at this time.');
       return;
     }
-    setError(null);
-    onClose();
+    if (result === true) {
+      setError(null);
+      onClose();
+    }
   }
 
   return (
@@ -617,12 +710,22 @@ function BookingModal({ slot, onCreate, onClose }: { slot: Slot; onCreate: (slot
         <div className="grid grid-cols-1 gap-3">
           <div>
             <label className="block text-sm text-gray-700">Customer name</label>
-            <input value={customer} onChange={(e) => setCustomer(e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 focus:ring-2 focus:ring-red-600" />
+            <input value={customer} onChange={(e) => setCustomer(e.target.value)} required className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 focus:ring-2 focus:ring-red-600" />
           </div>
-          <div>
-            <label className="block text-sm text-gray-700">Time</label>
-            <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 focus:ring-2 focus:ring-red-600" />
-            <div className="text-xs text-gray-500 mt-1">Must be within {slot.startTime} — {slot.endTime}</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm text-gray-700">Start Time</label>
+              <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 focus:ring-2 focus:ring-red-600" />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-700">End Time</label>
+              <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} required className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 focus:ring-2 focus:ring-red-600" />
+            </div>
+          </div>
+          <div className="text-xs text-gray-500">
+            {slot.startTime !== "09:00" || slot.endTime !== "17:00" 
+              ? `Time range must be within slot time: ${slot.startTime} — ${slot.endTime}`
+              : "Select a start and end time for the appointment"}
           </div>
           <div>
             <label className="block text-sm text-gray-700">Service Type</label>
