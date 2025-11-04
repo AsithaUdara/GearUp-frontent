@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
-import AdminLayout from "@/app/components/admin/AdminLayout";
-import { LucideStar, LucideCheck, LucideX, LucideEye, LucideEyeOff } from "lucide-react";
+import { motion } from "framer-motion";
+import { LucideStar, LucideEye, LucideEyeOff, LucideX, LucideCheck } from "lucide-react";
 
 type Review = {
   id: string;
@@ -135,58 +135,46 @@ export default function AdminReviewsPage() {
     : '0.0';
 
   return (
-    <AdminLayout activeTab="Reviews Management">
-      <div className="flex flex-wrap justify-between gap-3 mb-6">
-        <div className="flex min-w-72 flex-col gap-3">
-          <p className="text-[#181111] text-4xl font-black leading-tight tracking-[-0.033em]">Reviews Management</p>
-          <p className="text-gray-500 text-base font-normal leading-normal">
-            Manage customer reviews and select which ones to display on the landing page.
-          </p>
-        </div>
-      </div>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <h1 className="font-heading text-3xl font-bold text-foreground">Reviews Management</h1>
+      <p className="mt-1 text-muted-foreground">
+        Manage customer reviews and select which ones to display on the landing page.
+      </p>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm">
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="rounded-lg border border-border bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm">Total Reviews</p>
-              <p className="text-3xl font-bold text-[#181111] mt-1">{reviews.length}</p>
-            </div>
-            <div className="size-12 rounded-full bg-blue-100 flex items-center justify-center">
-              <LucideStar className="text-blue-600" />
-            </div>
+            <p className="font-body text-sm font-medium text-muted-foreground">Total Reviews</p>
+            <LucideStar className="h-5 w-5 text-muted-foreground" />
           </div>
+          <p className="mt-2 font-heading text-4xl font-bold text-foreground">{reviews.length}</p>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm">
+        <div className="rounded-lg border border-border bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm">Published</p>
-              <p className="text-3xl font-bold text-[#181111] mt-1">{publishedCount}</p>
-            </div>
-            <div className="size-12 rounded-full bg-green-100 flex items-center justify-center">
-              <LucideEye className="text-green-600" />
-            </div>
+            <p className="font-body text-sm font-medium text-muted-foreground">Published</p>
+            <LucideEye className="h-5 w-5 text-muted-foreground" />
           </div>
+          <p className="mt-2 font-heading text-4xl font-bold text-foreground">{publishedCount}</p>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm">
+        <div className="rounded-lg border border-border bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm">Average Rating</p>
-              <p className="text-3xl font-bold text-[#181111] mt-1">{averageRating}</p>
-            </div>
-            <div className="size-12 rounded-full bg-yellow-100 flex items-center justify-center">
-              <LucideStar className="text-yellow-600 fill-yellow-600" />
-            </div>
+            <p className="font-body text-sm font-medium text-muted-foreground">Average Rating</p>
+            <LucideStar className="h-5 w-5 text-yellow-500 fill-yellow-500" />
           </div>
+          <p className="mt-2 font-heading text-4xl font-bold text-foreground">{averageRating}</p>
         </div>
       </div>
 
       {/* Reviews List */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h2 className="text-xl font-bold text-[#181111] mb-4">All Customer Reviews</h2>
+      <div className="mt-6 rounded-lg border border-border bg-white p-6 shadow-sm">
+        <h2 className="font-heading text-xl font-bold text-foreground mb-4">All Customer Reviews</h2>
         
         {reviews.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
@@ -255,6 +243,6 @@ export default function AdminReviewsPage() {
           </div>
         )}
       </div>
-    </AdminLayout>
+    </motion.div>
   );
 }

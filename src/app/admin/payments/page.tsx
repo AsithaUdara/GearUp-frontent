@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import AdminLayout from "@/app/components/admin/AdminLayout";
+import { motion } from "framer-motion";
 import { LucideCreditCard, LucideCheck, LucideX, LucideDollarSign, LucideFileText, LucideDownload } from "lucide-react";
 
 type ServiceItem = {
@@ -158,58 +158,46 @@ Thank you for choosing AutoCare!
     .reduce((sum, r) => sum + r.totalAmount, 0);
 
   return (
-    <AdminLayout activeTab="Payment Approval">
-      <div className="flex flex-wrap justify-between gap-3 mb-6">
-        <div className="flex min-w-72 flex-col gap-3">
-          <p className="text-[#181111] text-4xl font-black leading-tight tracking-[-0.033em]">Payment Approval</p>
-          <p className="text-gray-500 text-base font-normal leading-normal">
-            Review and approve payment requests from employees. Generate bills for customers.
-          </p>
-        </div>
-      </div>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <h1 className="font-heading text-3xl font-bold text-foreground">Payment Approval</h1>
+      <p className="mt-1 text-muted-foreground">
+        Review and approve payment requests from employees. Generate bills for customers.
+      </p>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm">
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="rounded-lg border border-border bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm">Pending Requests</p>
-              <p className="text-3xl font-bold text-[#181111] mt-1">{pendingCount}</p>
-            </div>
-            <div className="size-12 rounded-full bg-yellow-100 flex items-center justify-center">
-              <LucideFileText className="text-yellow-600" />
-            </div>
+            <p className="font-body text-sm font-medium text-muted-foreground">Pending Requests</p>
+            <LucideFileText className="h-5 w-5 text-muted-foreground" />
           </div>
+          <p className="mt-2 font-heading text-4xl font-bold text-foreground">{pendingCount}</p>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm">
+        <div className="rounded-lg border border-border bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm">Approved</p>
-              <p className="text-3xl font-bold text-[#181111] mt-1">{approvedCount}</p>
-            </div>
-            <div className="size-12 rounded-full bg-green-100 flex items-center justify-center">
-              <LucideCheck className="text-green-600" />
-            </div>
+            <p className="font-body text-sm font-medium text-muted-foreground">Approved</p>
+            <LucideCheck className="h-5 w-5 text-muted-foreground" />
           </div>
+          <p className="mt-2 font-heading text-4xl font-bold text-foreground">{approvedCount}</p>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm">
+        <div className="rounded-lg border border-border bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm">Total Revenue</p>
-              <p className="text-3xl font-bold text-[#181111] mt-1">${totalRevenue.toFixed(2)}</p>
-            </div>
-            <div className="size-12 rounded-full bg-blue-100 flex items-center justify-center">
-              <LucideDollarSign className="text-blue-600" />
-            </div>
+            <p className="font-body text-sm font-medium text-muted-foreground">Total Revenue</p>
+            <LucideDollarSign className="h-5 w-5 text-muted-foreground" />
           </div>
+          <p className="mt-2 font-heading text-4xl font-bold text-foreground">${totalRevenue.toFixed(2)}</p>
         </div>
       </div>
 
       {/* Payment Requests */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h2 className="text-xl font-bold text-[#181111] mb-4">Payment Requests</h2>
+      <div className="mt-6 rounded-lg border border-border bg-white p-6 shadow-sm">
+        <h2 className="font-heading text-xl font-bold text-foreground mb-4">Payment Requests</h2>
 
         {paymentRequests.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
@@ -319,6 +307,6 @@ Thank you for choosing AutoCare!
           </div>
         )}
       </div>
-    </AdminLayout>
+    </motion.div>
   );
 }
