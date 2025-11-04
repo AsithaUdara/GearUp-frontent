@@ -3,12 +3,21 @@ import React from "react";
 import ApprovedBills from "@/app/components/customer/dashboard/ApprovedBills";
 import OngoingServiceBills from "@/app/components/customer/dashboard/OngoingServiceBills";
 import ReviewSubmissionModal from "@/app/components/customer/dashboard/ReviewSubmissionModal";
-import { LucideFileText, LucideWrench } from "lucide-react";
+import PastPayments from "@/app/components/customer/dashboard/PastPayments";
+import { LucideFileText, LucideWrench, LucideHistory } from "lucide-react";
+import { seedPastPayments } from "@/lib/seedPastPayments";
 
 export default function PaymentPageClient() {
   const [reviewModalOpen, setReviewModalOpen] = React.useState(false);
   const [selectedBillId, setSelectedBillId] = React.useState("");
   const [selectedService, setSelectedService] = React.useState("");
+
+  // Expose seed function for testing (in development only)
+  React.useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      (window as any).seedPastPayments = seedPastPayments;
+    }
+  }, []);
 
   function handleReviewSubmitAction(billId: string) {
     // Get bill info to show in modal
@@ -67,7 +76,7 @@ export default function PaymentPageClient() {
   return (
     <div className="space-y-6">
       {/* Ongoing Services Section */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
+      {/* <div className="bg-white rounded-lg shadow-sm p-6">
         <div className="flex items-center gap-3 mb-6">
           <div className="size-10 rounded-full bg-yellow-500 flex items-center justify-center text-white">
             <LucideWrench />
@@ -79,7 +88,7 @@ export default function PaymentPageClient() {
         </div>
 
         <OngoingServiceBills />
-      </div>
+      </div> */}
 
       {/* Approved Bills Section */}
       <div className="bg-white rounded-lg shadow-sm p-6">
@@ -96,8 +105,23 @@ export default function PaymentPageClient() {
         <ApprovedBills onReviewSubmitAction={handleReviewSubmitAction} />
       </div>
 
+      {/* Past Payments Section */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="size-10 rounded-full bg-green-500 flex items-center justify-center text-white">
+            <LucideHistory />
+          </div>
+          <div>
+            <h2 className="text-[#181111] text-lg font-bold">Past Payments</h2>
+            <p className="text-gray-500 text-sm">Your payment history for completed services</p>
+          </div>
+        </div>
+
+        <PastPayments />
+      </div>
+
       <ReviewSubmissionModal 
-        open={reviewModalOpen}
+        open={reviewModalOpen}  
         billId={selectedBillId}
         vehicleService={selectedService}
         onCloseAction={() => setReviewModalOpen(false)}

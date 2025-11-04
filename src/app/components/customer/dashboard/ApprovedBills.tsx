@@ -88,6 +88,22 @@ Thank you for choosing AutoCare!
       const raw = localStorage.getItem('customerApprovedBills');
       if (raw) {
         const allBills = JSON.parse(raw);
+        const paidBill = allBills.find((b: ApprovedBill) => b.id === billId);
+        
+        if (paidBill) {
+          // Add to past payments
+          const pastPaymentsRaw = localStorage.getItem('customerPastPayments');
+          const pastPayments = pastPaymentsRaw ? JSON.parse(pastPaymentsRaw) : [];
+          pastPayments.push({
+            id: `receipt-${Date.now()}`,
+            billId: paidBill.id,
+            date: new Date().toISOString().split('T')[0],
+            subtotal: paidBill.totalAmount,
+            vehicleInfo: paidBill.vehicleInfo
+          });
+          localStorage.setItem('customerPastPayments', JSON.stringify(pastPayments));
+        }
+        
         const updated = allBills.map((b: ApprovedBill) =>
           b.id === billId ? { ...b, status: 'paid' } : b
         );
