@@ -9,6 +9,10 @@ import AppointmentManagementCard from "@/app/components/employee/dashboard/Appoi
 import TimeLoggingCard from "@/app/components/employee/dashboard/TimeLoggingCard";
 import StatsCards from "@/app/components/employee/dashboard/StatsCards";
 import QuickActionsBar from "@/app/components/employee/dashboard/QuickActionsBar";
+import ServiceProgressCard from "@/app/components/employee/dashboard/ServiceProgressCard";
+import NotificationsCard from "@/app/components/employee/dashboard/NotificationsCard";
+import CommunicationShortcuts from "@/app/components/employee/dashboard/CommunicationShortcuts";
+import AttendanceQuickAccess from "@/app/components/employee/dashboard/AttendanceQuickAccess";
 
 const mockTasks: Task[] = [
   { id: "1", title: "Oil Change - Toyota Camry", customer: "John Doe", vehicle: "V-XYZ123", status: "In Progress" },
@@ -31,6 +35,7 @@ export default function EmployeeOverviewPage() {
       <div className="lg:col-span-2 space-y-6">
         <StatsCards />
         <QuickActionsBar />
+        <ServiceProgressCard />
         
         {/* --- FIX: The grid and the WorkHoursSummaryCompactCard have been removed --- */}
         {/* The TimeLoggingCard can now sit directly in the layout */}
@@ -46,8 +51,11 @@ export default function EmployeeOverviewPage() {
         />
       </div>
       <div className="lg:col-span-1 space-y-6">
+        <NotificationsCard />
         <ScheduleCard />
+        <AttendanceQuickAccess />
         <AppointmentManagementCard />
+        <CommunicationShortcuts />
       </div>
     </section>
   );
