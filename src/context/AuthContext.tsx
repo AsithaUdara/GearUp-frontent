@@ -25,9 +25,10 @@ const mockOnAuthStateChanged = (mockAuth: unknown, callback: (user: User | null)
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  refreshUser: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, loading: true });
+const AuthContext = createContext<AuthContextType>({ user: null, loading: true, refreshUser: async () => {} });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -38,12 +39,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(user);
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
 
+  const refreshUser = async () => {
+    if (!auth.currentUser) return;
+    await reload(auth.currentUser);
+    // After reload, onAuthStateChanged won't fire automatically; manually set current user
+    setUser(auth.currentUser);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ user, loading, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

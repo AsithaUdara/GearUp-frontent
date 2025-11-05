@@ -19,9 +19,9 @@ const items = [
   { key: "dashboard", href: "/employee", label: "Dashboard", icon: Home, enabled: true },
   { key: "schedule", href: "/employee/schedule", label: "View Work Schedule", icon: CalendarClock, enabled: true },
   { key: "log-hours", href: "/employee/log-hours", label: "Log Hours", icon: Clock8, enabled: true },
-  { key: "progress", href: "#", label: "Service Progress", icon: GaugeCircle, enabled: false },
+  { key: "progress", href: "/employee/service-progress", label: "Service Progress", icon: GaugeCircle, enabled: true },
   { key: "parts-request", href: "/employee/parts-request", label: "Materials and Parts Request", icon: Wrench, enabled: true },
-  { key: "communication", href: "#", label: "Communication", icon: MessageSquareText, enabled: false }
+  { key: "communication", href: "/employee/communication", label: "Communication", icon: MessageSquareText, enabled: true }
 ];
 
 export default function Sidebar() {

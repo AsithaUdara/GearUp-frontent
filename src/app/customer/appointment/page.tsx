@@ -180,7 +180,7 @@ export default function AppointmentBooking() {
   if (bookingSuccess) {
     return (
       <div className="min-h-screen bg-background">
-        <Header onLoginClick={() => {}} />
+        <Header onLoginClick={() => {}} showDefaultActions={false} preserveActionSpace={true} />
         <div className="pt-24 pb-16">
           <div className="container mx-auto px-6">
             <motion.div
@@ -254,7 +254,7 @@ export default function AppointmentBooking() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onLoginClick={() => {}} />
+      <Header onLoginClick={() => {}} showDefaultActions={false} preserveActionSpace={true} />
       
       <div className="pt-24 pb-16">
         <div className="container mx-auto px-6">
@@ -524,7 +524,7 @@ export default function AppointmentBooking() {
                           <span className="font-semibold">{selectedTimeSlot}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Duration:</span>
+                          <span>Estimated Duration:</span>
                           <span className="font-semibold">{selectedService?.duration} minutes</span>
                         </div>
                         <div className="flex justify-between text-lg font-bold text-primary">
