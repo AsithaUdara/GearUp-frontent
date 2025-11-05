@@ -1,12 +1,10 @@
 // app/components/admin/AdminSidebar.tsx
 'use client';
 
-import { LayoutDashboard, Calendar, Users, Wrench, LogOut, Star } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, Wrench, LogOut, Star, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { clsx } from 'clsx';
-import { auth } from '@/lib/firebase';
-import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 
 const navLinks = [
@@ -14,7 +12,8 @@ const navLinks = [
   { href: '/admin/appointments', label: 'Appointments', icon: Calendar },
   { href: '/admin/users', label: 'User Management', icon: Users },
   { href: '/admin/services', label: 'Service Templates', icon: Wrench },
-  { href: '/admin/feedback', label: 'Feedback', icon: Star },
+  { href: '/admin/payments', label: 'Payment Approval', icon: CreditCard },
+  { href: '/admin/reviews', label: 'Reviews Management', icon: Star },
 ];
 
 export default function AdminSidebar() {
@@ -22,7 +21,9 @@ export default function AdminSidebar() {
   const router = useRouter();
 
   const handleSignOut = async () => {
-    await signOut(auth);
+    // Clear any auth tokens or session data
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('authToken');
     router.push('/'); // Redirect to landing page after sign out
   };
 
