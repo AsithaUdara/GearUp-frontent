@@ -37,7 +37,7 @@ interface ModificationRequest {
   type: 'add_service' | 'remove_service' | 'change_service' | 'urgent_repair';
   title: string;
   description: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  
   estimatedCost: number;
   estimatedDuration: number;
   status: 'pending' | 'approved' | 'rejected' | 'in_progress' | 'completed';
@@ -112,7 +112,7 @@ const mockServiceModification: ServiceModification = {
       type: 'add_service',
       title: 'Brake Pad Replacement',
       description: 'Customer requested brake pad replacement after inspection revealed 20% wear',
-      priority: 'high',
+      
       estimatedCost: 8500,
       estimatedDuration: 45,
       status: 'approved',
@@ -129,7 +129,7 @@ const mockServiceModification: ServiceModification = {
       type: 'add_service',
       title: 'Air Filter Replacement',
       description: 'Air filter is dirty and affecting engine performance',
-      priority: 'medium',
+      
       estimatedCost: 2500,
       estimatedDuration: 15,
       status: 'pending',
@@ -149,7 +149,10 @@ export default function ServiceModification() {
   const [newRequest, setNewRequest] = useState({
     type: 'add_service' as const,
     title: '',
-    description: ''
+    description: '',
+    priority: 'medium' as const,
+    estimatedCost: 0,
+    estimatedDuration: 0
   });
 
   useEffect(() => {
@@ -171,10 +174,16 @@ export default function ServiceModification() {
       type: newRequest.type,
       title: newRequest.title,
       description: newRequest.description,
+<<<<<<< HEAD:src/app/modification/page.tsx
+      priority: newRequest.priority,
+      estimatedCost: newRequest.estimatedCost,
+      estimatedDuration: newRequest.estimatedDuration,
+=======
       // Customers shouldn't set priority/cost/duration — default these for staff to update
-      priority: 'medium',
+      
       estimatedCost: 0,
       estimatedDuration: 0,
+>>>>>>> origin/development:src/app/customer/modification/page.tsx
       status: 'pending',
       requestedBy: user?.displayName || 'Customer',
       requestedAt: new Date().toLocaleString()
@@ -188,7 +197,10 @@ export default function ServiceModification() {
     setNewRequest({
       type: 'add_service',
       title: '',
-      description: ''
+      description: '',
+      priority: 'medium',
+      estimatedCost: 0,
+      estimatedDuration: 0
     });
     setShowNewRequest(false);
   };
@@ -250,7 +262,18 @@ export default function ServiceModification() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onLoginClick={() => {}} />
+      <Header 
+        showDefaultActions={false}
+        customActions={(
+          <button
+            onClick={() => router.push('/customer/progress')}
+            className="group relative inline-flex items-center gap-2 overflow-hidden rounded-md bg-primary px-5 py-3 font-heading text-sm font-bold uppercase text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-primary/80 transition-all duration-300 hover:bg-white hover:text-primary"
+          >
+            <span className="absolute inset-0 bg-white/0 transition-colors duration-300 group-hover:bg-white/10" />
+            <span className="relative">View Progress</span>
+          </button>
+        )}
+      />
       
       <div className="pt-24 pb-16">
         <div className="container mx-auto px-6">
@@ -321,16 +344,12 @@ export default function ServiceModification() {
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-yellow-100 rounded-lg">
-                  <DollarSign className="h-6 w-6 text-yellow-600" />
+                <div className="p-3 bg-primary/10 rounded-lg">
+                  <DollarSign className="h-6 w-6 text-primary" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Total Cost</p>
-                  <div className="flex items-center">
-                    <span className="px-3 py-1 text-sm font-medium bg-yellow-100 text-yellow-600 rounded-full">
-                      Pending 
-                    </span>
-                  </div>
+                  <p className="font-semibold">LKR {serviceModification.totalCost.toLocaleString()}</p>
                 </div>
               </div>
 
@@ -356,7 +375,7 @@ export default function ServiceModification() {
                 className="bg-white rounded-lg shadow-lg p-8 mb-8"
               >
                 <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-xl font-bold font-heading text-foreground">Current Modification Services</h3>
+                  <h3 className="text-xl font-bold font-heading text-foreground">Current Services</h3>
                   <button
                     onClick={() => setShowNewRequest(true)}
                     className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
@@ -376,7 +395,13 @@ export default function ServiceModification() {
                           </div>
                           <span className="font-semibold text-foreground">{service}</span>
                         </div>
-                        
+                        <div className="flex items-center gap-2">
+                          {serviceModification.originalServices.includes(service) ? (
+                            <span className="px-2 py-1 text-xs bg-green-100 text-green-600 rounded-full">Original</span>
+                          ) : (
+                            <span className="px-2 py-1 text-xs bg-blue-100 text-blue-600 rounded-full">Added</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -401,13 +426,15 @@ export default function ServiceModification() {
                           <p className="text-sm text-muted-foreground">{request.description}</p>
                         </div>
                         <div className="flex items-center gap-2">
+<<<<<<< HEAD:src/app/modification/page.tsx
+                          <span className={`px-2 py-1 text-xs rounded-full ${getPriorityColor(request.priority)}`}>
+                            {request.priority.toUpperCase()}
+                          </span>
+=======
                           {request.status === 'pending' ? (
                             <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-600">PENDING</span>
-                          ) : (
-                            <span className={`px-2 py-1 text-xs rounded-full ${getPriorityColor(request.priority)}`}>
-                              {request.priority.toUpperCase()}
-                            </span>
-                          )}
+                          ) : null}
+>>>>>>> origin/development:src/app/customer/modification/page.tsx
                           <span className={`px-3 py-1 text-sm rounded-full ${getStatusColor(request.status)}`}>
                             {getStatusIcon(request.status)}
                             {request.status.toUpperCase()}
@@ -417,20 +444,15 @@ export default function ServiceModification() {
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                         <div>
+<<<<<<< HEAD:src/app/modification/page.tsx
                           <p className="text-sm text-muted-foreground">Estimated Cost</p>
-                          {request.estimatedCost && request.estimatedCost > 0 ? (
-                            <p className="font-semibold">LKR {request.estimatedCost.toLocaleString()}</p>
-                          ) : (
-                            <p className="font-semibold text-yellow-600">Pending</p>
-                          )}
+                          <p className="font-semibold">LKR {request.estimatedCost.toLocaleString()}</p>
                         </div>
                         <div>
+=======
+>>>>>>> origin/development:src/app/customer/modification/page.tsx
                           <p className="text-sm text-muted-foreground">Duration</p>
-                          {request.estimatedDuration && request.estimatedDuration > 0 ? (
-                            <p className="font-semibold">{request.estimatedDuration} minutes</p>
-                          ) : (
-                            <p className="font-semibold text-yellow-600">Pending</p>
-                          )}
+                          <p className="font-semibold">{request.estimatedDuration} minutes</p>
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground">Requested</p>
@@ -512,6 +534,7 @@ export default function ServiceModification() {
                 </div>
               </motion.div>
 
+<<<<<<< HEAD:src/app/modification/page.tsx
               {/* Quick Actions */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -522,7 +545,13 @@ export default function ServiceModification() {
                 <h3 className="text-lg font-bold font-heading text-foreground mb-4">Quick Actions</h3>
                 
                 <div className="space-y-3">
-                  {/* Add Service removed from Quick Actions (customers request via 'Request Modification' above) */}
+                  <button
+                    onClick={() => setShowNewRequest(true)}
+                    className="w-full flex items-center gap-3 p-3 border border-primary text-primary rounded-lg hover:bg-primary/5 transition-colors"
+                  >
+                    <Plus className="h-5 w-5" />
+                    <span>Add Service</span>
+                  </button>
                   
                   <button
                     onClick={() => router.push('/progress')}
@@ -541,6 +570,9 @@ export default function ServiceModification() {
                   </button>
                 </div>
               </motion.div>
+=======
+              
+>>>>>>> origin/development:src/app/customer/modification/page.tsx
 
               {/* Service Summary */}
               <motion.div
@@ -635,7 +667,43 @@ export default function ServiceModification() {
                   />
                 </div>
 
-                {/* Priority / cost / duration are set by staff — removed from customer form */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-foreground mb-2">Priority</label>
+                    <select
+                      value={newRequest.priority}
+                      onChange={(e) => setNewRequest(prev => ({ ...prev, priority: e.target.value as any }))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-foreground mb-2">Estimated Cost (LKR)</label>
+                    <input
+                      type="number"
+                      value={newRequest.estimatedCost}
+                      onChange={(e) => setNewRequest(prev => ({ ...prev, estimatedCost: parseInt(e.target.value) || 0 }))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-foreground mb-2">Duration (minutes)</label>
+                    <input
+                      type="number"
+                      value={newRequest.estimatedDuration}
+                      onChange={(e) => setNewRequest(prev => ({ ...prev, estimatedDuration: parseInt(e.target.value) || 0 }))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="flex gap-4 justify-end mt-8">

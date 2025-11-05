@@ -1,11 +1,7 @@
 "use client";
 import React, { useState } from "react";
-import { cn } from "@/lib/utils";
-import { LucideCar, LucideCalendar, LucideHistory, LucideSettings, LucideLogOut, LucideBot, LucideArrowLeft, LucideInfo, LucideImagePlus } from "lucide-react";
-import { auth } from "@/lib/firebase";
-import { signOut } from "firebase/auth";
+import { LucideArrowLeft, LucideInfo, LucideImagePlus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import CustomerLayout from "@/app/components/customer/CustomerLayout";
 import { useAuth } from "@/context/AuthContext";
 import { addVehicle } from "@/lib/vehicles";
 
@@ -49,61 +45,8 @@ export default function VehicleRegistration() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      router.push('/');
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
-  };
-
   return (
-    <CustomerLayout>
-      <div className="flex min-h-screen font-display">
-        {/* Sidebar */}
-  <aside className="flex flex-col gap-y-6 rounded-2xl m-4 border border-glass-border bg-glass-bg/80 backdrop-blur-lg shadow-md p-4 md:w-64 lg:p-6 shrink-0 transition-all duration-300 hover:shadow-lg hover:bg-glass-bg/90 hover:ring-1 hover:ring-white/10">
-          <div className="flex items-center justify-center px-2 mb-6">
-            <img 
-              src="https://res.cloudinary.com/dgyqfax25/image/upload/v1730351497/gearup_logo_nwij8d.webp" 
-              alt="GearUp Logo" 
-              className="h-16 w-auto object-contain"
-            />
-          </div>
-          <div className="flex flex-col items-start gap-4 border-b border-gray-200 pb-6">
-            <div className="flex items-center gap-4">
-              <div
-                className="h-12 w-12 rounded-full bg-center bg-cover bg-no-repeat"
-                style={{
-                  backgroundImage: `url('${(user?.photoURL) || (user?.displayName || user?.email ? "https://api.dicebear.com/7.x/initials/svg?seed=" + encodeURIComponent(user?.displayName || user?.email || "User") : "https://api.dicebear.com/7.x/initials/svg?seed=User")}')`
-                }}
-              />
-              <div className="flex flex-col">
-                <span className="text-base font-bold text-[#181111]">{user?.displayName || "Your name"}</span>
-                <span className="text-sm text-[#886364]">{user?.email}</span>
-              </div>
-            </div>
-          </div>
-          <nav className="flex flex-col gap-2 mt-4">
-            <a className="flex items-center gap-3 rounded-lg px-3 py-2 text-[#181111] hover:bg-white/50 hover:backdrop-blur-sm hover:shadow-sm transition-all duration-200" href="/customer/dashboard"><LucideCar className="text-[#181111]" /><span className="font-medium">Dashboard</span></a>
-            <a className="flex items-center gap-3 rounded-lg px-3 py-2 text-[#181111] hover:bg-white/50 hover:backdrop-blur-sm hover:shadow-sm transition-all duration-200" href="/customer/book-appointment"><LucideCalendar className="text-[#181111]" /><span className="font-medium">Book Appointment</span></a>
-            <a className="flex items-center gap-3 rounded-lg px-3 py-2 text-[#181111] hover:bg-white/50 hover:backdrop-blur-sm hover:shadow-sm transition-all duration-200" href="/customer/service-history"><LucideHistory className="text-[#181111]" /><span className="font-medium">Service History</span></a>
-            <a className="flex items-center gap-3 rounded-lg bg-primary/20 backdrop-blur-sm px-3 py-2 text-primary font-bold" href="/customer/vehicles"><LucideCar className="text-primary" /><span className="font-medium">My Vehicles</span></a>
-            <a className="flex items-center gap-3 rounded-lg px-3 py-2 text-[#181111] hover:bg-white/50 hover:backdrop-blur-sm hover:shadow-sm transition-all duration-200" href="/customer/settings"><LucideSettings className="text-[#181111]" /><span className="font-medium">Settings</span></a>
-            <a className="flex items-center gap-3 rounded-lg px-3 py-2 text-[#181111] hover:bg-white/50 hover:backdrop-blur-sm hover:shadow-sm transition-all duration-200" href="/customer/chatbot"><LucideBot className="text-[#181111]" /><span className="font-medium">AI Chatbot</span></a>
-          </nav>
-          <div className="mt-auto">
-            <button 
-              onClick={handleLogout}
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-[#181111] hover:bg-white/50 hover:backdrop-blur-sm hover:shadow-sm transition-all duration-200 w-full"
-            >
-              <LucideLogOut className="text-[#181111]" />
-              <span className="font-medium">Logout</span>
-            </button>
-          </div>
-        </aside>
-        {/* Main Content */}
-        <main className="flex-1">
+    <>
           <div className="flex h-full grow flex-col">
             <div className="px-4 md:px-10 lg:px-40 flex flex-1 justify-center py-5">
               <div className="flex flex-col max-w-[960px] flex-1 bg-white rounded-lg shadow-sm p-8 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
@@ -168,8 +111,6 @@ export default function VehicleRegistration() {
               </div>
             </div>
           </div>
-        </main>
-      </div>
-    </CustomerLayout>
+    </>
   );
 }

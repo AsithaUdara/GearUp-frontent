@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ChatWindow from "./ChatWindow";
 import ContactList from "./ContactList";
+import { fetchTasksByEmployeeId, WorkTask } from "@/lib/workScheduleData";
 
 interface Contact {
   id: string;
   name: string;
-  role: string;
+  role: string; // we'll store service type + vehicle here
   avatar: string;
   lastMessage: string;
   timestamp: string;
@@ -24,129 +25,78 @@ interface Message {
 }
 
 export default function CommunicationPage() {
-  const [contacts, setContacts] = useState<Contact[]>([
-    {
-      id: "1",
-      name: "Sarah Johnson",
-      role: "Service Manager",
-      avatar: "https://i.pravatar.cc/80?img=1",
-      lastMessage: "Service update for SVC-2024-00789",
-      timestamp: "2 min ago",
-      unreadCount: 2,
-      isOnline: true
-    },
-    {
-      id: "2",
-      name: "Mike Chen",
-      role: "Senior Technician",
-      avatar: "https://i.pravatar.cc/80?img=3",
-      lastMessage: "Parts are ready for pickup",
-      timestamp: "15 min ago",
-      unreadCount: 0,
-      isOnline: true
-    },
-    {
-      id: "3",
-      name: "Lisa Rodriguez",
-      role: "Customer Service",
-      avatar: "https://i.pravatar.cc/80?img=5",
-      lastMessage: "Customer called about their vehicle",
-      timestamp: "1 hour ago",
-      unreadCount: 1,
-      isOnline: false
-    },
-    {
-      id: "4",
-      name: "David Wilson",
-      role: "Parts Manager",
-      avatar: "https://i.pravatar.cc/80?img=7",
-      lastMessage: "Brake pads inventory updated",
-      timestamp: "2 hours ago",
-      unreadCount: 0,
-      isOnline: true
-    }
-  ]);
+  const employeeId = "emp-1"; // derive from auth when available
 
-  const [selectedContact, setSelectedContact] = useState<Contact>(contacts[0]);
-  
-  const [messagesByContact, setMessagesByContact] = useState<Record<string, Message[]>>({
-    "1": [
-      {
-        id: "1",
-        senderId: "1",
-        content: "Hi! I need an update on the brake pad replacement for SVC-2024-00789",
-        timestamp: "10:30 AM",
-        type: "text"
-      },
-      {
-        id: "2",
-        senderId: "current",
-        content: "Sure! I'm currently installing the new brake pads. Should be done in about 30 minutes.",
-        timestamp: "10:32 AM",
-        type: "text"
-      },
-      {
-        id: "3",
-        senderId: "1",
-        content: "Great! Please let me know when it's completed so I can update the customer.",
-        timestamp: "10:33 AM",
-        type: "text"
-      },
-      {
-        id: "4",
-        senderId: "current",
-        content: "Will do! I'll also send you photos of the completed work.",
-        timestamp: "10:35 AM",
-        type: "text"
-      }
-    ],
-    "2": [
-      {
-        id: "5",
-        senderId: "2",
-        content: "The brake parts for the Toyota Camry have arrived",
-        timestamp: "9:45 AM",
-        type: "text"
-      },
-      {
-        id: "6",
-        senderId: "current",
-        content: "Perfect! I'll pick them up in 5 minutes",
-        timestamp: "9:46 AM",
-        type: "text"
-      }
-    ],
-    "3": [
-      {
-        id: "7",
-        senderId: "3",
-        content: "Mrs. Smith called asking about the status of her vehicle",
-        timestamp: "8:30 AM",
-        type: "text"
-      }
-    ],
-    "4": [
-      {
-        id: "8",
-        senderId: "4",
-        content: "Updated the brake pad inventory. We're well stocked for this week.",
-        timestamp: "7:15 AM",
-        type: "text"
-      }
-    ]
-  });
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [messagesByContact, setMessagesByContact] = useState<Record<string, Message[]>>({});
+
+  useEffect(() => {
+    let mounted = true;
+    fetchTasksByEmployeeId(employeeId).then(({ assigned }) => {
+      if (!mounted) return;
+      const avatarPool = [11, 12, 13, 14, 15, 16, 17, 18];
+      const mappedContacts: Contact[] = assigned.map((t: WorkTask, idx: number) => ({
+        id: t.serviceId, // unique per service -> uniquely identifies customer thread
+        name: t.customer,
+        role: `${t.serviceType} • ${t.vehicle}`,
+        avatar: `https://i.pravatar.cc/80?img=${avatarPool[idx % avatarPool.length]}`,
+        lastMessage: "",
+        timestamp: t.time ?? "",
+        unreadCount: 0,
+        isOnline: idx % 3 !== 0, // most appear online
+      }));
+      setContacts(mappedContacts);
+      setSelectedContact(mappedContacts[0] ?? null);
+      // initialize message threads with mock conversation
+      setMessagesByContact((prev) => {
+        const next = { ...prev } as Record<string, Message[]>;
+        mappedContacts.forEach((c, idx) => {
+          if (!next[c.id]) {
+            next[c.id] = [
+              {
+                id: `${c.id}-1`,
+                senderId: c.id,
+                content: `Hi, this is ${c.name}. Any update on my ${c.role.split(" • ")[0]}?`,
+                timestamp: "10:05 AM",
+                type: "text",
+              },
+              {
+                id: `${c.id}-2`,
+                senderId: "current",
+                content: "Hi! We started work and will keep you posted.",
+                timestamp: "10:07 AM",
+                type: "text",
+              },
+              ...(idx % 2 === 0
+                ? [
+                    {
+                      id: `${c.id}-3`,
+                      senderId: c.id,
+                      content: "Great, please share a photo once complete.",
+                      timestamp: "10:09 AM",
+                      type: "text",
+                    },
+                  ]
+                : []),
+            ];
+          }
+        });
+        return next;
+      });
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [employeeId]);
 
   const handleContactSelect = (contact: Contact) => {
     setSelectedContact(contact);
-    // Mark messages as read for this contact
-    setContacts(prev => 
-      prev.map(c => 
-        c.id === contact.id ? { ...c, unreadCount: 0 } : c
-      )
-    );
+    setContacts(prev => prev.map(c => (c.id === contact.id ? { ...c, unreadCount: 0 } : c)));
   };
 
   const handleSendMessage = (content: string) => {
+    if (!selectedContact) return;
     const newMessage: Message = {
       id: Date.now().toString(),
       senderId: "current",
@@ -154,24 +104,18 @@ export default function CommunicationPage() {
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       type: "text"
     };
-    
-    // Add message to the selected contact's conversation
+
     setMessagesByContact(prev => ({
       ...prev,
       [selectedContact.id]: [...(prev[selectedContact.id] || []), newMessage]
     }));
-    
-    // Update the last message in contacts list
+
     setContacts(prev =>
-      prev.map(c =>
-        c.id === selectedContact.id
-          ? { ...c, lastMessage: content, timestamp: "now" }
-          : c
-      )
+      prev.map(c => (c.id === selectedContact.id ? { ...c, lastMessage: content, timestamp: "now" } : c))
     );
   };
 
-  const currentMessages = messagesByContact[selectedContact?.id] || [];
+  const currentMessages = selectedContact ? (messagesByContact[selectedContact.id] || []) : [];
 
   return (
     <div className="h-screen bg-gray-50 flex">
@@ -179,18 +123,22 @@ export default function CommunicationPage() {
       <div className="w-80 bg-white border-r border-gray-200 h-screen">
         <ContactList 
           contacts={contacts}
-          selectedContact={selectedContact}
+          selectedContact={selectedContact as any}
           onContactSelect={handleContactSelect}
         />
       </div>
       
       {/* Chat Window - Right Side */}
       <div className="flex-1 h-screen">
-        <ChatWindow 
-          contact={selectedContact}
-          messages={currentMessages}
-          onSendMessage={handleSendMessage}
-        />
+        {selectedContact ? (
+          <ChatWindow 
+            contact={selectedContact as any}
+            messages={currentMessages}
+            onSendMessage={handleSendMessage}
+          />
+        ) : (
+          <div className="h-full flex items-center justify-center text-gray-500">No assigned customers</div>
+        )}
       </div>
     </div>
   );
