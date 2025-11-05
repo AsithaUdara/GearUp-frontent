@@ -1,7 +1,10 @@
-// Simple mock data for employee work schedule and tasks
+// Employee work schedule and tasks - now using real tracking-service API
+
+const TRACKING_SERVICE_URL = process.env.NEXT_PUBLIC_TRACKING_SERVICE_URL || 'http://localhost:8086';
 
 export type WorkTask = {
-  id: string;
+  id: string | number;
+  taskId?: string;
   serviceId: string;
   vehicle: string;
   customer: string;
@@ -11,6 +14,11 @@ export type WorkTask = {
   progressStep?: 1 | 2 | 3 | 4 | 5; // 1-5 progress for current task
   notes?: string;
   time?: string;
+  estimatedDuration?: number;
+  actualDuration?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  completedAt?: string | null;
 };
 
 // Mock dataset
@@ -67,43 +75,143 @@ export async function fetchTasksByEmployeeId(employeeId: string): Promise<{
   assigned: WorkTask[];
   completed: WorkTask[];
 }> {
-  // Simulate async fetch
-  await new Promise((r) => setTimeout(r, 150));
-
-  const assignedToEmp = TASKS.filter((t) => t.assigneeId === employeeId);
-  const currentTask = assignedToEmp.find((t) => t.status === "in-progress") ?? null;
-  const completed = assignedToEmp.filter((t) => t.status === "completed");
-
-  return {
-    currentTask,
-    assigned: assignedToEmp,
-    completed,
-  };
+  try {
+    const response = await fetch(`${TRACKING_SERVICE_URL}/api/tracking/employee/${employeeId}/tasks`);
+    
+    if (!response.ok) {
+      console.error(`Failed to fetch tasks: ${response.statusText}`);
+      return { currentTask: null, assigned: [], completed: [] };
+    }
+    
+    const data = await response.json();
+    
+    // Convert backend format to frontend format
+    const convertTask = (task: any): WorkTask => ({
+      id: task.id,
+      taskId: task.taskId,
+      serviceId: task.serviceId,
+      vehicle: task.vehicle,
+      customer: task.customer,
+      serviceType: task.serviceType,
+      assigneeId: task.assigneeId,
+      status: task.status.replace('_', '-') as "pending" | "in-progress" | "completed",
+      progressStep: task.progressStep,
+      notes: task.notes,
+      time: task.updatedAt ? new Date(task.updatedAt).toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit' 
+      }) : undefined,
+      estimatedDuration: task.estimatedDuration,
+      actualDuration: task.actualDuration,
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
+      completedAt: task.completedAt,
+    });
+    
+    return {
+      currentTask: data.currentTask ? convertTask(data.currentTask) : null,
+      assigned: data.assignedTasks.map(convertTask),
+      completed: data.completedTasks.map(convertTask),
+    };
+  } catch (error) {
+    console.error('Error fetching tasks:', error);
+    return { currentTask: null, assigned: [], completed: [] };
+  }
 }
 
 export async function updateTaskProgress(
-  taskId: string,
+  taskId: string | number,
   progressStep: 1 | 2 | 3 | 4 | 5,
   status?: WorkTask["status"]
 ) {
-  const t = TASKS.find((x) => x.id === taskId);
-  if (!t) return;
-  t.progressStep = progressStep;
-  if (status) {
-    t.status = status;
-    if (status === "completed" && !t.time) {
-      t.time = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  try {
+    const updates: any = {
+      progressStep,
+    };
+    
+    if (status) {
+      updates.status = status.replace('-', '_'); // Convert to backend format
     }
+    
+    const response = await fetch(`${TRACKING_SERVICE_URL}/api/tracking/tasks/${taskId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updates),
+    });
+    
+    if (!response.ok) {
+      console.error(`Failed to update task: ${response.statusText}`);
+      return null;
+    }
+    
+    const task = await response.json();
+    
+    // Convert back to frontend format
+    return {
+      id: task.id,
+      taskId: task.taskId,
+      serviceId: task.serviceId,
+      vehicle: task.vehicle,
+      customer: task.customer,
+      serviceType: task.serviceType,
+      assigneeId: task.assigneeId,
+      status: task.status.replace('_', '-') as "pending" | "in-progress" | "completed",
+      progressStep: task.progressStep,
+      notes: task.notes,
+      time: task.updatedAt ? new Date(task.updatedAt).toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit' 
+      }) : undefined,
+      estimatedDuration: task.estimatedDuration,
+      actualDuration: task.actualDuration,
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
+      completedAt: task.completedAt,
+    };
+  } catch (error) {
+    console.error('Error updating task:', error);
+    return null;
   }
-  // Simulate async persistence
-  await new Promise((r) => setTimeout(r, 100));
-  return t;
 }
 
 // Fetch all services for a specific vehicle
 export async function fetchServicesByVehicle(vehicle: string): Promise<WorkTask[]> {
-  await new Promise((r) => setTimeout(r, 100));
-  return TASKS.filter((t) => t.vehicle === vehicle);
+  try {
+    const response = await fetch(`${TRACKING_SERVICE_URL}/api/tracking/tasks/vehicle/${encodeURIComponent(vehicle)}`);
+    
+    if (!response.ok) {
+      console.error(`Failed to fetch services: ${response.statusText}`);
+      return [];
+    }
+    
+    const tasks = await response.json();
+    return tasks.map((task: any) => ({
+      id: task.id,
+      taskId: task.taskId,
+      serviceId: task.serviceId,
+      vehicle: task.vehicle,
+      customer: task.customer,
+      serviceType: task.serviceType,
+      assigneeId: task.assigneeId,
+      status: task.status.replace('_', '-') as "pending" | "in-progress" | "completed",
+      progressStep: task.progressStep,
+      notes: task.notes,
+      time: task.updatedAt ? new Date(task.updatedAt).toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit' 
+      }) : undefined,
+      estimatedDuration: task.estimatedDuration,
+      actualDuration: task.actualDuration,
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
+      completedAt: task.completedAt,
+    }));
+  } catch (error) {
+    console.error('Error fetching services by vehicle:', error);
+    return [];
+  }
 }
 
 // Modification Request type
@@ -190,31 +298,64 @@ const PARTS_REQUESTS: PartsRequest[] = [
 
 // Fetch modification requests for a vehicle
 export async function fetchModificationRequestsByVehicle(vehicle: string): Promise<ModificationRequest[]> {
-  await new Promise((r) => setTimeout(r, 100));
-  return MODIFICATION_REQUESTS.filter((m) => m.vehicle === vehicle);
+  try {
+    const response = await fetch(`${TRACKING_SERVICE_URL}/api/tracking/modification-requests/vehicle/${encodeURIComponent(vehicle)}`);
+    
+    if (!response.ok) {
+      // Return empty array if endpoint doesn't exist yet
+      return [];
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching modification requests:', error);
+    return [];
+  }
 }
 
 // Fetch pending/approved modification requests that need to be converted to tasks
 export async function fetchPendingModificationRequestsForEmployee(employeeId: string): Promise<ModificationRequest[]> {
-  await new Promise((r) => setTimeout(r, 100));
-  return MODIFICATION_REQUESTS.filter((m) => 
-    (m.status === 'pending' || m.status === 'approved') && 
-    (!m.assignedToEmployeeId || m.assignedToEmployeeId === employeeId)
-  );
+  try {
+    const response = await fetch(`${TRACKING_SERVICE_URL}/api/tracking/modification-requests/pending/${employeeId}`);
+    
+    if (!response.ok) {
+      return [];
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching pending modification requests:', error);
+    return [];
+  }
 }
 
 // Notify customer when task is completed
-export async function notifyCustomerTaskCompleted(taskId: string): Promise<boolean> {
-  await new Promise((r) => setTimeout(r, 200));
-  // In a real app, this would send a notification via API/WebSocket
-  console.log(`Customer notified: Task ${taskId} completed`);
-  return true;
+export async function notifyCustomerTaskCompleted(taskId: string | number): Promise<boolean> {
+  try {
+    // In a real app, this would send a notification via API/WebSocket
+    console.log(`Customer notified: Task ${taskId} completed`);
+    // You can add actual notification API call here
+    return true;
+  } catch (error) {
+    console.error('Error notifying customer:', error);
+    return false;
+  }
 }
 
 // Fetch parts requests for a vehicle
 export async function fetchPartsRequestsByVehicle(vehicle: string): Promise<PartsRequest[]> {
-  await new Promise((r) => setTimeout(r, 100));
-  return PARTS_REQUESTS.filter((p) => p.vehicle === vehicle);
+  try {
+    const response = await fetch(`${TRACKING_SERVICE_URL}/api/tracking/parts-requests/vehicle/${encodeURIComponent(vehicle)}`);
+    
+    if (!response.ok) {
+      return [];
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching parts requests:', error);
+    return [];
+  }
 }
 
 // Create new task from customer request (modification or new service)
@@ -225,18 +366,53 @@ export async function createTaskFromRequest(
   assigneeId: string,
   modificationRequestId?: string
 ): Promise<WorkTask> {
-  await new Promise((r) => setTimeout(r, 150));
-  const newTask: WorkTask = {
-    id: `task-${Date.now()}`,
-    serviceId: `SVC-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`,
-    vehicle,
-    customer,
-    serviceType,
-    assigneeId,
-    status: "pending",
-    progressStep: 1,
-    time: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
-  };
-  TASKS.push(newTask);
-  return newTask;
+  try {
+    const taskData = {
+      serviceId: modificationRequestId ? `MOD-${modificationRequestId}` : `SVC-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`,
+      vehicle,
+      customer,
+      serviceType,
+      assigneeId,
+      notes: modificationRequestId ? `Created from modification request #${modificationRequestId}` : undefined,
+    };
+    
+    const response = await fetch(`${TRACKING_SERVICE_URL}/api/tracking/tasks`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(taskData),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to create task: ${response.statusText}`);
+    }
+    
+    const task = await response.json();
+    
+    return {
+      id: task.id,
+      taskId: task.taskId,
+      serviceId: task.serviceId,
+      vehicle: task.vehicle,
+      customer: task.customer,
+      serviceType: task.serviceType,
+      assigneeId: task.assigneeId,
+      status: task.status.replace('_', '-') as "pending" | "in-progress" | "completed",
+      progressStep: task.progressStep || 1,
+      notes: task.notes,
+      time: task.updatedAt ? new Date(task.updatedAt).toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit' 
+      }) : new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      estimatedDuration: task.estimatedDuration,
+      actualDuration: task.actualDuration,
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
+      completedAt: task.completedAt,
+    };
+  } catch (error) {
+    console.error('Error creating task from request:', error);
+    throw error;
+  }
 }

@@ -174,16 +174,10 @@ export default function ServiceModification() {
       type: newRequest.type,
       title: newRequest.title,
       description: newRequest.description,
-<<<<<<< HEAD:src/app/modification/page.tsx
-      priority: newRequest.priority,
-      estimatedCost: newRequest.estimatedCost,
-      estimatedDuration: newRequest.estimatedDuration,
-=======
       // Customers shouldn't set priority/cost/duration — default these for staff to update
       
       estimatedCost: 0,
       estimatedDuration: 0,
->>>>>>> origin/development:src/app/customer/modification/page.tsx
       status: 'pending',
       requestedBy: user?.displayName || 'Customer',
       requestedAt: new Date().toLocaleString()
@@ -426,15 +420,9 @@ export default function ServiceModification() {
                           <p className="text-sm text-muted-foreground">{request.description}</p>
                         </div>
                         <div className="flex items-center gap-2">
-<<<<<<< HEAD:src/app/modification/page.tsx
-                          <span className={`px-2 py-1 text-xs rounded-full ${getPriorityColor(request.priority)}`}>
-                            {request.priority.toUpperCase()}
-                          </span>
-=======
                           {request.status === 'pending' ? (
                             <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-600">PENDING</span>
                           ) : null}
->>>>>>> origin/development:src/app/customer/modification/page.tsx
                           <span className={`px-3 py-1 text-sm rounded-full ${getStatusColor(request.status)}`}>
                             {getStatusIcon(request.status)}
                             {request.status.toUpperCase()}
@@ -444,13 +432,6 @@ export default function ServiceModification() {
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                         <div>
-<<<<<<< HEAD:src/app/modification/page.tsx
-                          <p className="text-sm text-muted-foreground">Estimated Cost</p>
-                          <p className="font-semibold">LKR {request.estimatedCost.toLocaleString()}</p>
-                        </div>
-                        <div>
-=======
->>>>>>> origin/development:src/app/customer/modification/page.tsx
                           <p className="text-sm text-muted-foreground">Duration</p>
                           <p className="font-semibold">{request.estimatedDuration} minutes</p>
                         </div>
@@ -533,46 +514,6 @@ export default function ServiceModification() {
                   </div>
                 </div>
               </motion.div>
-
-<<<<<<< HEAD:src/app/modification/page.tsx
-              {/* Quick Actions */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="bg-white rounded-lg shadow-lg p-6"
-              >
-                <h3 className="text-lg font-bold font-heading text-foreground mb-4">Quick Actions</h3>
-                
-                <div className="space-y-3">
-                  <button
-                    onClick={() => setShowNewRequest(true)}
-                    className="w-full flex items-center gap-3 p-3 border border-primary text-primary rounded-lg hover:bg-primary/5 transition-colors"
-                  >
-                    <Plus className="h-5 w-5" />
-                    <span>Add Service</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => router.push('/progress')}
-                    className="w-full flex items-center gap-3 p-3 border border-gray-300 text-foreground rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <Clock className="h-5 w-5" />
-                    <span>View Progress</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => router.push('/appointment')}
-                    className="w-full flex items-center gap-3 p-3 border border-gray-300 text-foreground rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <Calendar className="h-5 w-5" />
-                    <span>Book New Service</span>
-                  </button>
-                </div>
-              </motion.div>
-=======
-              
->>>>>>> origin/development:src/app/customer/modification/page.tsx
 
               {/* Service Summary */}
               <motion.div
