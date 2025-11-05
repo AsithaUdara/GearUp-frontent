@@ -1,35 +1,47 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import AssignForm from "./AssignForm";
 
-export interface Employee {
-  id: number;
-  name: string;
-}
+import React, { useEffect, useState, useCallback } from "react";
+import { Appointment } from "@/app/admin/appointment/page"; // Import Appointment interface
+import { toast } from "sonner";
+import AssignedAppointmentTable from "./AssignedAppointmentTable"; // Import the new table component
 
-export interface AssignedApp {
-  id: number;
-  customerName: string;
-  serviceType: string;
-}
+export default function AssignedAppointmentsPage() {
+  const [assignedAppointments, setAssignedAppointments] = useState<Appointment[]>([]
+  );
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-export default function AssignPage() {
-  const [appointments, setAppointments] = useState<AssignedApp[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-
-  useEffect(() => {
-    fetch("/api/appointments?status=approved")
-      .then((res) => res.json())
-      .then(setAppointments);
-    fetch("/api/employees/available")
-      .then((res) => res.json())
-      .then(setEmployees);
+  const fetchAssignedAppointments = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch("/api/assigned-appointments");
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      const data: Appointment[] = await res.json();
+      setAssignedAppointments(data);
+    } catch (e: any) {
+      setError(e.message);
+      toast.error("Failed to fetch assigned appointments.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    fetchAssignedAppointments();
+  }, [fetchAssignedAppointments]);
+
   return (
-    <div className="flex justify-center">
-      {/* <h1 className="text-2xl font-bold mb-6">Assign Employees</h1> */}
-      <AssignForm appointments={appointments} employees={employees} />
+    <div className="container mx-auto py-10">
+      <h1 className="text-2xl font-bold mb-6">Assigned Appointments</h1>
+      <AssignedAppointmentTable
+        appointments={assignedAppointments}
+        loading={loading}
+        error={error}
+        refreshAppointments={fetchAssignedAppointments} // Pass the refresh function
+      />
     </div>
   );
 }
