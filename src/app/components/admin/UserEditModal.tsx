@@ -4,16 +4,19 @@ import { X, ChevronDown } from "lucide-react";
 import type { User } from '@/app/admin/users/page';
 import { useEffect, useState, Fragment } from "react";
 import { Listbox, Transition } from '@headlessui/react';
+import { useAdminUsers } from '@/hooks/useAdminUsers';
 
 type Props = { 
   isOpen: boolean; 
   onClose: () => void;
   user: User | null;
+  onSuccess?: () => void;
 };
 
 const roles: Array<'Employee' | 'Admin'> = ['Employee', 'Admin'];
 
-export default function UserEditModal({ isOpen, onClose, user }: Props) {
+export default function UserEditModal({ isOpen, onClose, user, onSuccess }: Props) {
+  const { updateUser, createEmployee, loading, error } = useAdminUsers();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'Employee' | 'Admin' | 'Customer'>('Employee');
@@ -29,10 +32,34 @@ export default function UserEditModal({ isOpen, onClose, user }: Props) {
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log({ id: user?.id, name, email, role, status });
-    onClose();
+    
+    try {
+      if (user) {
+        // Update existing user
+        await updateUser(user.id, { 
+          role: role.toUpperCase() as 'ADMIN' | 'EMPLOYEE' | 'CUSTOMER',
+          status 
+        });
+        alert('User updated successfully!');
+      } else {
+        // Create new employee
+        await createEmployee({
+          email,
+          name,
+          role: role.toUpperCase() as 'ADMIN' | 'EMPLOYEE',
+          phoneNumber: undefined
+        });
+        alert('Employee created successfully!');
+      }
+      
+      if (onSuccess) onSuccess();
+      onClose();
+    } catch (err) {
+      console.error('Failed to save user:', err);
+      alert(`Error: ${error || 'Failed to save user'}`);
+    }
   };
 
   return (
