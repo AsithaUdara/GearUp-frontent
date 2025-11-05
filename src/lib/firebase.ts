@@ -1,7 +1,6 @@
 // src/lib/firebase.ts
-// Mock Firebase configuration until real Firebase is set up
-// import { initializeApp, getApps, getApp } from 'firebase/app';
-// import { getAuth } from 'firebase/auth';
+import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
+import { getAuth, type Auth } from 'firebase/auth';
 
 // IMPORTANT: For client bundles, Next.js only inlines env vars when referenced statically
 // as process.env.NEXT_PUBLIC_*. Dynamic indexing like process.env[name] will be undefined
@@ -18,8 +17,8 @@ function reqPublic(v: string | undefined, name: string): string {
 // fail fast if variables are missing when they actually run in the browser.
 const isBrowser = typeof window !== 'undefined';
 
-let app: ReturnType<typeof initializeApp> | undefined;
-let authInstance: ReturnType<typeof getAuth> | undefined;
+let app: FirebaseApp | undefined;
+let authInstance: Auth | undefined;
 
 if (isBrowser) {
   // Statically reference each env var so Next can inline them in the client build.

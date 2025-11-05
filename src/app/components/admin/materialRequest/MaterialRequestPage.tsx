@@ -177,7 +177,7 @@ export default function MaterialRequestPage() {
   }
 
   return (
-    <div className="w-full pl-4 pr-4 sm:pl-6 sm:pr-6 lg:pl-64 lg:pr-8 xl:pr-10 2xl:pr-12 pt-4 sm:pt-6 flex flex-col min-h-screen">
+    <div className="w-full flex flex-col min-h-screen">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Material Request Management</h1>

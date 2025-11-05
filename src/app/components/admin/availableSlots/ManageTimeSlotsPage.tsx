@@ -292,7 +292,7 @@ export default function ManageTimeSlotsPage() {
   const todayKey = ymd(new Date());
 
   return (
-    <div className="w-full pl-4 pr-4 sm:pl-6 sm:pr-6 lg:pl-64 lg:pr-8 xl:pr-10 2xl:pr-12 pt-4 sm:pt-6 flex flex-col min-h-screen">
+    <div className="w-full flex flex-col min-h-screen">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

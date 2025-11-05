@@ -1,15 +1,14 @@
-import { TrendingUp, Users, Wrench, DollarSign } from 'lucide-react';
+import { TrendingUp, Users, Wrench } from 'lucide-react';
 
 export default function KpiCards() {
   const items = [
-    { id: 'rev', label: 'Revenue (30d)', value: '$124,500', delta: '+8.2%', icon: DollarSign, accent: 'text-emerald-600' },
     { id: 'appt', label: 'Appointments', value: '342', delta: '+3.1%', icon: Wrench, accent: 'text-red-600' },
     { id: 'cust', label: 'New Customers', value: '97', delta: '+5.5%', icon: Users, accent: 'text-blue-600' },
     { id: 'growth', label: 'Growth', value: '12.4%', delta: <span className="text-emerald-700">▲</span>, icon: TrendingUp, accent: 'text-emerald-600' },
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
       {items.map(({ id, label, value, delta, icon: Icon, accent }) => (
         <div key={id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md hover:-translate-y-0.5">
           <div className="flex items-center justify-between">

@@ -1,7 +1,7 @@
 // app/components/admin/AdminSidebar.tsx
 'use client';
 
-import { LayoutDashboard, Calendar, Users, Wrench, LogOut, Star } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, Wrench, LogOut, Star, Clock, Package, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { clsx } from 'clsx';
@@ -14,6 +14,9 @@ const navLinks = [
   { href: '/admin/appointments', label: 'Appointments', icon: Calendar },
   { href: '/admin/users', label: 'User Management', icon: Users },
   { href: '/admin/services', label: 'Service Templates', icon: Wrench },
+  { href: '/admin/available-slots', label: 'Available Slots', icon: Clock },
+  { href: '/admin/material-request', label: 'Material Request', icon: Package },
+  { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/admin/feedback', label: 'Feedback', icon: Star },
 ];
 
@@ -40,7 +43,7 @@ export default function AdminSidebar() {
                 href={link.href} 
                 className={clsx(
                   "flex items-center gap-3 rounded-md px-3 py-2.5 font-body text-sm font-medium transition-colors",
-                  pathname === link.href
+                  pathname === link.href || pathname?.startsWith(link.href + '/')
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:bg-gray-100"
                 )}
