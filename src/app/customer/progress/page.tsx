@@ -12,6 +12,7 @@ import {
   MapPin,
   Calendar,
   Timer,
+  FileText,
   Camera,
   MessageSquare,
   RefreshCw
@@ -39,14 +40,12 @@ interface ServiceStep {
 
 interface ServiceDocument {
   id: string;
-  type: 'part' | 'labor' | 'additional';
+  type: 'photo' | 'document' | 'note';
   name: string;
-  quantity: number;
-  unitPrice: number;
-  description: string;
-  status: 'pending' | 'approved' | 'rejected';
-  addedBy: string;
-  addedAt: string;
+  url: string;
+  uploadedBy: string;
+  uploadedAt: string;
+  description?: string;
 }
 
 interface ServiceMessage {
@@ -58,6 +57,25 @@ interface ServiceMessage {
   isRead: boolean;
 }
 
+interface PaymentInfo {
+  status: 'pending' | 'paid' | 'failed' | 'refunded';
+  amount: number;
+  currency: string;
+  paymentMethod: string;
+  transactionId: string;
+  paidAt?: string;
+  receiptUrl?: string;
+}
+
+interface ServiceRecommendation {
+  id: string;
+  title: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high';
+  estimatedCost: number;
+  estimatedDuration: number;
+  basedOnHistory: boolean;
+}
 
 interface ServiceProgress {
   id: string;
@@ -87,6 +105,8 @@ interface ServiceProgress {
   lastUpdate: string;
   documents: ServiceDocument[];
   messages: ServiceMessage[];
+  payment: PaymentInfo;
+  recommendations: ServiceRecommendation[];
   serviceHistory: {
     id: string;
     serviceName: string;
@@ -182,47 +202,21 @@ const mockServiceProgress: ServiceProgress = {
   documents: [
     {
       id: '1',
-      type: 'part',
-      name: 'Oil Filter',
-      quantity: 1,
-      unitPrice: 2500,
-      description: 'Premium oil filter replacement',
-      status: 'approved',
-      addedBy: 'Mike Johnson',
-      addedAt: '2024-01-15 10:05 AM'
+      type: 'photo',
+      name: 'Before Service - Engine Bay',
+      url: '/service-photos/engine-before.jpg',
+      uploadedBy: 'Mike Johnson',
+      uploadedAt: '2024-01-15 10:05 AM',
+      description: 'Engine bay condition before service'
     },
     {
       id: '2',
-      type: 'part',
-      name: 'Engine Oil (4L)',
-      quantity: 1,
-      unitPrice: 12500,
-      description: 'Synthetic engine oil',
-      status: 'approved',
-      addedBy: 'Mike Johnson',
-      addedAt: '2024-01-15 10:05 AM'
-    },
-    {
-      id: '3',
-      type: 'labor',
-      name: 'Oil Change Service',
-      quantity: 1,
-      unitPrice: 5000,
-      description: 'Labor charge for oil change service',
-      status: 'approved',
-      addedBy: 'Mike Johnson',
-      addedAt: '2024-01-15 10:05 AM'
-    },
-    {
-      id: '4',
-      type: 'additional',
-      name: 'Brake Pad Set',
-      quantity: 1,
-      unitPrice: 8500,
-      description: 'Front brake pad replacement (recommended)',
-      status: 'pending',
-      addedBy: 'Sarah Wilson',
-      addedAt: '2024-01-15 10:35 AM'
+      type: 'document',
+      name: 'Service Checklist',
+      url: '/documents/service-checklist.pdf',
+      uploadedBy: 'Mike Johnson',
+      uploadedAt: '2024-01-15 10:12 AM',
+      description: 'Completed service checklist'
     }
   ],
   messages: [
@@ -249,6 +243,35 @@ const mockServiceProgress: ServiceProgress = {
       timestamp: '2024-01-15 10:40 AM',
       senderName: 'Sarah Wilson',
       isRead: false
+    }
+  ],
+  payment: {
+    status: 'paid',
+    amount: 45000,
+    currency: 'LKR',
+    paymentMethod: 'Credit Card',
+    transactionId: 'TXN-2024-001',
+    paidAt: '2024-01-15 09:45 AM',
+    receiptUrl: '/receipts/SRV-2024-001.pdf'
+  },
+  recommendations: [
+    {
+      id: '1',
+      title: 'Brake Pad Replacement',
+      description: 'Your brake pads are at 20% wear. We recommend replacement for safety.',
+      priority: 'high',
+      estimatedCost: 8500,
+      estimatedDuration: 30,
+      basedOnHistory: true
+    },
+    {
+      id: '2',
+      title: 'Air Filter Replacement',
+      description: 'Air filter is dirty and affecting engine performance.',
+      priority: 'medium',
+      estimatedCost: 2500,
+      estimatedDuration: 15,
+      basedOnHistory: false
     }
   ],
   serviceHistory: [
@@ -282,10 +305,35 @@ export default function ServiceProgress() {
   const [serviceProgress, setServiceProgress] = useState<ServiceProgress>(mockServiceProgress);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showMessages, setShowMessages] = useState(false);
+  const [showDocuments, setShowDocuments] = useState(false);
+  const [showRecommendations, setShowRecommendations] = useState(false);
   const [showServiceHistory, setShowServiceHistory] = useState(false);
   const [newMessage, setNewMessage] = useState('');
+<<<<<<< HEAD:src/app/progress/page.tsx
+  const [notifications, setNotifications] = useState([
+    {
+      id: '1',
+      message: 'Vehicle inspection completed successfully',
+      time: '10:12 AM',
+      type: 'success'
+    },
+    {
+      id: '2',
+      message: 'Oil change completed, moving to brake service',
+      time: '10:33 AM',
+      type: 'info'
+    },
+    {
+      id: '3',
+      message: 'Brake service in progress - estimated completion in 30 minutes',
+      time: '10:35 AM',
+      type: 'info'
+    }
+  ]);
+=======
   // Add floating chat toggle button at bottom right
   const [chatOpen, setChatOpen] = useState(false);
+>>>>>>> origin/development:src/app/customer/progress/page.tsx
 
   useEffect(() => {
     if (!loading && !user) {
@@ -597,6 +645,49 @@ export default function ServiceProgress() {
                 </div>
               </motion.div>
 
+<<<<<<< HEAD:src/app/progress/page.tsx
+              {/* Notifications */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="bg-white rounded-lg shadow-lg p-6"
+              >
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-bold font-heading text-foreground">Live Updates</h3>
+                  <button
+                    onClick={() => setShowNotifications(!showNotifications)}
+                    className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                  >
+                    <Bell className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {notifications.map((notification) => (
+                    <div key={notification.id} className="p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <div className={`p-1 rounded-full ${
+                          notification.type === 'success' ? 'bg-green-100' : 'bg-blue-100'
+                        }`}>
+                          {notification.type === 'success' ? (
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <MessageSquare className="h-4 w-4 text-blue-600" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-foreground">{notification.message}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{notification.time}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+
+=======
+>>>>>>> origin/development:src/app/customer/progress/page.tsx
               {/* Service Details */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -619,6 +710,8 @@ export default function ServiceProgress() {
                     <span className="text-muted-foreground">Last Update:</span>
                     <span className="font-semibold">{serviceProgress.lastUpdate}</span>
                   </div>
+<<<<<<< HEAD:src/app/progress/page.tsx
+=======
                   <div className="pt-3 border-t border-gray-200">
                     <button
                       onClick={() => router.push('/customer/modification')}
@@ -628,17 +721,97 @@ export default function ServiceProgress() {
                       Request Modifications
                     </button>
                   </div>
+>>>>>>> origin/development:src/app/customer/progress/page.tsx
                 </div>
               </motion.div>
 
-
+              {/* Payment Status */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="bg-white rounded-lg shadow-lg p-6"
+              >
+                <h3 className="text-lg font-bold font-heading text-foreground mb-4">Payment Status</h3>
+                
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Status:</span>
+                    <span className={`font-semibold ${
+                      serviceProgress.payment.status === 'paid' ? 'text-green-600' : 
+                      serviceProgress.payment.status === 'pending' ? 'text-yellow-600' : 'text-red-600'
+                    }`}>
+                      {serviceProgress.payment.status.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Amount:</span>
+                    <span className="font-semibold">{serviceProgress.payment.currency} {serviceProgress.payment.amount.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Method:</span>
+                    <span className="font-semibold">{serviceProgress.payment.paymentMethod}</span>
+                  </div>
+                  {serviceProgress.payment.receiptUrl && (
+                    <button className="w-full mt-3 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                      Download Receipt
+                    </button>
+                  )}
+                </div>
+              </motion.div>
             </div>
           </div>
 
           {/* Additional Features Section */}
-          <div className="grid grid-cols-1 gap-8 mt-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+            {/* Service Documentation */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
+              className="bg-white rounded-lg shadow-lg p-8"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold font-heading text-foreground">Service Documentation</h3>
+                <button
+                  onClick={() => setShowDocuments(!showDocuments)}
+                  className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                >
+                  <FileText className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {serviceProgress.documents.map((doc) => (
+                  <div key={doc.id} className="p-4 border border-gray-200 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-primary/10 rounded-lg">
+                        {doc.type === 'photo' ? <Camera className="h-5 w-5 text-primary" /> : <FileText className="h-5 w-5 text-primary" />}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-foreground">{doc.name}</h4>
+                        <p className="text-sm text-muted-foreground">{doc.description}</p>
+                        <p className="text-xs text-muted-foreground">Uploaded by {doc.uploadedBy} at {doc.uploadedAt}</p>
+                      </div>
+                      <button className="px-3 py-1 bg-primary text-white text-sm rounded hover:bg-primary/90 transition-colors">
+                        View
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
 
             {/* Customer Communication */}
+<<<<<<< HEAD:src/app/progress/page.tsx
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+              className="bg-white rounded-lg shadow-lg p-8"
+            >
+              <div className="flex justify-between items-center mb-6">
+=======
             {/* The always-visible Messages card is removed as per request. */}
 
           </div>
@@ -702,6 +875,7 @@ export default function ServiceProgress() {
           >
             <div className="bg-white rounded-lg shadow-xl p-6 flex flex-col h-96 border border-gray-200">
               <div className="flex justify-between items-center mb-4">
+>>>>>>> origin/development:src/app/customer/progress/page.tsx
                 <h3 className="text-xl font-bold font-heading text-foreground">Messages</h3>
                 <button
                   onClick={() => setChatOpen(false)}
@@ -712,7 +886,7 @@ export default function ServiceProgress() {
                 </button>
               </div>
 
-              <div className="flex-1 space-y-4 overflow-y-auto mb-4">
+              <div className="space-y-4 max-h-80 overflow-y-auto">
                 {serviceProgress.messages.map((message) => (
                   <div key={message.id} className={`p-4 rounded-lg ${
                     message.sender === 'customer' ? 'bg-blue-50 ml-8' : 
@@ -730,7 +904,7 @@ export default function ServiceProgress() {
                 ))}
               </div>
 
-              <div className="mt-auto flex gap-2">
+              <div className="mt-4 flex gap-2">
                 <input
                   type="text"
                   value={newMessage}
@@ -742,6 +916,92 @@ export default function ServiceProgress() {
                   Send
                 </button>
               </div>
+<<<<<<< HEAD:src/app/progress/page.tsx
+            </motion.div>
+          </div>
+
+          {/* Service Recommendations */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.9 }}
+            className="bg-white rounded-lg shadow-lg p-8 mt-8"
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold font-heading text-foreground">Service Recommendations</h3>
+              <button
+                onClick={() => setShowRecommendations(!showRecommendations)}
+                className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+              >
+                <Wrench className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {serviceProgress.recommendations.map((rec) => (
+                <div key={rec.id} className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex justify-between items-start mb-3">
+                    <h4 className="font-semibold text-foreground">{rec.title}</h4>
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      rec.priority === 'high' ? 'bg-red-100 text-red-600' :
+                      rec.priority === 'medium' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'
+                    }`}>
+                      {rec.priority.toUpperCase()}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-3">{rec.description}</p>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{rec.estimatedCost.toLocaleString()} LKR</p>
+                      <p className="text-xs text-muted-foreground">{rec.estimatedDuration} min</p>
+                    </div>
+                    <button className="px-4 py-2 bg-primary text-white text-sm rounded hover:bg-primary/90 transition-colors">
+                      Add to Service
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Service History */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.0 }}
+            className="bg-white rounded-lg shadow-lg p-8 mt-8"
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold font-heading text-foreground">Service History</h3>
+              <button
+                onClick={() => setShowServiceHistory(!showServiceHistory)}
+                className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+              >
+                <Car className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {serviceProgress.serviceHistory.map((history) => (
+                <div key={history.id} className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className="font-semibold text-foreground">{history.serviceName}</h4>
+                      <p className="text-sm text-muted-foreground">{history.date}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-foreground">{history.cost.toLocaleString()} LKR</p>
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        history.status === 'completed' ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'
+                      }`}>
+                        {history.status.toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+=======
+>>>>>>> origin/development:src/app/customer/progress/page.tsx
             </div>
           </motion.div>
         )}
