@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 
 export default function UpcomingAppointmentsCard({ max = 3 }: { max?: number }) {
   const router = useRouter();
-  const appointments = useSyncExternalStore(subscribe, getAppointments) ?? [];
+  // include getServerSnapshot (third arg) so server-rendered pages have a stable snapshot
+  const appointments = useSyncExternalStore(subscribe, getAppointments, getAppointments) ?? [];
   const [loadingIds, setLoadingIds] = useState<string[]>([]);
 
   const upcoming = appointments.filter((a: any) => !a.past).slice(0, max);
