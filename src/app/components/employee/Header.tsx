@@ -6,6 +6,7 @@ import { Bell, Search } from "lucide-react";
 
 export default function Header() {
   const pathname = usePathname();
+
   const title =
     pathname === "/employee"
       ? "Welcome, Employee!"
@@ -13,6 +14,10 @@ export default function Header() {
       ? "Schedule"
       : pathname.startsWith("/employee/log-hours")
       ? "Log Hours"
+      : pathname.startsWith("/employee/service-progress")
+      ? "Service Progress"
+      : pathname.startsWith("/employee/communication")
+      ? "Communication"
       : pathname.startsWith("/employee/parts-request")
       ? "Parts & Materials Request"
       : pathname.startsWith("/employee/tasks")

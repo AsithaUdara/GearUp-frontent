@@ -1,4 +1,9 @@
+"use client";
+import { useRouter } from "next/navigation";
+
 export default function ServiceProgressCard() {
+  const router = useRouter();
+
   const services = [
     { id: 1, title: "Oil Change - Toyota Camry", progress: 65 },
     { id: 2, title: "Brake Inspection - Honda Civic", progress: 100 },
@@ -16,7 +21,15 @@ export default function ServiceProgressCard() {
           <div key={s.id}>
             <div className="flex items-center justify-between">
               <div className="text-sm font-medium">{s.title}</div>
-              <div className="text-xs text-gray-500">{s.progress}%</div>
+              <div className="flex items-center gap-3">
+                <div className="text-xs text-gray-500">{s.progress}%</div>
+                <button
+                  onClick={() => router.push(`/employee/service-progress?serviceId=${s.id}`)}
+                  className="text-xs rounded-md border border-transparent px-3 py-1 text-red-600 hover:bg-red-50"
+                >
+                  View
+                </button>
+              </div>
             </div>
             <div className="mt-2 h-2 w-full rounded-full bg-gray-100">
               <div className="h-2 rounded-full bg-red-600" style={{ width: `${s.progress}%` }} />

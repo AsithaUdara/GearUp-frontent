@@ -1,3 +1,5 @@
+"use client";
+
 type Props = {
   onOpenSetAvailability?: () => void;
 };
@@ -19,7 +21,7 @@ export default function AvailabilityPanel({ onOpenSetAvailability }: Props) {
         <div className="text-lg font-semibold">Your Availability</div>
         {onOpenSetAvailability && (
           <button onClick={onOpenSetAvailability} className="rounded-md border border-gray-200 bg-white px-3 py-1 text-xs font-medium hover:bg-gray-50">
-            Set Availability
+            Manage Availability
           </button>
         )}
       </div>
@@ -37,7 +39,7 @@ export default function AvailabilityPanel({ onOpenSetAvailability }: Props) {
           </div>
         ))}
       </div>
-      <button className="mt-4 w-full rounded-md bg-red-600 py-2 text-xs font-medium text-white hover:bg-red-700">Save Changes</button>
+      <button className="mt-4 w-full rounded-md bg-red-600 py-2 text-xs font-medium text-white hover:bg-red-700">Save Availability</button>
     </div>
   );
 }

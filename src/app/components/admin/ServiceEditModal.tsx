@@ -1,0 +1,75 @@
+// app/components/admin/ServiceEditModal.tsx
+'use client';
+import { X } from "lucide-react";
+import type { ServiceTemplate } from '@/app/admin/services/page';
+import { useEffect, useState } from "react";
+
+type Props = { 
+  isOpen: boolean; 
+  onClose: () => void;
+  template: ServiceTemplate | null;
+};
+
+export default function ServiceEditModal({ isOpen, onClose, template }: Props) {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    if (template) {
+      setName(template.name);
+      setDescription(template.description);
+      setPrice(template.price);
+      setDuration(template.duration);
+    } else {
+      setName('');
+      setDescription('');
+      setPrice(0);
+      setDuration(0);
+    }
+  }, [template, isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log({ id: template?.id, name, description, price, duration });
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl" role="dialog" aria-modal="true">
+        <div className="flex items-center justify-between border-b px-6 py-4">
+          <h2 className="font-heading text-xl font-bold">{template ? 'Edit Service Template' : 'Add New Service Template'}</h2>
+          <button onClick={onClose} className="rounded-full p-1 hover:bg-gray-100"><X className="h-5 w-5" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-6 p-6">
+          <div>
+            <label className="text-sm font-medium">Service Name</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Description</label>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium">Price (LKR)</label>
+              <input type="number" value={price} onChange={(e) => setPrice(Number(e.target.value))} className="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Duration (minutes)</label>
+              <input type="number" value={duration} onChange={(e) => setDuration(Number(e.target.value))} className="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 pt-4">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium rounded-md bg-gray-100 hover:bg-gray-200">Cancel</button>
+            <button type="submit" className="px-4 py-2 text-sm font-medium rounded-md bg-primary text-white hover:brightness-110">Save Template</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

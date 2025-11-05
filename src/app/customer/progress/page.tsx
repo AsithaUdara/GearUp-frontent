@@ -14,8 +14,7 @@ import {
   Timer,
   Camera,
   MessageSquare,
-  RefreshCw,
-  Bell
+  RefreshCw
 } from 'lucide-react';
 import Header from '@/app/components/landing/Header';
 import Footer from '@/app/components/landing/Footer';
@@ -282,41 +281,11 @@ export default function ServiceProgress() {
   const router = useRouter();
   const [serviceProgress, setServiceProgress] = useState<ServiceProgress>(mockServiceProgress);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [showMessages, setShowMessages] = useState(false);
   const [showServiceHistory, setShowServiceHistory] = useState(false);
   const [newMessage, setNewMessage] = useState('');
-  interface Notification {
-    id: string;
-    message: string;
-    time: string;
-    type: 'success' | 'info';
-    isRead: boolean;
-  }
-
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      message: 'Vehicle inspection completed successfully',
-      time: '10:12 AM',
-      type: 'success',
-      isRead: true
-    },
-    {
-      id: '2',
-      message: 'Oil change completed, moving to brake service',
-      time: '10:33 AM',
-      type: 'info',
-      isRead: true
-    },
-    {
-      id: '3',
-      message: 'Brake service completed - all brake components in good condition',
-      time: '10:35 AM',
-      type: 'success',
-      isRead: false
-    }
-  ]);
+  // Add floating chat toggle button at bottom right
+  const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -329,20 +298,6 @@ export default function ServiceProgress() {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
     setIsRefreshing(false);
-  };
-
-  const markNotificationAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(notification => 
-        notification.id === id ? { ...notification, isRead: true } : notification
-      )
-    );
-  };
-
-  const markAllNotificationsAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notification => ({ ...notification, isRead: true }))
-    );
   };
 
   const getStatusColor = (status: string) => {
@@ -398,7 +353,7 @@ export default function ServiceProgress() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onLoginClick={() => {}} />
+      <Header onLoginClick={() => {}} showDefaultActions={false} preserveActionSpace={true} />
       
       <div className="pt-24 pb-16">
         <div className="container mx-auto px-6">
@@ -642,76 +597,6 @@ export default function ServiceProgress() {
                 </div>
               </motion.div>
 
-              {/* Notifications */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="bg-white rounded-lg shadow-lg p-6"
-              >
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-bold font-heading text-foreground">Service Notifications</h3>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">{notifications.filter(n => !n.isRead).length} new</span>
-                    <button
-                      onClick={() => setShowNotifications(!showNotifications)}
-                      className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors relative"
-                    >
-                      <Bell className="h-5 w-5" />
-                      {notifications.filter(n => !n.isRead).length > 0 && (
-                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                          {notifications.filter(n => !n.isRead).length}
-                        </span>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">
-                      {notifications.filter(n => !n.isRead).length} unread notifications
-                    </span>
-                    {notifications.filter(n => !n.isRead).length > 0 && (
-                      <button
-                        onClick={markAllNotificationsAsRead}
-                        className="text-sm text-primary hover:underline"
-                      >
-                        Mark all as read
-                      </button>
-                    )}
-                  </div>
-                  {notifications.map((notification) => (
-                    <div 
-                      key={notification.id} 
-                      className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                        notification.isRead ? 'bg-gray-50' : 'bg-blue-50'
-                      }`}
-                      onClick={() => markNotificationAsRead(notification.id)}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={`p-1 rounded-full ${
-                          notification.type === 'success' ? 'bg-green-100' : 'bg-blue-100'
-                        }`}>
-                          {notification.type === 'success' ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <Bell className="h-4 w-4 text-blue-600" />
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm text-foreground">{notification.message}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{notification.time}</p>
-                        </div>
-                        {!notification.isRead && (
-                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-
               {/* Service Details */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -736,7 +621,7 @@ export default function ServiceProgress() {
                   </div>
                   <div className="pt-3 border-t border-gray-200">
                     <button
-                      onClick={() => router.push('/modification')}
+                      onClick={() => router.push('/customer/modification')}
                       className="w-full flex items-center justify-center gap-2 p-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors"
                     >
                       <Wrench className="h-5 w-5" />
@@ -754,19 +639,76 @@ export default function ServiceProgress() {
           <div className="grid grid-cols-1 gap-8 mt-8">
 
             {/* Customer Communication */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
-              className="bg-white rounded-lg shadow-lg p-8 flex flex-col h-96"
-            >
+            {/* The always-visible Messages card is removed as per request. */}
+
+          </div>
+
+          {/* Service History */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.0 }}
+            className="bg-white rounded-lg shadow-lg p-8 mt-8"
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold font-heading text-foreground">Service History</h3>
+              <button
+                onClick={() => setShowServiceHistory(!showServiceHistory)}
+                className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+              >
+                <Car className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Show each service history as: service name, date, vehicle model, and vehicle year. */}
+              {serviceProgress.serviceHistory.map((history) => (
+                <div key={history.id} className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex flex-col md:flex-row md:justify-between md:items-center">
+                    <div>
+                      <h4 className="font-semibold text-foreground">{history.serviceName}</h4>
+                      <p className="text-sm text-muted-foreground">{history.date}</p>
+                    </div>
+                    <div className="mt-2 md:mt-0">
+                      <span className="text-sm text-foreground">{serviceProgress.vehicleModel} {serviceProgress.vehicleYear}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+      </div>
+      
+      {/* Floating Chat Icon */}
+      <button
+        onClick={() => setChatOpen(true)}
+        style={{ position: 'fixed', bottom: '2rem', right: '2rem', zIndex: 50 }}
+        className="shadow-lg rounded-full bg-primary text-white p-4 hover:bg-primary/90 transition-colors flex items-center justify-center"
+        aria-label="Open Chat"
+      >
+        <MessageSquare className="h-7 w-7" />
+      </button>
+
+      {/* Chat Modal Popup */}
+      <AnimatePresence>
+        {chatOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
+            className="fixed bottom-24 right-8 z-50 w-full max-w-md"
+            style={{ maxWidth: '360px' }}
+          >
+            <div className="bg-white rounded-lg shadow-xl p-6 flex flex-col h-96 border border-gray-200">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold font-heading text-foreground">Messages</h3>
                 <button
-                  onClick={() => setShowMessages(!showMessages)}
+                  onClick={() => setChatOpen(false)}
                   className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
                 >
-                  <MessageSquare className="h-5 w-5" />
+                  <span className="sr-only">Close Chat</span>
+                  ×
                 </button>
               </div>
 
@@ -800,50 +742,10 @@ export default function ServiceProgress() {
                   Send
                 </button>
               </div>
-            </motion.div>
-          </div>
-
-          {/* Service History */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.0 }}
-            className="bg-white rounded-lg shadow-lg p-8 mt-8"
-          >
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold font-heading text-foreground">Service History</h3>
-              <button
-                onClick={() => setShowServiceHistory(!showServiceHistory)}
-                className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
-              >
-                <Car className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {serviceProgress.serviceHistory.map((history) => (
-                <div key={history.id} className="p-4 border border-gray-200 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h4 className="font-semibold text-foreground">{history.serviceName}</h4>
-                      <p className="text-sm text-muted-foreground">{history.date}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-foreground">{history.cost.toLocaleString()} LKR</p>
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        history.status === 'completed' ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'
-                      }`}>
-                        {history.status.toUpperCase()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
             </div>
           </motion.div>
-        </div>
-      </div>
-      
+        )}
+      </AnimatePresence>
       <Footer />
     </div>
   );

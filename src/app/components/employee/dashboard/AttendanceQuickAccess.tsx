@@ -5,7 +5,7 @@ export default function AttendanceQuickAccess() {
   const [clockedIn, setClockedIn] = useState(false);
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+  <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm h-full">
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-sm font-semibold">Attendance</h4>
         <span className="text-xs text-gray-500">Today</span>
