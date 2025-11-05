@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { LucideFileText, LucideDownload, LucideCheck, LucideStar } from "lucide-react";
+import { generateBillPDF } from "@/lib/pdfGenerator";
 
 type ServiceItem = {
   id: string;
@@ -42,45 +43,16 @@ export default function ApprovedBills({
   }, []);
 
   const downloadBill = (bill: ApprovedBill) => {
-    const billContent = `
-═══════════════════════════════════════
-          AUTOCARE SERVICE BILL
-═══════════════════════════════════════
-
-Bill ID: ${bill.id}
-Date: ${bill.approvedDate}
-
-CUSTOMER INFORMATION
-───────────────────────────────────────
-Name: ${bill.customerName}
-Email: ${bill.customerEmail}
-Vehicle: ${bill.vehicleInfo}
-
-SERVICE DETAILS
-───────────────────────────────────────
-${bill.services.map(s => `${s.description.padEnd(30)} $${s.price.toFixed(2)}`).join('\n')}
-
-───────────────────────────────────────
-SUBTOTAL:                    $${bill.totalAmount.toFixed(2)}
-TAX (10%):                   $${(bill.totalAmount * 0.1).toFixed(2)}
-───────────────────────────────────────
-TOTAL AMOUNT:                $${(bill.totalAmount * 1.1).toFixed(2)}
-
-═══════════════════════════════════════
-Status: ${bill.status.toUpperCase()}
-Approved on: ${bill.approvedDate}
-
-Thank you for choosing AutoCare!
-═══════════════════════════════════════
-    `.trim();
-
-    const blob = new Blob([billContent], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Bill_${bill.id}_${bill.customerName.replace(/\s+/g, '_')}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    generateBillPDF({
+      id: bill.id,
+      customerName: bill.customerName,
+      customerEmail: bill.customerEmail,
+      vehicleInfo: bill.vehicleInfo,
+      services: bill.services,
+      totalAmount: bill.totalAmount,
+      approvedDate: bill.approvedDate,
+      status: bill.status
+    });
   };
 
   const markAsPaid = (billId: string) => {

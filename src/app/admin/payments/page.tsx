@@ -2,6 +2,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { LucideCreditCard, LucideCheck, LucideX, LucideDollarSign, LucideFileText, LucideDownload } from "lucide-react";
+import { generateBillPDF } from "@/lib/pdfGenerator";
 
 type ServiceItem = {
   id: string;
@@ -23,48 +24,63 @@ type PaymentRequest = {
 };
 
 export default function AdminPaymentsPage() {
-  const [paymentRequests, setPaymentRequests] = React.useState<PaymentRequest[]>(() => {
-    // Load from localStorage or use mock data
+  const [paymentRequests, setPaymentRequests] = React.useState<PaymentRequest[]>([]);
+  const [mounted, setMounted] = React.useState(false);
+
+  // Load data from localStorage only on client side
+  React.useEffect(() => {
+    setMounted(true);
+    
     try {
       const raw = localStorage.getItem('adminPaymentRequests');
-      if (raw) return JSON.parse(raw);
-    } catch (e) {}
-    return [
-      {
-        id: 'pr1',
-        customerName: 'John Doe',
-        email: 'john@example.com',
-        vehicleInfo: 'Toyota Camry 2020 - ABC123',
-        services: [
-          { id: 's1', description: 'Oil Change', price: 50 },
-          { id: 's2', description: 'Tire Service', price: 40 }
-        ],
-        totalAmount: 90,
-        status: 'pending',
-        submittedBy: 'Mike (Technician)',
-        submittedDate: '2025-10-25'
-      },
-      {
-        id: 'pr2',
-        customerName: 'Jane Smith',
-        email: 'jane@example.com',
-        vehicleInfo: 'Honda Civic 2019 - XYZ789',
-        services: [
-          { id: 's3', description: 'Brake Inspection', price: 45 },
-          { id: 's4', description: 'Engine Diagnostic', price: 120 }
-        ],
-        totalAmount: 165,
-        status: 'approved',
-        submittedBy: 'Sarah (Technician)',
-        submittedDate: '2025-10-20',
-        approvedDate: '2025-10-21'
+      if (raw) {
+        setPaymentRequests(JSON.parse(raw));
+      } else {
+        // Set default mock data if nothing in localStorage
+        const defaultData: PaymentRequest[] = [
+          {
+            id: 'pr1',
+            customerName: 'John Doe',
+            email: 'john@example.com',
+            vehicleInfo: 'Toyota Camry 2020 - ABC123',
+            services: [
+              { id: 's1', description: 'Oil Change', price: 50 },
+              { id: 's2', description: 'Tire Service', price: 40 }
+            ],
+            totalAmount: 90,
+            status: 'pending',
+            submittedBy: 'Mike (Technician)',
+            submittedDate: '2025-10-25'
+          },
+          {
+            id: 'pr2',
+            customerName: 'Jane Smith',
+            email: 'jane@example.com',
+            vehicleInfo: 'Honda Civic 2019 - XYZ789',
+            services: [
+              { id: 's3', description: 'Brake Inspection', price: 45 },
+              { id: 's4', description: 'Engine Diagnostic', price: 120 }
+            ],
+            totalAmount: 165,
+            status: 'approved',
+            submittedBy: 'Sarah (Technician)',
+            submittedDate: '2025-10-20',
+            approvedDate: '2025-10-21'
+          }
+        ];
+        setPaymentRequests(defaultData);
+        localStorage.setItem('adminPaymentRequests', JSON.stringify(defaultData));
       }
-    ];
-  });
+    } catch (e) {
+      console.error('Error loading payment requests:', e);
+    }
+  }, []);
 
   React.useEffect(() => {
-    localStorage.setItem('adminPaymentRequests', JSON.stringify(paymentRequests));
-  }, [paymentRequests]);
+    if (mounted && paymentRequests.length > 0) {
+      localStorage.setItem('adminPaymentRequests', JSON.stringify(paymentRequests));
+    }
+  }, [paymentRequests, mounted]);
 
   const approvePayment = (requestId: string) => {
     const request = paymentRequests.find(r => r.id === requestId);
@@ -110,45 +126,17 @@ export default function AdminPaymentsPage() {
   };
 
   const generateBill = (request: PaymentRequest) => {
-    const billContent = `
-═══════════════════════════════════════
-          AUTOCARE SERVICE BILL
-═══════════════════════════════════════
-
-Bill ID: ${request.id}
-Date: ${new Date().toLocaleDateString()}
-
-CUSTOMER INFORMATION
-───────────────────────────────────────
-Name: ${request.customerName}
-Email: ${request.email}
-Vehicle: ${request.vehicleInfo}
-
-SERVICE DETAILS
-───────────────────────────────────────
-${request.services.map(s => `${s.description.padEnd(30)} $${s.price.toFixed(2)}`).join('\n')}
-
-───────────────────────────────────────
-SUBTOTAL:                    $${request.totalAmount.toFixed(2)}
-TAX (10%):                   $${(request.totalAmount * 0.1).toFixed(2)}
-───────────────────────────────────────
-TOTAL AMOUNT:                $${(request.totalAmount * 1.1).toFixed(2)}
-
-═══════════════════════════════════════
-Submitted by: ${request.submittedBy}
-Approved on: ${request.approvedDate || 'N/A'}
-
-Thank you for choosing AutoCare!
-═══════════════════════════════════════
-    `.trim();
-
-    const blob = new Blob([billContent], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Bill_${request.id}_${request.customerName.replace(/\s+/g, '_')}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    generateBillPDF({
+      id: request.id,
+      customerName: request.customerName,
+      customerEmail: request.email,
+      vehicleInfo: request.vehicleInfo,
+      services: request.services,
+      totalAmount: request.totalAmount,
+      approvedDate: request.approvedDate || new Date().toISOString().split('T')[0],
+      status: request.status,
+      submittedBy: request.submittedBy
+    });
   };
 
   const pendingCount = paymentRequests.filter(r => r.status === 'pending').length;
@@ -156,6 +144,26 @@ Thank you for choosing AutoCare!
   const totalRevenue = paymentRequests
     .filter(r => r.status === 'approved')
     .reduce((sum, r) => sum + r.totalAmount, 0);
+
+  // Prevent hydration mismatch by not rendering until mounted
+  if (!mounted) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <h1 className="font-heading text-3xl font-bold text-foreground">Payment Approval</h1>
+        <p className="mt-1 text-muted-foreground">
+          Review and approve payment requests from employees. Generate bills for customers.
+        </p>
+        <div className="mt-8 text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <p className="mt-4 text-muted-foreground">Loading payment requests...</p>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
