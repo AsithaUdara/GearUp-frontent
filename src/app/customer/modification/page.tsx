@@ -37,7 +37,7 @@ interface ModificationRequest {
   type: 'add_service' | 'remove_service' | 'change_service' | 'urgent_repair';
   title: string;
   description: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  
   estimatedCost: number;
   estimatedDuration: number;
   status: 'pending' | 'approved' | 'rejected' | 'in_progress' | 'completed';
@@ -112,7 +112,7 @@ const mockServiceModification: ServiceModification = {
       type: 'add_service',
       title: 'Brake Pad Replacement',
       description: 'Customer requested brake pad replacement after inspection revealed 20% wear',
-      priority: 'high',
+      
       estimatedCost: 8500,
       estimatedDuration: 45,
       status: 'approved',
@@ -129,7 +129,7 @@ const mockServiceModification: ServiceModification = {
       type: 'add_service',
       title: 'Air Filter Replacement',
       description: 'Air filter is dirty and affecting engine performance',
-      priority: 'medium',
+      
       estimatedCost: 2500,
       estimatedDuration: 15,
       status: 'pending',
@@ -174,9 +174,16 @@ export default function ServiceModification() {
       type: newRequest.type,
       title: newRequest.title,
       description: newRequest.description,
+<<<<<<< HEAD:src/app/modification/page.tsx
       priority: newRequest.priority,
       estimatedCost: newRequest.estimatedCost,
       estimatedDuration: newRequest.estimatedDuration,
+=======
+      // Customers shouldn't set priority/cost/duration — default these for staff to update
+      
+      estimatedCost: 0,
+      estimatedDuration: 0,
+>>>>>>> origin/development:src/app/customer/modification/page.tsx
       status: 'pending',
       requestedBy: user?.displayName || 'Customer',
       requestedAt: new Date().toLocaleString()
@@ -255,7 +262,18 @@ export default function ServiceModification() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onLoginClick={() => {}} />
+      <Header 
+        showDefaultActions={false}
+        customActions={(
+          <button
+            onClick={() => router.push('/customer/progress')}
+            className="group relative inline-flex items-center gap-2 overflow-hidden rounded-md bg-primary px-5 py-3 font-heading text-sm font-bold uppercase text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-primary/80 transition-all duration-300 hover:bg-white hover:text-primary"
+          >
+            <span className="absolute inset-0 bg-white/0 transition-colors duration-300 group-hover:bg-white/10" />
+            <span className="relative">View Progress</span>
+          </button>
+        )}
+      />
       
       <div className="pt-24 pb-16">
         <div className="container mx-auto px-6">
@@ -408,9 +426,15 @@ export default function ServiceModification() {
                           <p className="text-sm text-muted-foreground">{request.description}</p>
                         </div>
                         <div className="flex items-center gap-2">
+<<<<<<< HEAD:src/app/modification/page.tsx
                           <span className={`px-2 py-1 text-xs rounded-full ${getPriorityColor(request.priority)}`}>
                             {request.priority.toUpperCase()}
                           </span>
+=======
+                          {request.status === 'pending' ? (
+                            <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-600">PENDING</span>
+                          ) : null}
+>>>>>>> origin/development:src/app/customer/modification/page.tsx
                           <span className={`px-3 py-1 text-sm rounded-full ${getStatusColor(request.status)}`}>
                             {getStatusIcon(request.status)}
                             {request.status.toUpperCase()}
@@ -420,10 +444,13 @@ export default function ServiceModification() {
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                         <div>
+<<<<<<< HEAD:src/app/modification/page.tsx
                           <p className="text-sm text-muted-foreground">Estimated Cost</p>
                           <p className="font-semibold">LKR {request.estimatedCost.toLocaleString()}</p>
                         </div>
                         <div>
+=======
+>>>>>>> origin/development:src/app/customer/modification/page.tsx
                           <p className="text-sm text-muted-foreground">Duration</p>
                           <p className="font-semibold">{request.estimatedDuration} minutes</p>
                         </div>
@@ -507,6 +534,7 @@ export default function ServiceModification() {
                 </div>
               </motion.div>
 
+<<<<<<< HEAD:src/app/modification/page.tsx
               {/* Quick Actions */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -542,6 +570,9 @@ export default function ServiceModification() {
                   </button>
                 </div>
               </motion.div>
+=======
+              
+>>>>>>> origin/development:src/app/customer/modification/page.tsx
 
               {/* Service Summary */}
               <motion.div

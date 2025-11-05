@@ -47,7 +47,7 @@ export default function AdminLayout({
   );
 }
 
-/* ✅ Local NavLink helper component for consistent style */
+/* Local NavLink helper component for consistent style */
 function NavLink({
   href,
   label,

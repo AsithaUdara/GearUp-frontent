@@ -84,6 +84,7 @@ npm run build
 | 401 on secure endpoint | Confirm backend validates Firebase ID token and CORS allows `Authorization` header |
 | Missing env error at build | Ensure `.env.local` matches `.env.example` |
 | Infinite loading state | Inspect network tab for blocked Firebase calls (ad blockers, network issues) |
+| Next.js inferred workspace root warning | We've pinned `outputFileTracingRoot` in `next.config.ts`. If you still see the warning, remove stray lockfiles in parent dirs (e.g., a `package-lock.json` in `C:\Users\<you>`) or run `npm run dev` from the project folder. |
 
 ---
 Maintained with senior-level practices: clear env separation, early validation, least coupling, and explicit documentation.

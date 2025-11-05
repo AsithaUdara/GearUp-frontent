@@ -14,7 +14,7 @@ export default function SetAvailabilityModal({ open, onClose }: Props) {
       <div className="w-full max-w-5xl rounded-xl border border-gray-200 bg-white shadow-xl transition-transform hover:shadow-2xl">
         <div className="flex items-center justify-between border-b px-6 py-4">
           <div className="space-y-1">
-            <h2 className="text-xl font-semibold">Set Your Availability</h2>
+            <h2 className="font-heading text-xl font-semibold">Set Your Availability</h2>
             <p className="text-sm text-gray-600">Click on a date to set your work hours or block out dates for vacation.</p>
           </div>
           <div className="flex items-center gap-2">
