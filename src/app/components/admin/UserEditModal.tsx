@@ -1,6 +1,6 @@
 // app/components/admin/UserEditModal.tsx
 'use client';
-import { X, ChevronDown } from "lucide-react";
+import { X, ChevronDown, Copy, CheckCircle } from "lucide-react";
 import type { User } from '@/app/admin/users/page';
 import { useEffect, useState, Fragment } from "react";
 import { Listbox, Transition } from '@headlessui/react';
@@ -21,6 +21,9 @@ export default function UserEditModal({ isOpen, onClose, user, onSuccess }: Prop
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'Employee' | 'Admin' | 'Customer'>('Employee');
   const [status, setStatus] = useState<'Active' | 'Deactivated'>('Active');
+  const [showOTP, setShowOTP] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [copiedOTP, setCopiedOTP] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -53,23 +56,46 @@ export default function UserEditModal({ isOpen, onClose, user, onSuccess }: Prop
           status 
         });
         alert('User updated successfully!');
+        if (onSuccess) onSuccess();
+        onClose();
       } else {
-        // Create new employee
-        await createEmployee({
+        // Create new employee - get OTP response
+        const response = await createEmployee({
           email,
           name,
           role: role.toUpperCase() as 'ADMIN' | 'EMPLOYEE',
           phoneNumber: undefined
         });
-        alert('Employee created successfully! They need to set up password in Firebase.');
+        
+        // Show OTP modal if we got an OTP
+        if (response && response.otp) {
+          setOtpCode(response.otp);
+          setShowOTP(true);
+          // Don't close the modal yet - let user see and copy OTP
+        } else {
+          alert('Employee created successfully!');
+          if (onSuccess) onSuccess();
+          onClose();
+        }
       }
-      
-      if (onSuccess) onSuccess();
-      onClose();
     } catch (err) {
       console.error('Failed to save user:', err);
       alert(`Error: ${error || 'Failed to save user'}`);
     }
+  };
+
+  const handleCopyOTP = () => {
+    navigator.clipboard.writeText(otpCode);
+    setCopiedOTP(true);
+    setTimeout(() => setCopiedOTP(false), 2000);
+  };
+
+  const handleCloseWithOTP = () => {
+    setShowOTP(false);
+    setOtpCode('');
+    setCopiedOTP(false);
+    if (onSuccess) onSuccess();
+    onClose();
   };
 
   return (
@@ -147,6 +173,77 @@ export default function UserEditModal({ isOpen, onClose, user, onSuccess }: Prop
           </div>
         </form>
       </div>
+
+      {/* OTP Display Modal */}
+      {showOTP && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-10 h-10 text-green-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                {role} Created Successfully!
+              </h3>
+              <p className="text-gray-600">
+                Share this One-Time Password with the new user
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg p-6 mb-6 border-2 border-primary/20">
+              <p className="text-xs uppercase tracking-wider text-gray-600 mb-2 text-center font-semibold">
+                One-Time Password
+              </p>
+              <div className="text-4xl font-mono text-center tracking-[0.5em] font-bold text-primary mb-2">
+                {otpCode}
+              </div>
+              <p className="text-xs text-gray-500 text-center">
+                Valid for 24 hours
+              </p>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              <div className="flex items-start gap-2 text-sm text-gray-700">
+                <span className="text-primary font-bold">1.</span>
+                <p>Copy the OTP above</p>
+              </div>
+              <div className="flex items-start gap-2 text-sm text-gray-700">
+                <span className="text-primary font-bold">2.</span>
+                <p>Send it to the user via your preferred method</p>
+              </div>
+              <div className="flex items-start gap-2 text-sm text-gray-700">
+                <span className="text-primary font-bold">3.</span>
+                <p>User will use it to set their password at <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">/setup-password</span></p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button 
+                onClick={handleCopyOTP}
+                className="flex-1 bg-primary text-white px-6 py-3 rounded-lg font-medium hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-lg"
+              >
+                {copiedOTP ? (
+                  <>
+                    <CheckCircle className="w-5 h-5" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-5 h-5" />
+                    Copy OTP
+                  </>
+                )}
+              </button>
+              <button 
+                onClick={handleCloseWithOTP}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 px-6 py-3 rounded-lg font-medium transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
