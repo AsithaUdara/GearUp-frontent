@@ -46,7 +46,8 @@ All variables prefixed with `NEXT_PUBLIC_` are exposed to the browser (required 
 | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Messaging sender ID |
 | `NEXT_PUBLIC_FIREBASE_APP_ID` | Web app ID |
 | `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` | (Optional) Analytics measurement ID |
-| `NEXT_PUBLIC_API_BASE_URL` | Base URL of backend (no trailing slash) |
+| `NEXT_PUBLIC_API_BASE_URL` | Base URL of backend API Gateway (no trailing slash). Default: `http://localhost:8080` |
+| `NEXT_PUBLIC_USE_DIRECT_TRACKING` | Set to `true` to connect directly to tracking service on port 8086, bypassing API Gateway |
 | `NEXT_PUBLIC_LOG_LEVEL` | Optional logging verbosity (e.g. `debug`, `info`) |
 
 Validation: `src/lib/firebase.ts` throws early if any required Firebase variable is missing—failing fast during build.

@@ -17,10 +17,13 @@ import {
   ModificationRequest,
   PartsRequest
 } from "@/lib/workScheduleData";
-import { ClipboardList, Clock, CheckCircle2, Bell, Car, User } from "lucide-react";
+import { ClipboardList, Clock, CheckCircle2, Bell, Car, User, AlertCircle } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function ServiceProgressPage() {
+  const { user } = useAuth();
   // In a real app, derive employeeId from auth context. Using a mock id for now
+  // TODO: Replace with actual employeeId from user profile or token
   const employeeId = "emp-1";
 
   const [currentTask, setCurrentTask] = useState<WorkTask | null>(null);
@@ -34,26 +37,49 @@ export default function ServiceProgressPage() {
   const [reportPartsRequests, setReportPartsRequests] = useState<PartsRequest[]>([]);
   const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
   const [pendingRequests, setPendingRequests] = useState<ModificationRequest[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
     const loadData = async () => {
-      const res = await fetchTasksByEmployeeId(employeeId);
-      if (!mounted) return;
-      setCurrentTask(res.currentTask ?? null);
-      setAssignedTasks(res.assigned);
-      setCompletedTasks(res.completed);
-      
-      // Load pending customer requests
-      const pendingReqs = await fetchPendingModificationRequestsForEmployee(employeeId);
-      if (!mounted) return;
-      setPendingRequests(pendingReqs);
+      try {
+        setIsLoading(true);
+        setError(null);
+        const res = await fetchTasksByEmployeeId(employeeId, user as { getIdToken?: () => Promise<string> } | null);
+        if (!mounted) return;
+        setCurrentTask(res.currentTask ?? null);
+        setAssignedTasks(res.assigned);
+        setCompletedTasks(res.completed);
+        
+        // Load pending customer requests
+        try {
+          const pendingReqs = await fetchPendingModificationRequestsForEmployee(employeeId, user as { getIdToken?: () => Promise<string> } | null);
+          if (!mounted) return;
+          setPendingRequests(pendingReqs);
+        } catch (err) {
+          console.error('Failed to load pending requests:', err);
+          // Don't show error for pending requests, just log it
+        }
+      } catch (err) {
+        if (!mounted) return;
+        console.error('Failed to load tasks:', err);
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError('Failed to load tasks. Please check if the backend is running.');
+        }
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
     };
     loadData();
     return () => {
       mounted = false;
     };
-  }, [employeeId]);
+  }, [employeeId, user]);
 
   // Group completed tasks by vehicle for daily summary
   const dailySummaryByVehicle = useMemo(() => {
@@ -96,7 +122,7 @@ export default function ServiceProgressPage() {
       
       // Notify customer in real-time when task is completed
       try {
-        await notifyCustomerTaskCompleted(updated.id);
+        await notifyCustomerTaskCompleted(updated.id, user as { getIdToken?: () => Promise<string> } | null);
         setNotificationMessage(`Task ${updated.serviceId} completed and customer notified!`);
         setTimeout(() => setNotificationMessage(null), 5000);
       } catch (error) {
@@ -110,15 +136,15 @@ export default function ServiceProgressPage() {
     setReportCustomer(task.customer);
     
     // Fetch all services for this vehicle
-    const allServices = await fetchServicesByVehicle(task.vehicle);
+    const allServices = await fetchServicesByVehicle(task.vehicle, user as { getIdToken?: () => Promise<string> } | null);
     setReportServices(allServices);
     
     // Fetch modification requests for this vehicle
-    const modifications = await fetchModificationRequestsByVehicle(task.vehicle);
+    const modifications = await fetchModificationRequestsByVehicle(task.vehicle, user as { getIdToken?: () => Promise<string> } | null);
     setReportModifications(modifications);
     
     // Fetch parts requests for this vehicle
-    const partsRequests = await fetchPartsRequestsByVehicle(task.vehicle);
+    const partsRequests = await fetchPartsRequestsByVehicle(task.vehicle, user as { getIdToken?: () => Promise<string> } | null);
     setReportPartsRequests(partsRequests);
     
     setShowReport(true);
@@ -142,7 +168,8 @@ export default function ServiceProgressPage() {
         request.customer,
         request.title,
         employeeId,
-        request.id
+        request.id,
+        user as { getIdToken?: () => Promise<string> } | null
       );
       setAssignedTasks((prev) => [...prev, newTask]);
       setPendingRequests((prev) => prev.filter((r) => r.id !== request.id));
@@ -157,7 +184,8 @@ export default function ServiceProgressPage() {
     const persisted = await updateTaskProgress(
       next.id,
       (next.progressStep ?? 1) as 1 | 2 | 3 | 4 | 5,
-      next.status
+      next.status,
+      user as { getIdToken?: () => Promise<string> } | null
     );
     handleTaskUpdate(persisted ?? next);
   };
@@ -184,6 +212,33 @@ export default function ServiceProgressPage() {
 
   return (
     <div className="space-y-6">
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-red-700 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-red-900">Error Loading Data</p>
+            <p className="text-sm text-red-700 mt-1">{error}</p>
+            <button
+              onClick={() => {
+                setError(null);
+                window.location.reload();
+              }}
+              className="mt-2 text-sm text-red-700 underline hover:text-red-900"
+            >
+              Retry
+            </button>
+          </div>
+          <button
+            onClick={() => setError(null)}
+            className="text-red-600 hover:text-red-800"
+            aria-label="Close error"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Notification Banner */}
       {notificationMessage && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
@@ -199,8 +254,17 @@ export default function ServiceProgressPage() {
         </div>
       )}
 
-      {/* Top summary row to utilize header space */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {isLoading && !error && (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+          <span className="ml-3 text-gray-600">Loading tasks...</span>
+        </div>
+      )}
+
+      {!isLoading && (
+        <>
+          {/* Top summary row to utilize header space */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-full bg-gray-100">
@@ -441,6 +505,8 @@ export default function ServiceProgressPage() {
           onClose={() => setShowReport(false)}
           onNotifyCustomer={handleNotifyCustomer}
         />
+      )}
+        </>
       )}
     </div>
   );

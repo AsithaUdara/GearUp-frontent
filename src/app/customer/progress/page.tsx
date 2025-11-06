@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Clock, 
@@ -19,7 +19,8 @@ import {
 import Header from '@/app/components/landing/Header';
 import Footer from '@/app/components/landing/Footer';
 import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { getServiceProgress } from '@/lib/trackingApi';
 
 interface ServiceStep {
   id: string;
@@ -277,13 +278,28 @@ const mockServiceProgress: ServiceProgress = {
 };
 
 export default function ServiceProgress() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <ServiceProgressContent />
+    </Suspense>
+  );
+}
+
+function ServiceProgressContent() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const serviceId = searchParams.get('serviceId') || 'SRV-2024-001'; // Default for demo, should come from URL or user's active service
+  
   const [serviceProgress, setServiceProgress] = useState<ServiceProgress>(mockServiceProgress);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showMessages, setShowMessages] = useState(false);
   const [showServiceHistory, setShowServiceHistory] = useState(false);
   const [newMessage, setNewMessage] = useState('');
+  const [error, setError] = useState<string | null>(null);
   // Add floating chat toggle button at bottom right
   const [chatOpen, setChatOpen] = useState(false);
 
@@ -293,11 +309,112 @@ export default function ServiceProgress() {
     }
   }, [user, loading, router]);
 
+  // Fetch service progress from backend
+  useEffect(() => {
+    if (!user || !serviceId) return;
+    
+    const fetchProgress = async () => {
+      try {
+        setIsRefreshing(true);
+        setError(null);
+        const progressData = await getServiceProgress(serviceId, user as { getIdToken?: () => Promise<string> } | null);
+        
+        // Map backend ProgressResponse to frontend ServiceProgress
+        const mappedProgress: ServiceProgress = {
+          id: progressData.serviceId,
+          serviceName: 'Service', // This might need to come from another endpoint
+          vehicleModel: progressData.vehicleModel,
+          vehicleYear: progressData.vehicleYear,
+          customerName: progressData.customerName,
+          phone: progressData.customerPhone || '',
+          email: progressData.customerEmail || '',
+          appointmentDate: progressData.appointmentDate || '',
+          appointmentTime: progressData.appointmentTime || '',
+          estimatedCompletion: progressData.estimatedCompletion || '',
+          currentStep: progressData.currentStep || 0,
+          totalSteps: progressData.totalSteps || 6,
+          overallStatus: progressData.overallStatus === 'in_progress' ? 'in-progress' : 
+                         progressData.overallStatus === 'completed' ? 'completed' :
+                         progressData.overallStatus === 'delayed' ? 'delayed' : 'scheduled',
+          steps: [], // Steps might need to come from a different endpoint
+          technician: {
+            name: progressData.technicianName || 'Technician',
+            phone: '', // Might need to fetch from user service
+            photo: '/team-workshop.jpg'
+          },
+          location: {
+            name: progressData.locationName || 'GearUp Service Center',
+            address: '', // Might need to fetch from config
+            phone: ''
+          },
+          lastUpdate: progressData.lastUpdate || new Date().toISOString(),
+          documents: [], // Documents might need to come from a different endpoint
+          messages: [], // Messages might need to come from a different endpoint
+          serviceHistory: [] // Service history might need to come from a different endpoint
+        };
+        
+        setServiceProgress(mappedProgress);
+      } catch (err) {
+        console.error('Failed to fetch service progress:', err);
+        setError('Failed to load service progress. Please try again later.');
+        // Keep mock data as fallback for now
+      } finally {
+        setIsRefreshing(false);
+      }
+    };
+    
+    fetchProgress();
+  }, [user, serviceId]);
+
   const handleRefresh = async () => {
+    if (!user || !serviceId) return;
+    
     setIsRefreshing(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsRefreshing(false);
+    try {
+      const progressData = await getServiceProgress(serviceId, user as { getIdToken?: () => Promise<string> } | null);
+      
+      // Map backend ProgressResponse to frontend ServiceProgress (same as above)
+      const mappedProgress: ServiceProgress = {
+        id: progressData.serviceId,
+        serviceName: 'Service',
+        vehicleModel: progressData.vehicleModel,
+        vehicleYear: progressData.vehicleYear,
+        customerName: progressData.customerName,
+        phone: progressData.customerPhone || '',
+        email: progressData.customerEmail || '',
+        appointmentDate: progressData.appointmentDate || '',
+        appointmentTime: progressData.appointmentTime || '',
+        estimatedCompletion: progressData.estimatedCompletion || '',
+        currentStep: progressData.currentStep || 0,
+        totalSteps: progressData.totalSteps || 6,
+        overallStatus: progressData.overallStatus === 'in_progress' ? 'in-progress' : 
+                       progressData.overallStatus === 'completed' ? 'completed' :
+                       progressData.overallStatus === 'delayed' ? 'delayed' : 'scheduled',
+        steps: [],
+        technician: {
+          name: progressData.technicianName || 'Technician',
+          phone: '',
+          photo: '/team-workshop.jpg'
+        },
+        location: {
+          name: progressData.locationName || 'GearUp Service Center',
+          address: '',
+          phone: ''
+        },
+        lastUpdate: progressData.lastUpdate || new Date().toISOString(),
+        documents: [],
+        messages: [],
+        serviceHistory: []
+      };
+      
+      setServiceProgress(mappedProgress);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to refresh service progress:', err);
+      setError('Failed to refresh service progress. Please try again.');
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -323,19 +440,6 @@ export default function ServiceProgress() {
         return <AlertCircle className="h-5 w-5" />;
       default:
         return <Clock className="h-5 w-5" />;
-    }
-  };
-
-  const getOverallStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'text-green-600';
-      case 'in-progress':
-        return 'text-blue-600';
-      case 'delayed':
-        return 'text-red-600';
-      default:
-        return 'text-gray-600';
     }
   };
 
@@ -378,6 +482,11 @@ export default function ServiceProgress() {
             transition={{ delay: 0.1 }}
             className="bg-white rounded-lg shadow-lg p-8 mb-8"
           >
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-800 text-sm">{error}</p>
+              </div>
+            )}
             <div className="flex justify-between items-start mb-6">
               <div>
                 <h2 className="text-2xl font-bold font-heading text-foreground mb-2">
