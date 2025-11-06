@@ -6,7 +6,7 @@ import { uploadProfileImage, saveUserProfile } from "@/lib/user";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 
 export default function SettingsPage() {
   const { user, loading, refreshUser } = useAuth();
@@ -24,27 +24,38 @@ export default function SettingsPage() {
   const [birthday, setBirthday] = useState("");
 
   React.useEffect(() => {
-    // Layout handles auth redirect, we just populate the form when user is available
     if (!loading && user) {
-      setDisplayName(user.displayName || "");
-      setPreview(user.photoURL || null);
-      // Prefill extended profile fields from Firestore
-      (async () => {
-        try {
-          const ref = doc(db, 'users', user.uid);
-          const snap = await getDoc(ref);
-          if (snap.exists()) {
-            const d = snap.data() as any;
-            if (d.phone) setPhone(d.phone);
-            if (d.idNumber) setIdNumber(d.idNumber);
-            if (d.address) setAddress(d.address);
-            if (d.birthday) setBirthday(d.birthday);
-          }
-        } catch (e) {
-          // non-blocking
-          console.warn('Failed to load profile doc', e);
+      // Prefill fast using localStorage cache if available
+      try {
+        const cachedRaw = localStorage.getItem(`profile:${user.uid}`);
+        if (cachedRaw) {
+          const c = JSON.parse(cachedRaw);
+          if (c.displayName !== undefined) setDisplayName(c.displayName || "");
+          if (c.photoURL) setPreview(c.photoURL);
+          if (c.phone !== undefined) setPhone(c.phone || "");
+          if (c.idNumber !== undefined) setIdNumber(c.idNumber || "");
+          if (c.address !== undefined) setAddress(c.address || "");
+          if (c.birthday !== undefined) setBirthday(c.birthday || "");
+        } else {
+          setDisplayName(user.displayName || "");
+          setPreview(user.photoURL || null);
         }
-      })();
+      } catch {}
+      const ref = doc(db, 'users', user.uid);
+      const unsub = onSnapshot(ref, { includeMetadataChanges: true }, (snap) => {
+        if (snap.exists()) {
+          const d = snap.data() as any;
+          if (d.displayName !== undefined) setDisplayName(d.displayName || "");
+          if (d.photoURL) setPreview(d.photoURL);
+          if (d.phone !== undefined) setPhone(d.phone || "");
+          if (d.idNumber !== undefined) setIdNumber(d.idNumber || "");
+          if (d.address !== undefined) setAddress(d.address || "");
+          if (d.birthday !== undefined) setBirthday(d.birthday || "");
+          // Persist fresh snapshot to cache
+          try { localStorage.setItem(`profile:${user.uid}`, JSON.stringify(d)); } catch {}
+        }
+      }, (e) => console.warn('Failed to subscribe profile doc', e));
+      return () => unsub();
     }
   }, [user, loading]);
 
@@ -79,7 +90,7 @@ export default function SettingsPage() {
 
       // Upload image first, but fall back after a timeout and finish in background
       if (file) {
-        const timeoutMs = 15000;
+        const timeoutMs = 8000;
         const uploadP = uploadProfileImage(user.uid, file);
         const race = Promise.race<string | 'timeout'>([
           uploadP,
@@ -124,7 +135,7 @@ export default function SettingsPage() {
         address: address || undefined,
         birthday: birthday || undefined,
       });
-      const saveTimeoutMs = 12000;
+  const saveTimeoutMs = 8000;
       const saveOkP = saveP.then(() => 'ok' as const).catch(() => 'error' as const);
       const timeoutP = new Promise<'timeout'>((res) => setTimeout(() => res('timeout'), saveTimeoutMs));
       const saveRace = await Promise.race([saveOkP, timeoutP] as const);
@@ -138,8 +149,10 @@ export default function SettingsPage() {
   // Immediately refresh local preview if we have a new photo (or keep existing preview)
   if (photoURL) setPreview(photoURL);
 
-  // Refresh AuthContext so UI updates (may have already scheduled via background)
-  await refreshUser();
+  // Refresh AuthContext only if name/photo changed; do it without blocking UI
+  if ((displayName && displayName !== (user.displayName || "")) || (photoURL && photoURL !== user.photoURL)) {
+    refreshUser().catch(() => {/* non-blocking */});
+  }
       setMessage("Profile updated successfully.");
     } catch (err: any) {
       console.error(err);

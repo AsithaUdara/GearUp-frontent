@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { LucideKey, LucideSearch, LucideCheck, LucideWrench, LucidePlus, LucideCar, LucideHistory, LucideBot, LucideCalendar, LucideClock } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -152,10 +153,13 @@ export default function CustomerDashboard() {
     <>
       <div className="relative w-full overflow-hidden">
         <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-          <img 
-            src="https://res.cloudinary.com/dgyqfax25/image/upload/v1761888664/upscaled_1920x1080_j8cwcf.png"
+          <Image
+            src="https://res.cloudinary.com/dgyqfax25/image/upload/f_auto,q_auto,w_1600/v1761888664/upscaled_1920x1080_j8cwcf.png"
             alt="GearUp Hero"
-            className="absolute inset-0 w-full h-full object-contain bg-black"
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 100vw"
+            priority={false}
+            className="absolute inset-0 object-contain bg-black"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent flex items-center">
             <div className="container mx-auto px-8">

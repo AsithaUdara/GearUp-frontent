@@ -33,26 +33,41 @@ async function proxy(req: NextRequest, params: { path?: string[] }) {
     next: { revalidate: 0 },
   };
 
-  const resp = await fetch(url, init);
-  const body = await resp.arrayBuffer();
-  const outHeaders = new Headers();
-  const respCT = resp.headers.get('content-type');
-  if (respCT) outHeaders.set('content-type', respCT);
-  return new Response(body, { status: resp.status, headers: outHeaders });
+  try {
+    console.log(`[vehicles-proxy] ${req.method} ${url}`);
+    const resp = await fetch(url, init);
+    console.log(`[vehicles-proxy] response status: ${resp.status}`);
+    const body = await resp.arrayBuffer();
+    const outHeaders = new Headers();
+    const respCT = resp.headers.get('content-type');
+    if (respCT) outHeaders.set('content-type', respCT);
+    return new Response(body, { status: resp.status, headers: outHeaders });
+  } catch (err) {
+    console.error(`[vehicles-proxy] fetch error for ${url}:`, err);
+    return new Response(JSON.stringify({ error: 'Backend service unavailable', details: String(err) }), {
+      status: 500,
+      headers: { 'content-type': 'application/json' }
+    });
+  }
 }
 
-export async function GET(req: NextRequest, ctx: { params: { path?: string[] } }) {
-  return proxy(req, ctx.params);
+export async function GET(req: NextRequest, ctx: { params: Promise<{ path?: string[] }> }) {
+  const params = await ctx.params;
+  return proxy(req, params);
 }
-export async function POST(req: NextRequest, ctx: { params: { path?: string[] } }) {
-  return proxy(req, ctx.params);
+export async function POST(req: NextRequest, ctx: { params: Promise<{ path?: string[] }> }) {
+  const params = await ctx.params;
+  return proxy(req, params);
 }
-export async function PUT(req: NextRequest, ctx: { params: { path?: string[] } }) {
-  return proxy(req, ctx.params);
+export async function PUT(req: NextRequest, ctx: { params: Promise<{ path?: string[] }> }) {
+  const params = await ctx.params;
+  return proxy(req, params);
 }
-export async function PATCH(req: NextRequest, ctx: { params: { path?: string[] } }) {
-  return proxy(req, ctx.params);
+export async function PATCH(req: NextRequest, ctx: { params: Promise<{ path?: string[] }> }) {
+  const params = await ctx.params;
+  return proxy(req, params);
 }
-export async function DELETE(req: NextRequest, ctx: { params: { path?: string[] } }) {
-  return proxy(req, ctx.params);
+export async function DELETE(req: NextRequest, ctx: { params: Promise<{ path?: string[] }> }) {
+  const params = await ctx.params;
+  return proxy(req, params);
 }
