@@ -5,6 +5,8 @@ import { db, storage } from '@/lib/firebase';
 import { addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, query, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes, uploadBytesResumable } from 'firebase/storage';
 import { uploadViaLocalApi } from '@/lib/localUpload';
+import { getGatewayBase } from '@/lib/api/client';
+import { listVehiclesByUser, type VehicleDTO, createVehicle as apiCreateVehicle, updateVehicleById as apiUpdateVehicleById, deleteVehicleById as apiDeleteVehicleById } from '@/lib/api/vehicles';
 
 export interface VehicleInput {
   make: string;
@@ -20,6 +22,27 @@ export interface VehicleDoc extends VehicleInput {
 }
 
 export async function addVehicle(uid: string, data: VehicleInput, imageFile?: File): Promise<VehicleDoc & { backgroundUpload?: boolean }> {
+  const gw = getGatewayBase();
+  // Backend-first: call API if gateway is configured
+  if (gw) {
+    let photoURL: string | undefined;
+    if (imageFile) {
+      const useLocal = process.env.NEXT_PUBLIC_LOCAL_UPLOAD === '1';
+      const ext = (imageFile.name.split('.').pop() || 'jpg').toLowerCase();
+      const safeExt = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext) ? ext : 'jpg';
+      if (useLocal) {
+        photoURL = await uploadViaLocalApi(imageFile, `users/${uid}/vehicles`, `${Date.now().toString()}.${safeExt}`);
+      } else {
+        const objectRef = ref(storage, `users/${uid}/vehicles/${Date.now().toString()}.${safeExt}`);
+        await uploadBytes(objectRef, imageFile, { contentType: imageFile.type || `image/${safeExt}` });
+        photoURL = await getDownloadURL(objectRef);
+      }
+    }
+    const yearNum = Number.isNaN(Number(data.year)) ? data.year : Number(data.year);
+    const created = await apiCreateVehicle({ make: data.make, model: data.model, year: yearNum as any, numberPlate: data.numberPlate, photoURL });
+    return { id: created.id, make: created.make, model: created.model, year: String(created.year as any), numberPlate: created.numberPlate, photoURL: created.photoURL };
+  }
+
   const colRef = collection(db, 'users', uid, 'vehicles');
   // No image: create doc immediately
   if (!imageFile) {
@@ -101,6 +124,35 @@ export async function addVehicle(uid: string, data: VehicleInput, imageFile?: Fi
 }
 
 export function subscribeVehicles(uid: string, cb: (vehicles: VehicleDoc[]) => void) {
+  // If backend gateway is configured, poll the backend list endpoint instead of Firestore realtime
+  const gw = getGatewayBase();
+  if (gw) {
+    let cancelled = false;
+    let timer: any;
+    const toDoc = (d: VehicleDTO): VehicleDoc => ({
+      id: d.id,
+      make: d.make,
+      model: d.model,
+      year: String(d.year as any),
+      numberPlate: d.numberPlate,
+      photoURL: d.photoURL,
+      createdAt: d.createdAt as any,
+    });
+    const tick = async () => {
+      try {
+        const list = await listVehiclesByUser(uid);
+        if (!cancelled) cb(list.map(toDoc));
+      } catch (e) {
+        console.warn('vehicles backend polling error', e);
+      } finally {
+        if (!cancelled) timer = setTimeout(tick, 8000);
+      }
+    };
+    tick();
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
+  }
+
+  // Fallback: Firestore realtime subscription
   const q = query(collection(db, 'users', uid, 'vehicles'));
   return onSnapshot(
     q,
@@ -126,6 +178,19 @@ export function subscribeVehicles(uid: string, cb: (vehicles: VehicleDoc[]) => v
 }
 
 export async function fetchVehicles(uid: string): Promise<VehicleDoc[]> {
+  const gw = getGatewayBase();
+  if (gw) {
+    const list = await listVehiclesByUser(uid);
+    return list.map((d) => ({
+      id: d.id,
+      make: d.make,
+      model: d.model,
+      year: String(d.year as any),
+      numberPlate: d.numberPlate,
+      photoURL: d.photoURL,
+      createdAt: d.createdAt as any,
+    }));
+  }
   const snap = await getDocs(collection(db, 'users', uid, 'vehicles'));
   const items: VehicleDoc[] = [];
   snap.forEach((d) => {
@@ -141,6 +206,11 @@ export async function fetchVehicles(uid: string): Promise<VehicleDoc[]> {
 }
 
 export async function deleteVehicle(uid: string, vehicleId: string) {
+  const gw = getGatewayBase();
+  if (gw) {
+    await apiDeleteVehicleById(vehicleId);
+    return;
+  }
   await deleteDoc(doc(db, 'users', uid, 'vehicles', vehicleId));
 }
 
@@ -150,6 +220,7 @@ export async function updateVehicle(
   data: Partial<VehicleInput>,
   imageFile?: File
 ) {
+  const gw = getGatewayBase();
   const updateData: Record<string, unknown> = { ...data };
 
   // Upload new image if provided
@@ -179,6 +250,16 @@ export async function updateVehicle(
         throw new Error('Failed to upload vehicle image. Please try again.');
       }
     }
+  }
+
+  // Backend-first: update via API when configured
+  if (gw) {
+    const payload: any = { ...updateData };
+    if (payload.year !== undefined) {
+      payload.year = Number.isNaN(Number(payload.year)) ? payload.year : Number(payload.year);
+    }
+    await apiUpdateVehicleById(vehicleId, payload);
+    return;
   }
 
   // Update vehicle doc with all changes at once

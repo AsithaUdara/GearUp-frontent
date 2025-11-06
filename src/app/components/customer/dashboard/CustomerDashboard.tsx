@@ -175,19 +175,7 @@ export default function CustomerDashboard() {
       <div className="p-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-4">
           <div className="lg:col-span-2 flex flex-col gap-6">
-            {/* Profile Strip */}
-            <div className="flex items-center gap-4 rounded-lg bg-white shadow-sm p-5">
-              <div
-                className="w-14 h-14 rounded-full bg-center bg-cover bg-no-repeat border"
-                style={{
-                  backgroundImage: `url('${user?.photoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user?.displayName || user?.email || 'User')}`}')`,
-                }}
-              />
-              <div>
-                <p className="text-[#181111] font-bold">{user?.displayName || user?.email?.split('@')[0] || 'User'}</p>
-                {user?.email && <p className="text-sm text-gray-500">{user.email}</p>}
-              </div>
-            </div>
+            {/* Profile strip removed to avoid duplicate avatar (already shown in sidebar/navbar) */}
 
             {/* Your Vehicles Grid */}
             {vehicles.length > 0 ? (
