@@ -13,7 +13,7 @@ type Props = {
   onSuccess?: () => void;
 };
 
-const roles: Array<'Employee' | 'Admin'> = ['Employee', 'Admin'];
+const roles: Array<'Employee' | 'Admin' | 'Customer'> = ['Employee', 'Admin', 'Customer'];
 
 export default function UserEditModal({ isOpen, onClose, user, onSuccess }: Props) {
   const { updateUser, createEmployee, loading, error } = useAdminUsers();
@@ -24,7 +24,10 @@ export default function UserEditModal({ isOpen, onClose, user, onSuccess }: Prop
 
   useEffect(() => {
     if (user) {
-      setName(user.name); setEmail(user.email); setRole(user.role); setStatus(user.status);
+      setName(user.name); 
+      setEmail(user.email); 
+      setRole(user.role === 'No Role' ? 'Employee' : user.role as 'Employee' | 'Admin' | 'Customer'); 
+      setStatus(user.status);
     } else {
       setName(''); setEmail(''); setRole('Employee'); setStatus('Active');
     }
@@ -37,8 +40,15 @@ export default function UserEditModal({ isOpen, onClose, user, onSuccess }: Prop
     
     try {
       if (user) {
-        // Update existing user
+        // Update existing user - parse name into first and last name
+        const nameParts = name.trim().split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || firstName;
+        
         await updateUser(user.id, { 
+          email,
+          firstName,
+          lastName,
           role: role.toUpperCase() as 'ADMIN' | 'EMPLOYEE' | 'CUSTOMER',
           status 
         });
@@ -51,7 +61,7 @@ export default function UserEditModal({ isOpen, onClose, user, onSuccess }: Prop
           role: role.toUpperCase() as 'ADMIN' | 'EMPLOYEE',
           phoneNumber: undefined
         });
-        alert('Employee created successfully!');
+        alert('Employee created successfully! They need to set up password in Firebase.');
       }
       
       if (onSuccess) onSuccess();
@@ -72,14 +82,25 @@ export default function UserEditModal({ isOpen, onClose, user, onSuccess }: Prop
         <form onSubmit={handleSubmit} className="space-y-6 p-6">
           <div>
             <label className="text-sm font-medium">Email Address</label>
-            <input value={email} onChange={(e) => setEmail(e.target.value)} readOnly={!!user} className="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-100" />
+            <input 
+              type="email" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              required
+              className="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" 
+            />
           </div>
-          {!user && (
-            <div>
-              <label htmlFor="name" className="text-sm font-medium">Full Name</label>
-              <input id="name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-            </div>
-          )}
+          <div>
+            <label htmlFor="name" className="text-sm font-medium">Full Name</label>
+            <input 
+              id="name" 
+              type="text"
+              value={name} 
+              onChange={(e) => setName(e.target.value)} 
+              required
+              className="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" 
+            />
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium">Role</label>

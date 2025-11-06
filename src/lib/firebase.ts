@@ -1,6 +1,8 @@
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth } from 'firebase/auth';
+import { getAuth, type Auth, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { getFirestore, type Firestore } from 'firebase/firestore';
+import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
 // IMPORTANT: For client bundles, Next.js only inlines env vars when referenced statically
 // as process.env.NEXT_PUBLIC_*. Dynamic indexing like process.env[name] will be undefined
@@ -19,6 +21,8 @@ const isBrowser = typeof window !== 'undefined';
 
 let app: FirebaseApp | undefined;
 let authInstance: Auth | undefined;
+let dbInstance: Firestore | undefined;
+let storageInstance: FirebaseStorage | undefined;
 
 if (isBrowser) {
   // Statically reference each env var so Next can inline them in the client build.
@@ -44,6 +48,13 @@ if (isBrowser) {
 
   app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
   authInstance = getAuth(app);
+  dbInstance = getFirestore(app);
+  storageInstance = getStorage(app);
+  
+  // Enable Firebase auth persistence to keep user logged in across page refreshes
+  setPersistence(authInstance, browserLocalPersistence).catch((error) => {
+    console.error('Failed to set Firebase persistence:', error);
+  });
 }
 
 // For TypeScript consumers that import { auth } in client components, keep the
@@ -51,3 +62,5 @@ if (isBrowser) {
 // because all usages are in 'use client' boundaries.
 export { app };
 export const auth = authInstance as unknown as ReturnType<typeof getAuth>;
+export const db = dbInstance as unknown as Firestore;
+export const storage = storageInstance as unknown as FirebaseStorage;

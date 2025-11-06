@@ -6,17 +6,20 @@ import UsersToolbar from '@/app/components/admin/UsersToolbar';
 import UsersTable from '@/app/components/admin/UsersTable';
 import UserEditModal from '@/app/components/admin/UserEditModal';
 import { useAdminUsers } from '@/hooks/useAdminUsers';
+import { useAuth } from '@/context/AuthContext';
+import { auth } from '@/lib/firebase';
 
 export type User = {
   id: number;
   name: string;
   email: string;
-  role: 'Customer' | 'Employee' | 'Admin';
+  role: 'Customer' | 'Employee' | 'Admin' | 'No Role'; // Handle users without roles
   status: 'Active' | 'Deactivated';
   lastLogin: string;
 };
 
 export default function UsersPage() {
+  const { user: authUser, loading: authLoading } = useAuth();
   const { getAllUsers, loading, error } = useAdminUsers();
   const [users, setUsers] = useState<User[]>([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -30,7 +33,20 @@ export default function UsersPage() {
 
   // Load users from backend
   const loadUsers = async () => {
+    // Wait for auth to be ready
+    if (authLoading) {
+      console.log('Waiting for authentication...');
+      return;
+    }
+    
+    // Check if user is authenticated
+    if (!authUser && !auth.currentUser) {
+      console.log('No authenticated user');
+      return;
+    }
+    
     try {
+      console.log('Loading users...');
       const result = await getAllUsers({
         page,
         size: 100, // Get more users for client-side filtering
@@ -44,7 +60,7 @@ export default function UsersPage() {
         id: u.id,
         name: u.name,
         email: u.email,
-        role: u.role,
+        role: u.role, // Keep the backend value (including "No Role")
         status: u.status,
         lastLogin: u.lastLoginAt || new Date().toISOString()
       }));
@@ -56,9 +72,12 @@ export default function UsersPage() {
     }
   };
 
+  // Load users when auth is ready and page changes
   useEffect(() => {
-    loadUsers();
-  }, [page]);
+    if (!authLoading) {
+      loadUsers();
+    }
+  }, [page, authLoading, authUser]);
 
   const handleSuccess = () => {
     loadUsers(); // Refresh the list after create/update
@@ -111,8 +130,15 @@ export default function UsersPage() {
       <h1 className="font-heading text-3xl font-bold">User Management</h1>
       <p className="mt-1 text-muted-foreground">View, filter, and manage all users in the system.</p>
       
+      {/* Auth Loading State */}
+      {authLoading && (
+        <div className="mt-8 flex items-center justify-center py-12">
+          <div className="text-lg text-muted-foreground">Authenticating...</div>
+        </div>
+      )}
+      
       {/* Loading State */}
-      {loading && users.length === 0 && (
+      {!authLoading && loading && users.length === 0 && (
         <div className="mt-8 flex items-center justify-center py-12">
           <div className="text-lg text-muted-foreground">Loading users...</div>
         </div>
@@ -133,7 +159,7 @@ export default function UsersPage() {
       )}
 
       {/* Content */}
-      {(!loading || users.length > 0) && !error && (
+      {!authLoading && (!loading || users.length > 0) && !error && (
         <>
           <div className="mt-8">
             <UsersToolbar 

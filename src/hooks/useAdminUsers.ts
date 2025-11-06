@@ -2,13 +2,14 @@
 import { useState } from 'react';
 import { auth } from '@/lib/firebase';
 
-const API_BASE_URL = 'http://localhost:8082/api/v1/admin/users';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+const ADMIN_USERS_ENDPOINT = `${API_BASE_URL}/api/v1/admin/users`;
 
 interface AdminUser {
   id: number;
   email: string;
   name: string;
-  role: 'Admin' | 'Employee' | 'Customer';
+  role: 'Admin' | 'Employee' | 'Customer' | 'No Role'; // Handle No Role case
   status: 'Active' | 'Deactivated';
   createdAt: string;
   lastLoginAt?: string;
@@ -71,7 +72,7 @@ export function useAdminUsers() {
       if (params.sortDir) queryParams.append('sortDir', params.sortDir);
 
       const response = await fetch(
-        `${API_BASE_URL}?${queryParams}`,
+        `${ADMIN_USERS_ENDPOINT}?${queryParams}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -101,7 +102,7 @@ export function useAdminUsers() {
     setError(null);
     try {
       const token = await getAuthToken();
-      const response = await fetch(`${API_BASE_URL}/${userId}`, {
+      const response = await fetch(`${ADMIN_USERS_ENDPOINT}/${userId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -130,7 +131,7 @@ export function useAdminUsers() {
     setError(null);
     try {
       const token = await getAuthToken();
-      const response = await fetch(`${API_BASE_URL}/employees`, {
+      const response = await fetch(`${ADMIN_USERS_ENDPOINT}/employees`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -155,6 +156,9 @@ export function useAdminUsers() {
   };
 
   const updateUser = async (userId: number, data: {
+    email?: string;
+    firstName?: string;
+    lastName?: string;
     role: 'ADMIN' | 'EMPLOYEE' | 'CUSTOMER';
     status: 'Active' | 'Deactivated';
   }) => {
@@ -162,7 +166,7 @@ export function useAdminUsers() {
     setError(null);
     try {
       const token = await getAuthToken();
-      const response = await fetch(`${API_BASE_URL}/${userId}`, {
+      const response = await fetch(`${ADMIN_USERS_ENDPOINT}/${userId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -192,7 +196,7 @@ export function useAdminUsers() {
     try {
       const token = await getAuthToken();
       const response = await fetch(
-        `${API_BASE_URL}/${userId}/deactivate`,
+        `${ADMIN_USERS_ENDPOINT}/${userId}/deactivate`,
         {
           method: 'PATCH',
           headers: {
@@ -219,7 +223,7 @@ export function useAdminUsers() {
     try {
       const token = await getAuthToken();
       const response = await fetch(
-        `${API_BASE_URL}/${userId}/activate`,
+        `${ADMIN_USERS_ENDPOINT}/${userId}/activate`,
         {
           method: 'PATCH',
           headers: {
@@ -245,7 +249,7 @@ export function useAdminUsers() {
     setError(null);
     try {
       const token = await getAuthToken();
-      const response = await fetch(`${API_BASE_URL}/${userId}`, {
+      const response = await fetch(`${ADMIN_USERS_ENDPOINT}/${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -269,7 +273,7 @@ export function useAdminUsers() {
     setError(null);
     try {
       const token = await getAuthToken();
-      const response = await fetch(`${API_BASE_URL}/stats`, {
+      const response = await fetch(`${ADMIN_USERS_ENDPOINT}/stats`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
