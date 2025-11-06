@@ -1,7 +1,7 @@
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 // IMPORTANT: For client bundles, Next.js only inlines env vars when referenced statically
@@ -37,7 +37,18 @@ const firebaseConfig = {
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
-const db = getFirestore(app);
+// Use long-polling detection to avoid WebChannel/CORS issues in strict networks (ad-blockers, proxies)
+// Ref: https://firebase.google.com/docs/firestore/manage-cache#web-channel
+const db = initializeFirestore(app, {
+  experimentalAutoDetectLongPolling: true,
+});
+// Enable offline persistence to make reads/writes resilient and instant in UI
+if (typeof window !== 'undefined') {
+  enableIndexedDbPersistence(db).catch((err) => {
+    // Ignore persistence errors (e.g., multiple tabs). Firestore will still work without persistence.
+    console.warn('Firestore persistence not enabled', err?.code || err);
+  });
+}
 const storage = getStorage(app);
 
 export { app, auth, db, storage };

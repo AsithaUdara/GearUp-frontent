@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import {
   LucideCar,
@@ -11,14 +12,19 @@ import {
   LucideBot,
   LucideLogOut,
   LucideCreditCard,
+  LucideWrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { auth, db } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
+import { doc, onSnapshot } from "firebase/firestore";
 
 const navItems = [
   { icon: LucideCar, label: "Dashboard", href: "/customer/dashboard" },
   { icon: LucideCalendar, label: "Book Appointment", href: "/customer/appointment" },
   { icon: LucideHistory, label: "Service History", href: "/customer/progress" },
   { icon: LucideCar, label: "My Vehicles", href: "/customer/vehicles" },
+  { icon: LucideWrench, label: "Request Modification", href: "/customer/modification" },
   { icon: LucideCreditCard, label: "Payment", href: "/customer/payment" },
   { icon: LucideSettings, label: "Settings", href: "/customer/settings" },
   { icon: LucideBot, label: "AI Chatbot", href: "/customer/chatbot" },
@@ -28,12 +34,23 @@ export default function CustomerSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAuth();
+  const [profilePhone, setProfilePhone] = useState<string | null>(null);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    const ref = doc(db, 'users', user.uid);
+    const unsub = onSnapshot(ref, (snap) => {
+      const d = snap.data() as any;
+      setProfilePhone(d?.phone || null);
+      if (d?.photoURL) setProfilePhoto(d.photoURL);
+    });
+    return () => unsub();
+  }, [user]);
 
   const handleLogout = async () => {
     try {
-      // Clear any auth tokens or session data
-      localStorage.removeItem('userRole');
-      localStorage.removeItem('authToken');
+      await signOut(auth);
       router.push("/");
     } catch (error) {
       console.error("Logout failed:", error);
@@ -55,6 +72,7 @@ export default function CustomerSidebar() {
             className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
             style={{
               backgroundImage: `url('${
+                profilePhoto || user?.photoURL ||
                 (user?.displayName || user?.email
                   ? "https://api.dicebear.com/7.x/initials/svg?seed=" +
                     encodeURIComponent(user?.displayName || user?.email || "User")
@@ -64,9 +82,12 @@ export default function CustomerSidebar() {
           />
           <div className="flex flex-col">
             <h1 className="text-[#181111] text-base font-medium leading-normal">
-              {user?.displayName || "Your name"}
+              {user?.displayName || (user?.email ? user.email.split("@")[0] : "Your name")}
             </h1>
             <p className="text-gray-500 text-sm font-normal leading-normal">{user?.email}</p>
+            {profilePhone && (
+              <p className="text-gray-500 text-sm font-normal leading-normal">{profilePhone}</p>
+            )}
           </div>
         </div>
         <nav className="flex flex-col gap-2 mb-6">
@@ -74,7 +95,7 @@ export default function CustomerSidebar() {
             const IconComponent = item.icon;
             const active = pathname === item.href;
             return (
-              <a
+              <Link
                 key={item.label}
                 href={item.href}
                 className={cn(
@@ -88,7 +109,7 @@ export default function CustomerSidebar() {
                 <p className={cn("text-sm font-medium leading-normal", active ? "text-primary" : "text-[#181111]")}>
                   {item.label}
                 </p>
-              </a>
+              </Link>
             );
           })}
         </nav>

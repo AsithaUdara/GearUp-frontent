@@ -1,20 +1,152 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import { LucideKey, LucideSearch, LucideCheck, LucideWrench, LucidePlus, LucideCar, LucideHistory, LucideBot } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { LucideKey, LucideSearch, LucideCheck, LucideWrench, LucidePlus, LucideCar, LucideHistory, LucideBot, LucideCalendar, LucideClock } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { subscribeVehicles, type VehicleDoc } from "@/lib/vehicles";
+import { subscribeVehicles, type VehicleDoc, fetchVehicles } from "@/lib/vehicles";
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
+
+type AppointmentDoc = {
+  id: string;
+  userId: string;
+  serviceName: string;
+  appointmentDate: string; // YYYY-MM-DD
+  timeSlot: string; // e.g. 10:00 AM
+  status: "scheduled" | "completed" | "cancelled";
+  appointmentAt?: { seconds: number; nanoseconds: number } | null;
+};
+
+type ModificationDoc = {
+  id: string;
+  userId: string;
+  vehicleId: string;
+  vehicleLabel?: string | null;
+  subject?: string | null;
+  message: string;
+  status: "pending" | "approved" | "in_progress" | "completed" | "rejected";
+  createdAt?: { seconds: number; nanoseconds: number } | null;
+};
 
 export default function CustomerDashboard() {
   const { user } = useAuth();
   const [vehicles, setVehicles] = useState<VehicleDoc[]>([]);
+  const [appointments, setAppointments] = useState<AppointmentDoc[]>([]);
+  const [apptLoading, setApptLoading] = useState(false);
+  const [apptError, setApptError] = useState<string | null>(null);
+  const [mods, setMods] = useState<ModificationDoc[]>([]);
+  const [modLoading, setModLoading] = useState(false);
+  const [modError, setModError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
-    const unsub = subscribeVehicles(user.uid, (items) => setVehicles(items));
-    return () => unsub && unsub();
+    let unsub: null | (() => void) = null;
+    (async () => {
+      try {
+        const initial = await fetchVehicles(user.uid);
+        setVehicles(initial);
+      } catch (e) {
+        console.warn('initial vehicles fetch (dashboard) failed', e);
+      }
+      unsub = subscribeVehicles(user.uid, (items) => setVehicles(items));
+    })();
+    return () => { if (unsub) unsub(); };
   }, [user]);
 
+  useEffect(() => {
+    if (!user) {
+      // No user yet; avoid indefinite loading state
+      setApptLoading(false);
+      return;
+    }
+    setApptLoading(true);
+    setApptError(null);
+    const q = query(collection(db, "appointments"), where("userId", "==", user.uid));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const list: AppointmentDoc[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+        setAppointments(list);
+        setApptLoading(false);
+      },
+      (err) => {
+        console.error("appointments listener error", err);
+        setApptError(err?.message || "Failed to load appointments");
+        setApptLoading(false);
+      }
+    );
+    return () => unsub();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      setModLoading(false);
+      return;
+    }
+    setModLoading(true);
+    setModError(null);
+    const q = query(collection(db, "modifications"), where("userId", "==", user.uid));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const list: ModificationDoc[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+        setMods(list);
+        setModLoading(false);
+      },
+      (err) => {
+        console.error("modifications listener error", err);
+        setModError(err?.message || "Failed to load modifications");
+        setModLoading(false);
+      }
+    );
+    return () => unsub();
+  }, [user]);
+
+  const upcomingAppointment = useMemo(() => {
+    if (!appointments.length) return null;
+    const nowMs = Date.now();
+    const withMs = appointments.map((a) => {
+      let ms: number | null = null;
+      if (a.appointmentAt && typeof a.appointmentAt.seconds === "number") {
+        ms = a.appointmentAt.seconds * 1000 + Math.floor((a.appointmentAt.nanoseconds || 0) / 1e6);
+      }
+      return { ...a, _ms: ms } as AppointmentDoc & { _ms: number | null };
+    });
+    // Prefer appointments with a future timestamp; otherwise fall back to the most recent scheduled
+    const future = withMs
+      .filter((a) => a.status === "scheduled" && (a._ms == null || a._ms >= nowMs))
+      .sort((a, b) => (a._ms ?? Infinity) - (b._ms ?? Infinity));
+    if (future.length) return future[0];
+    const scheduled = withMs.filter((a) => a.status === "scheduled").sort((a, b) => (a._ms ?? Infinity) - (b._ms ?? Infinity));
+    return scheduled[0] || null;
+  }, [appointments]);
+
   const primaryVehicle = vehicles.length > 0 ? vehicles[0] : null;
+  const latestModification = useMemo(() => {
+    if (!mods.length) return null;
+    const withMs = mods.map((m) => {
+      let ms: number | null = null;
+      if (m.createdAt && typeof m.createdAt.seconds === "number") {
+        ms = m.createdAt.seconds * 1000 + Math.floor((m.createdAt.nanoseconds || 0) / 1e6);
+      }
+      return { ...m, _ms: ms } as ModificationDoc & { _ms: number | null };
+    });
+    return withMs.sort((a, b) => (b._ms ?? 0) - (a._ms ?? 0))[0] || null;
+  }, [mods]);
+  const ongoingModification = useMemo(() => {
+    if (!mods.length) return null;
+    // Consider pending/approved/in_progress as ongoing
+    const ongoing = mods.filter((m) => m.status === "pending" || m.status === "approved" || m.status === "in_progress");
+    // Sort by createdAt desc if available
+    const withMs = ongoing.map((m) => {
+      let ms: number | null = null;
+      if (m.createdAt && typeof m.createdAt.seconds === "number") {
+        ms = m.createdAt.seconds * 1000 + Math.floor((m.createdAt.nanoseconds || 0) / 1e6);
+      }
+      return { ...m, _ms: ms } as ModificationDoc & { _ms: number | null };
+    });
+    return withMs.sort((a, b) => (b._ms ?? 0) - (a._ms ?? 0))[0] || null;
+  }, [mods]);
 
   return (
     <>
@@ -43,36 +175,57 @@ export default function CustomerDashboard() {
       <div className="p-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-4">
           <div className="lg:col-span-2 flex flex-col gap-6">
-            {/* Vehicle Card */}
-            {primaryVehicle ? (
-              <div className="group flex flex-col rounded-lg bg-white shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
-                <div className="flex flex-col lg:flex-row">
-                  <div
-                    className="w-full lg:w-1/2 aspect-video bg-center bg-cover rounded-t-lg lg:rounded-l-lg lg:rounded-tr-none transition-transform duration-300 group-hover:scale-[1.02]"
-                    style={{ backgroundImage: `url('${primaryVehicle.photoURL || "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800"}')` }}
-                  />
-                  <div className="flex flex-col justify-center p-6 gap-2 flex-1">
-                    <p className="text-[#181111] text-lg font-bold">My Vehicle</p>
-                    <p className="text-gray-500">{primaryVehicle.year} {primaryVehicle.make} {primaryVehicle.model}</p>
-                    <p className="text-gray-500">License Plate: {primaryVehicle.numberPlate}</p>
-                  </div>
+            {/* Profile Strip */}
+            <div className="flex items-center gap-4 rounded-lg bg-white shadow-sm p-5">
+              <div
+                className="w-14 h-14 rounded-full bg-center bg-cover bg-no-repeat border"
+                style={{
+                  backgroundImage: `url('${user?.photoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user?.displayName || user?.email || 'User')}`}')`,
+                }}
+              />
+              <div>
+                <p className="text-[#181111] font-bold">{user?.displayName || user?.email?.split('@')[0] || 'User'}</p>
+                {user?.email && <p className="text-sm text-gray-500">{user.email}</p>}
+              </div>
+            </div>
+
+            {/* Your Vehicles Grid */}
+            {vehicles.length > 0 ? (
+              <div className="rounded-lg bg-white shadow-sm p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-[#181111] text-xl font-bold">Your Vehicles</h2>
+                  <Link href="/customer/vehicles" className="text-primary font-medium hover:underline">Manage</Link>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {vehicles.map((v) => (
+                    <div key={v.id} className="group flex rounded-lg overflow-hidden border border-gray-100">
+                      <div
+                        className="w-40 h-28 bg-center bg-cover flex-shrink-0"
+                        style={{ backgroundImage: `url('${v.photoURL || "https://via.placeholder.com/400x200?text=No+Photo"}')` }}
+                      />
+                      <div className="p-4 flex-1">
+                        <p className="text-sm text-gray-500">{v.numberPlate}</p>
+                        <p className="text-[#181111] font-semibold">{v.year} {v.make} {v.model}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center rounded-lg bg-white shadow-sm p-12 text-center">
                 <LucideCar className="text-gray-400 mb-4" size={64} />
-                <p className="text-[#181111] text-lg font-bold mb-2">No Vehicle Registered</p>
+                <p className="text-[#181111] text-lg font-bold mb-2">No Vehicles Registered</p>
                 <p className="text-gray-500 mb-4">Add your first vehicle to get started.</p>
                 <a href="/customer/vehicle_registration" className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-white font-semibold">
-                  <LucidePlus size={20} /><span>Register Vehicle</span>
+                  <LucidePlus size={20} /><span>Register Your First Vehicle</span>
                 </a>
               </div>
             )}
 
             {/* Quick Action Buttons */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <a 
-                href="/customer/book-appointment"
+              <Link 
+                href="/customer/appointment"
                 className="flex items-center gap-3 p-6 rounded-lg bg-white shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:ring-1 hover:ring-primary/20"
               >
                 <div className="p-3 rounded-full bg-primary/10">
@@ -82,7 +235,7 @@ export default function CustomerDashboard() {
                   <p className="text-[#181111] font-bold text-lg">Book Appointment</p>
                   <p className="text-gray-500 text-sm">Schedule a service</p>
                 </div>
-              </a>
+              </Link>
               <a 
                 href="/customer/vehicles"
                 className="flex items-center gap-3 p-6 rounded-lg bg-white shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:ring-1 hover:ring-primary/20"
@@ -101,7 +254,7 @@ export default function CustomerDashboard() {
             <div className="rounded-lg bg-white shadow-sm p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-[#181111] text-xl font-bold">Recent Service History</h2>
-                <a href="/customer/service-history" className="text-primary font-medium hover:underline">View All</a>
+                <Link href="/customer/service-history" className="text-primary font-medium hover:underline">View All</Link>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -134,18 +287,155 @@ export default function CustomerDashboard() {
             {/* Upcoming Appointment */}
             <div className="rounded-lg bg-white shadow-sm p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
               <h3 className="text-[#181111] text-lg font-bold mb-4">Upcoming Appointment</h3>
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-gray-600">
-                  <LucideWrench size={18} />
-                  <span className="text-sm">No appointments scheduled</span>
+              {apptLoading ? (
+                <div className="text-sm text-gray-500">Loading...</div>
+              ) : apptError ? (
+                <div className="text-sm text-red-600">{apptError}</div>
+              ) : upcomingAppointment ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-gray-700">
+                    <LucideCalendar size={18} />
+                    <span className="text-sm font-medium">{upcomingAppointment.appointmentDate} at {upcomingAppointment.timeSlot}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-700">
+                    <LucideWrench size={18} />
+                    <span className="text-sm">{upcomingAppointment.serviceName}</span>
+                  </div>
+                  <Link 
+                    href="/customer/appointment"
+                    className="block w-full text-center rounded-lg bg-primary/10 px-4 py-3 text-primary font-semibold hover:bg-primary/20 transition-colors"
+                  >
+                    Manage Appointment
+                  </Link>
                 </div>
-                <a 
-                  href="/customer/book-appointment"
-                  className="block w-full text-center rounded-lg bg-primary/10 px-4 py-3 text-primary font-semibold hover:bg-primary/20 transition-colors"
-                >
-                  Book Now
-                </a>
-              </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <LucideWrench size={18} />
+                    <span className="text-sm">No appointments scheduled</span>
+                  </div>
+                  <Link 
+                    href="/customer/appointment"
+                    className="block w-full text-center rounded-lg bg-primary/10 px-4 py-3 text-primary font-semibold hover:bg-primary/20 transition-colors"
+                  >
+                    Book Now
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Modification Requests (summary) */}
+            <div className="rounded-lg bg-white shadow-sm p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
+              <h3 className="text-[#181111] text-lg font-bold mb-4">Modification Requests</h3>
+              {modLoading ? (
+                <div className="text-sm text-gray-500">Loading...</div>
+              ) : modError ? (
+                <div className="text-sm text-red-600">{modError}</div>
+              ) : latestModification ? (
+                <div className="space-y-3">
+                  {latestModification.vehicleLabel && (
+                    <div className="text-sm text-gray-700">{latestModification.vehicleLabel}</div>
+                  )}
+                  {latestModification.subject && (
+                    <div className="text-sm font-semibold text-gray-800">Topic: {latestModification.subject}</div>
+                  )}
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 text-sm">
+                    <LucideWrench size={16} className="text-gray-700" />
+                    <span className="text-gray-700 capitalize">{latestModification.status.replace('_', ' ')}</span>
+                  </div>
+                  <Link 
+                    href="/customer/modification"
+                    className="block w-full text-center rounded-lg bg-primary/10 px-4 py-3 text-primary font-semibold hover:bg-primary/20 transition-colors"
+                  >
+                    Manage Modifications
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <LucideWrench size={18} />
+                    <span className="text-sm">No modification requests yet</span>
+                  </div>
+                  <Link 
+                    href="/customer/modification"
+                    className="block w-full text-center rounded-lg bg-primary/10 px-4 py-3 text-primary font-semibold hover:bg-primary/20 transition-colors"
+                  >
+                    Request Modification
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Current Modification Status (3 steps) */}
+            <div className="rounded-lg bg-white shadow-sm p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
+              <h3 className="text-[#181111] text-lg font-bold mb-4">Current Modification Status</h3>
+              {modLoading ? (
+                <div className="text-sm text-gray-500">Loading...</div>
+              ) : modError ? (
+                <div className="text-sm text-red-600">{modError}</div>
+              ) : ongoingModification ? (
+                <div className="space-y-4">
+                  {ongoingModification.vehicleLabel && (
+                    <div className="text-sm text-gray-700">{ongoingModification.vehicleLabel}</div>
+                  )}
+                  {(() => {
+                    const s = ongoingModification.status;
+                    const isPending = s === "pending";
+                    const isApproved = s === "approved" || s === "in_progress";
+                    const isFinished = s === "completed";
+                    return (
+                      <div className="space-y-4">
+                        {/* Pending request */}
+                        <div className="flex items-start gap-3">
+                          <div className={`mt-1 p-1 rounded-full ${isPending ? 'bg-blue-100' : (isApproved || isFinished) ? 'bg-green-100' : 'bg-gray-200'}`}>
+                            {(isApproved || isFinished) ? <LucideCheck className="text-green-600" size={16} /> : isPending ? <LucideClock className="text-blue-600" size={16} /> : <LucideClock className="text-gray-400" size={16} />}
+                          </div>
+                          <div className="flex-1">
+                            <p className={`text-sm ${isPending ? 'font-semibold text-gray-700' : (isApproved || isFinished) ? 'text-gray-700' : 'text-gray-400'}`}>Pending request</p>
+                          </div>
+                        </div>
+                        {/* Approved & in progress */}
+                        <div className="flex items-start gap-3">
+                          <div className={`mt-1 p-1 rounded-full ${isFinished ? 'bg-green-100' : isApproved ? 'bg-blue-100' : 'bg-gray-200'}`}>
+                            {isFinished ? <LucideCheck className="text-green-600" size={16} /> : isApproved ? <LucideWrench className="text-blue-600" size={16} /> : <LucideWrench className="text-gray-400" size={16} />}
+                          </div>
+                          <div className="flex-1">
+                            <p className={`text-sm ${isApproved ? 'font-semibold text-gray-700' : isFinished ? 'text-gray-700' : 'text-gray-400'}`}>Approved & in progress</p>
+                          </div>
+                        </div>
+                        {/* Finished */}
+                        <div className="flex items-start gap-3">
+                          <div className={`mt-1 p-1 rounded-full ${isFinished ? 'bg-green-100' : 'bg-gray-200'}`}>
+                            {isFinished ? <LucideCheck className="text-green-600" size={16} /> : <LucideSearch className="text-gray-400" size={16} />}
+                          </div>
+                          <div className="flex-1">
+                            <p className={`text-sm ${isFinished ? 'font-semibold text-gray-700' : 'text-gray-400'}`}>Finished</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  <Link
+                    href="/customer/modification"
+                    className="block w-full text-center rounded-lg bg-primary/10 px-4 py-3 text-primary font-semibold hover:bg-primary/20 transition-colors"
+                  >
+                    View / Request Modification
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <LucideWrench size={18} />
+                    <span className="text-sm">No modification in progress</span>
+                  </div>
+                  <Link 
+                    href="/customer/modification"
+                    className="block w-full text-center rounded-lg bg-primary/10 px-4 py-3 text-primary font-semibold hover:bg-primary/20 transition-colors"
+                  >
+                    Request Modification
+                  </Link>
+                </div>
+              )}
             </div>
 
             {/* Current Service Status */}
@@ -200,12 +490,12 @@ export default function CustomerDashboard() {
                 <h3 className="text-[#181111] text-lg font-bold">Need Help?</h3>
               </div>
               <p className="text-gray-600 text-sm mb-4">Chat with our AI assistant for quick answers about your service.</p>
-              <a 
+              <Link 
                 href="/customer/chatbot"
                 className="block w-full text-center rounded-lg bg-primary px-4 py-3 text-white font-semibold hover:bg-primary/90 transition-colors"
               >
                 Start Chat
-              </a>
+              </Link>
             </div>
           </div>
         </div>

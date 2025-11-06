@@ -2,34 +2,71 @@
 import React, { useEffect, useState } from "react";
 import { LucideCar, LucidePlus, LucideEdit, LucideTrash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { subscribeVehicles, deleteVehicle, type VehicleDoc } from "@/lib/vehicles";
+import { subscribeVehicles, deleteVehicle, type VehicleDoc, updateVehicle, fetchVehicles } from "@/lib/vehicles";
+import Link from "next/link";
 
 export default function MyVehicles() {
   const [vehicles, setVehicles] = useState<VehicleDoc[]>([]);
   const { user } = useAuth();
-
+  const [editing, setEditing] = useState<VehicleDoc | null>(null);
+  const [editMake, setEditMake] = useState("");
+  const [editModel, setEditModel] = useState("");
+  const [editYear, setEditYear] = useState("");
+  const [editPlate, setEditPlate] = useState("");
+  const [editFile, setEditFile] = useState<File | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editMsg, setEditMsg] = useState<string | null>(null);
+  const [editErr, setEditErr] = useState<string | null>(null);
   useEffect(() => {
     if (!user) return;
-    const unsub = subscribeVehicles(user.uid, (items) => setVehicles(items));
-    return () => unsub && unsub();
+    // Fetch once to populate immediately after refresh, then keep in sync via listener
+    let unsub: null | (() => void) = null;
+    (async () => {
+      try {
+        const initial = await fetchVehicles(user.uid);
+        setVehicles(initial);
+      } catch (e) {
+        console.warn('initial vehicles fetch failed', e);
+      }
+      unsub = subscribeVehicles(user.uid, (items) => setVehicles(items));
+    })();
+    return () => {
+      if (unsub) unsub();
+    };
   }, [user]);
-
   return (
     <>
-          <div className="p-8">
-            {/* Header Section */}
-            <div className="flex flex-wrap justify-between items-center gap-3 mb-8">
-              <div className="flex min-w-72 flex-col gap-3">
-                <p className="text-[#181111] text-4xl font-black leading-tight tracking-[-0.033em]">My Vehicles</p>
-                <p className="text-gray-500 text-base font-normal leading-normal">Manage your registered vehicles and add new ones.</p>
+      <div className="relative w-full overflow-hidden">
+        <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+          <img 
+            src="https://res.cloudinary.com/dgyqfax25/image/upload/v1761888664/upscaled_1920x1080_j8cwcf.png"
+            alt="My Vehicles Hero"
+            className="absolute inset-0 w-full h-full object-contain bg-black"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent flex items-center">
+            <div className="container mx-auto px-8">
+              <div className="max-w-2xl">
+                <h1 className="text-white text-4xl md:text-5xl lg:text-6xl font-black leading-tight tracking-tight mb-4">
+                  My Vehicles
+                </h1>
+                <p className="text-white/90 text-lg md:text-xl font-normal leading-relaxed">
+                  Manage your registered vehicles and keep everything up to date.
+                </p>
               </div>
-              <a 
+            </div>
+          </div>
+        </div>
+      </div>
+          <div className="p-8">
+            {/* Actions */}
+            <div className="flex justify-end mb-8">
+              <Link 
                 href="/customer/vehicle_registration" 
                 className="flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-white font-semibold hover:bg-primary/90 transition-colors"
               >
                 <LucidePlus size={20} />
                 <span>Register New Vehicle</span>
-              </a>
+              </Link>
             </div>
 
             {/* Vehicles Grid */}
@@ -40,7 +77,7 @@ export default function MyVehicles() {
                     {/* Vehicle Image */}
                     <div 
                       className="w-full h-48 bg-center bg-cover bg-no-repeat transition-transform duration-300 group-hover:scale-[1.02]"
-                      style={{ backgroundImage: `url('${vehicle.photoURL || "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800&auto=format&fit=crop"}')` }}
+                      style={{ backgroundImage: `url('${vehicle.photoURL || "https://via.placeholder.com/800x400?text=No+Photo"}')` }}
                     />
                     
                     {/* Vehicle Info */}
@@ -57,7 +94,20 @@ export default function MyVehicles() {
                         
                         {/* Action Buttons */}
                         <div className="flex gap-2">
-                          <button className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors" title="Edit (coming soon)">
+                          <button
+                            onClick={() => {
+                              setEditing(vehicle);
+                              setEditMake(vehicle.make);
+                              setEditModel(vehicle.model);
+                              setEditYear(String(vehicle.year));
+                              setEditPlate(vehicle.numberPlate);
+                              setEditFile(null);
+                              setEditMsg(null);
+                              setEditErr(null);
+                            }}
+                            className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
+                            title="Edit"
+                          >
                             <LucideEdit size={16} className="text-gray-600" />
                           </button>
                           <button
@@ -91,16 +141,86 @@ export default function MyVehicles() {
                 <p className="text-gray-500 text-base mb-6">
                   You haven't registered any vehicles yet. Add your first vehicle to get started.
                 </p>
-                <a 
+                <Link 
                   href="/customer/vehicle_registration" 
                   className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-white font-semibold hover:bg-primary/90 transition-colors"
                 >
                   <LucidePlus size={20} />
                   <span>Register Your First Vehicle</span>
-                </a>
+                </Link>
               </div>
             )}
           </div>
+
+          {/* Edit Vehicle Modal */}
+          {editing && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+              <div className="w-full max-w-lg rounded-lg bg-white shadow-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold">Edit Vehicle</h3>
+                  <button onClick={() => setEditing(null)} className="text-gray-500 hover:text-gray-700">×</button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex flex-col">
+                    <label className="text-sm font-medium mb-1">Make</label>
+                    <input className="h-11 rounded-lg border border-gray-200 px-3" value={editMake} onChange={(e) => setEditMake(e.target.value)} />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-sm font-medium mb-1">Model</label>
+                    <input className="h-11 rounded-lg border border-gray-200 px-3" value={editModel} onChange={(e) => setEditModel(e.target.value)} />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-sm font-medium mb-1">Year</label>
+                    <input className="h-11 rounded-lg border border-gray-200 px-3" value={editYear} onChange={(e) => setEditYear(e.target.value)} />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-sm font-medium mb-1">License Plate</label>
+                    <input className="h-11 rounded-lg border border-gray-200 px-3" value={editPlate} onChange={(e) => setEditPlate(e.target.value)} />
+                  </div>
+                  <div className="flex flex-col md:col-span-2">
+                    <label className="text-sm font-medium mb-1">Replace Photo (optional)</label>
+                    <input type="file" accept="image/*" onChange={(e) => setEditFile(e.target.files?.[0] || null)} />
+                    
+                  </div>
+                </div>
+
+                <div className="mt-6 flex items-center gap-3">
+                  <button
+                    disabled={savingEdit}
+                    onClick={async () => {
+                      if (!user || !editing) return;
+                      setSavingEdit(true);
+                      setEditErr(null);
+                      setEditMsg(null);
+                      try {
+                        await updateVehicle(user.uid, editing.id, {
+                          make: editMake,
+                          model: editModel,
+                          year: editYear,
+                          numberPlate: editPlate,
+                        }, editFile || undefined);
+                        setEditMsg("Vehicle updated successfully.");
+                        // Close modal after short delay
+                        setTimeout(() => setEditing(null), 700);
+                      } catch (err: any) {
+                        console.error(err);
+                        setEditErr(err?.message || "Failed to update vehicle.");
+                      } finally {
+                        setSavingEdit(false);
+                      }
+                    }}
+                    className={`rounded-lg h-11 px-5 bg-primary text-white font-semibold ${savingEdit ? 'opacity-80 cursor-not-allowed' : ''}`}
+                  >
+                    {savingEdit ? 'Saving…' : 'Save Changes'}
+                  </button>
+                  <button onClick={() => setEditing(null)} className="rounded-lg h-11 px-5 bg-gray-100 text-[#181111] font-semibold hover:bg-gray-200">Cancel</button>
+                  {editMsg && <div className="px-3 py-2 rounded-lg bg-green-100 text-green-700 text-sm border border-green-300">{editMsg}</div>}
+                  {editErr && <div className="px-3 py-2 rounded-lg bg-red-100 text-red-700 text-sm border border-red-300">{editErr}</div>}
+                </div>
+              </div>
+            </div>
+          )}
     </>
   );
 }
