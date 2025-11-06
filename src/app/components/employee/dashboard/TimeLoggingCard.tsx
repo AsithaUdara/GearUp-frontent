@@ -82,10 +82,11 @@ export default function TimeLoggingCard({ task }: TaskProps) {
         </div>
     );
     
-    return (
-        // --- MODIFICATION: The overlay has been removed ---
-        <div className="rounded-lg border border-white bg-white p-6 shadow-sm transition-transform hover:shadow-md hover:-translate-y-0.5 h-full relative">
-            {task ? mainContent : placeholderContent}
-        </div>
-    );
+  return (
+    // Keep the card compact: remove h-full so it doesn't stretch vertically,
+    // add a small min-height so it still looks balanced when empty.
+  <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition-transform hover:shadow-md hover:-translate-y-0.5 relative min-h-[120px] h-full">
+      {task ? mainContent : placeholderContent}
+    </div>
+  );
 }

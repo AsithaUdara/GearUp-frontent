@@ -30,12 +30,15 @@ export default function Sidebar() {
   return (
     // The `border-r` class has been removed
     <aside className="w-64 bg-white shadow-md flex flex-col">
-      {/* The `border-b` class has been removed */}
-      <div className="h-16 flex items-center justify-center shrink-0">
-        <div className="flex items-center gap-2">
-          <Image src="/logos/gearup_logo.png" alt="GearUp logo" width={24} height={24} />
-          <span className="text-xl font-bold tracking-tight text-gray-900">GearUp</span>
-        </div>
+      {/* Header: larger red logo only (text removed per design) */}
+      <div className="h-20 flex items-center justify-center shrink-0">
+        <Image
+          src="/logos/gearup_logo.png"
+          alt="GearUp logo"
+          width={140}
+          height={64}
+          className="object-contain"
+        />
       </div>
       
       <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto">
