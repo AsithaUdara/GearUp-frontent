@@ -5,71 +5,71 @@ import OngoingServiceBills from "@/app/components/customer/dashboard/OngoingServ
 import ReviewSubmissionModal from "@/app/components/customer/dashboard/ReviewSubmissionModal";
 import PastPayments from "@/app/components/customer/dashboard/PastPayments";
 import { LucideFileText, LucideWrench, LucideHistory } from "lucide-react";
-import { seedPastPayments } from "@/lib/seedPastPayments";
+import { submitReview } from "@/lib/api/reviewService";
+import { getCustomerBills } from "@/lib/api/billService";
+import type { CustomerBill } from "@/types/payment";
 
 export default function PaymentPageClient() {
   const [reviewModalOpen, setReviewModalOpen] = React.useState(false);
   const [selectedBillId, setSelectedBillId] = React.useState("");
   const [selectedService, setSelectedService] = React.useState("");
+  const [bills, setBills] = React.useState<CustomerBill[]>([]);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [refreshTrigger, setRefreshTrigger] = React.useState(0);
 
-  // Expose seed function for testing (in development only)
+  // Fetch bills when component mounts or when refresh is triggered
   React.useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      (window as any).seedPastPayments = seedPastPayments;
-    }
-  }, []);
+    const fetchBills = async () => {
+      try {
+        // TODO: Replace with actual user email from Auth Service
+        const userEmail = 'john@example.com'; // Temporary hardcoded for development
+        const billsData = await getCustomerBills(userEmail);
+        setBills(billsData);
+      } catch (error) {
+        console.error('Error fetching bills:', error);
+      }
+    };
+    fetchBills();
+  }, [refreshTrigger]);
 
   function handleReviewSubmitAction(billId: string) {
-    // Get bill info to show in modal
-    try {
-      const raw = localStorage.getItem('customerApprovedBills');
-      if (raw) {
-        const bills = JSON.parse(raw);
-        const bill = bills.find((b: any) => b.id === billId);
-        if (bill) {
-          setSelectedBillId(billId);
-          setSelectedService(bill.services.map((s: any) => s.description).join(', '));
-          setReviewModalOpen(true);
-        }
-      }
-    } catch (e) {
-      console.error(e);
+    // Get bill info from state
+    const bill = bills.find((b) => b.id === billId);
+    if (bill) {
+      setSelectedBillId(billId);
+      setSelectedService(bill.vehicleInfo || 'Vehicle Service');
+      setReviewModalOpen(true);
     }
   }
 
-  function handleReviewSubmitComplete(review: { rating: number; comment: string }) {
-    // Save review to localStorage
+  async function handleReviewSubmitComplete(review: { rating: number; comment: string }) {
+    setSubmitting(true);
     try {
-      const raw = localStorage.getItem('customerReviews');
-      const reviews = raw ? JSON.parse(raw) : [];
-      reviews.push({
-        id: 'r' + Date.now(),
-        customerName: 'John Doe', // In real app, get from auth
-        email: 'john.doe@email.com', // In real app, get from auth
-        vehicleService: selectedService,
-        rating: review.rating,
-        comment: review.comment,
-        date: new Date().toISOString().split('T')[0],
-        publishedToLanding: false
-      });
-      localStorage.setItem('customerReviews', JSON.stringify(reviews));
-
-      // Mark bill as reviewed
-      const billsRaw = localStorage.getItem('customerApprovedBills');
-      if (billsRaw) {
-        const bills = JSON.parse(billsRaw);
-        const updated = bills.map((b: any) =>
-          b.id === selectedBillId ? { ...b, reviewSubmitted: true } : b
-        );
-        localStorage.setItem('customerApprovedBills', JSON.stringify(updated));
+      // Get bill details
+      const bill = bills.find(b => b.id === selectedBillId);
+      if (!bill) {
+        throw new Error('Bill not found');
       }
+      
+      await submitReview({
+        billId: selectedBillId,
+        customerEmail: bill.customerEmail,
+        customerName: bill.customerName,
+        serviceName: bill.vehicleInfo || 'Vehicle Service',
+        rating: review.rating,
+        reviewText: review.comment,
+      });
 
       setReviewModalOpen(false);
-      alert('Thank you for your review! It has been submitted successfully.');
-      window.location.reload(); // Refresh to show updated state
-    } catch (e) {
-      console.error(e);
-      alert('Failed to submit review');
+      alert('Thank you for your review! It has been submitted successfully and is pending admin approval.');
+      
+      // Trigger refresh to update bill list
+      setRefreshTrigger(prev => prev + 1);
+    } catch (error: any) {
+      console.error('Error submitting review:', error);
+      alert(error.message || 'Failed to submit review. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -102,7 +102,10 @@ export default function PaymentPageClient() {
           </div>
         </div>
 
-        <ApprovedBills onReviewSubmitAction={handleReviewSubmitAction} />
+        <ApprovedBills 
+          onReviewSubmitAction={handleReviewSubmitAction}
+          refreshTrigger={refreshTrigger}
+        />
       </div>
 
       {/* Past Payments Section */}
@@ -124,7 +127,7 @@ export default function PaymentPageClient() {
         open={reviewModalOpen}  
         billId={selectedBillId}
         vehicleService={selectedService}
-        onCloseAction={() => setReviewModalOpen(false)}
+        onCloseAction={() => !submitting && setReviewModalOpen(false)}
         onSubmitAction={handleReviewSubmitComplete}
       />
     </div>
