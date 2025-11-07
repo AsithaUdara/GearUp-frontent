@@ -11,11 +11,6 @@ import {
   Paperclip,
   Minimize2,
 } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useChatbot } from "@/context/ChatbotContext";
@@ -84,25 +79,24 @@ export function Chatbot() {
 
   return (
     <>
-      {/* Floating Chatbot Button */}
-      <Popover open={isOpen} onOpenChange={toggleChatbot}>
-        <PopoverTrigger asChild>
-          <button
-            className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-primary shadow-lg hover:bg-primary/90 transition-all duration-300 flex items-center justify-center group animate-pulse-red"
-            aria-label="Open chatbot"
-          >
-            <MessageCircle className="h-6 w-6 text-white" />
-          </button>
-        </PopoverTrigger>
+      {/* Floating Chatbot Button - Only show when chat is closed */}
+      {!isOpen && (
+        <button
+          onClick={toggleChatbot}
+          className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-primary shadow-lg hover:bg-primary/90 transition-all duration-300 flex items-center justify-center group animate-pulse-red"
+          aria-label="Open chatbot"
+        >
+          <MessageCircle className="h-6 w-6 text-white" />
+        </button>
+      )}
 
-        <PopoverContent
-          align="end"
-          side="top"
+      {/* Chat Dialog - Only show when chat is open */}
+      {isOpen && (
+        <div
           className={cn(
-            "w-[380px] h-[600px] p-0 shadow-xl border border-border rounded-lg overflow-hidden transition-all",
+            "fixed bottom-6 right-6 z-50 w-[380px] h-[600px] shadow-xl border border-border rounded-lg overflow-hidden transition-all bg-background",
             isMinimized && "h-[60px]"
           )}
-          sideOffset={20}
         >
           {/* Header */}
           <div className="bg-primary px-4 py-3 flex items-center justify-between border-b">
@@ -247,22 +241,6 @@ export function Chatbot() {
               {/* Input Area */}
               <div className="border-t bg-white p-3">
                 <div className="flex items-center gap-2 bg-background rounded-full px-3 py-2 border">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                    title="Add emoji"
-                  >
-                    <Smile className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                    title="Attach file"
-                  >
-                    <Paperclip className="h-4 w-4" />
-                  </Button>
                   <Input
                     ref={inputRef}
                     value={inputValue}
@@ -285,8 +263,8 @@ export function Chatbot() {
               </div>
             </>
           )}
-        </PopoverContent>
-      </Popover>
+        </div>
+      )}
     </>
   );
 }
