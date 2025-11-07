@@ -36,12 +36,12 @@ export default function MyVehicles() {
   }, [user]);
   return (
     <>
-      <div className="relative w-full overflow-hidden">
-        <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+      <div className="relative w-full overflow-hidden bg-black">
+        <div className="relative w-full h-[400px] md:h-[500px]">
           <img 
-            src="https://res.cloudinary.com/dgyqfax25/image/upload/v1761888664/upscaled_1920x1080_j8cwcf.png"
+            src="https://res.cloudinary.com/dgyqfax25/image/upload/v1762481473/ChatGPT_Image_Nov_7_2025_07_40_38_AM_x3hray.png"
             alt="My Vehicles Hero"
-            className="absolute inset-0 w-full h-full object-contain bg-black"
+            className="absolute inset-0 w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent flex items-center">
             <div className="container mx-auto px-8">

@@ -1,8 +1,7 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { LucideKey, LucideSearch, LucideCheck, LucideWrench, LucidePlus, LucideCar, LucideHistory, LucideBot, LucideCalendar, LucideClock } from "lucide-react";
+import { LucideKey, LucideSearch, LucideCheck, LucideWrench, LucidePlus, LucideCar, LucideHistory, LucideBot, LucideCalendar, LucideClock, LucideX } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { subscribeVehicles, type VehicleDoc, fetchVehicles } from "@/lib/vehicles";
 import { db } from "@/lib/firebase";
@@ -151,15 +150,12 @@ export default function CustomerDashboard() {
 
   return (
     <>
-      <div className="relative w-full overflow-hidden">
-        <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-          <Image
-            src="https://res.cloudinary.com/dgyqfax25/image/upload/f_auto,q_auto,w_1600/v1761888664/upscaled_1920x1080_j8cwcf.png"
+      <div className="relative w-full overflow-hidden bg-black">
+        <div className="relative w-full h-[400px] md:h-[500px]">
+          <img 
+            src="https://res.cloudinary.com/dgyqfax25/image/upload/v1761888664/upscaled_1920x1080_j8cwcf.png"
             alt="GearUp Hero"
-            fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 100vw"
-            priority={false}
-            className="absolute inset-0 object-contain bg-black"
+            className="absolute inset-0 w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent flex items-center">
             <div className="container mx-auto px-8">
@@ -373,35 +369,80 @@ export default function CustomerDashboard() {
                   {(() => {
                     const s = ongoingModification.status;
                     const isPending = s === "pending";
-                    const isApproved = s === "approved" || s === "in_progress";
-                    const isFinished = s === "completed";
+                    const isRejected = s === "rejected";
+                    const isApproved = s === "approved";
+                    const isInProgress = s === "in_progress";
+                    const isCompleted = s === "completed";
+                    
+                    // Two paths: Rejection path OR Approval path
+                    if (isRejected) {
+                      // PATH 1: Pending → Rejected
+                      return (
+                        <div className="space-y-4">
+                          {/* Step 1: Pending (completed) */}
+                          <div className="flex items-start gap-3">
+                            <div className="mt-1 p-1 rounded-full bg-green-100">
+                              <LucideCheck className="text-green-600" size={16} />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm text-gray-700">Pending request</p>
+                            </div>
+                          </div>
+                          
+                          {/* Step 2: Rejected (active) */}
+                          <div className="flex items-start gap-3">
+                            <div className="mt-1 p-1 rounded-full bg-red-100">
+                              <LucideX className="text-red-600" size={16} />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold text-red-700">Request Rejected</p>
+                              <p className="text-xs text-red-600 mt-1">Your modification request was not approved</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    
+                    // PATH 2: Pending → Approved → In Progress → Completed
                     return (
                       <div className="space-y-4">
-                        {/* Pending request */}
+                        {/* Step 1: Pending */}
                         <div className="flex items-start gap-3">
-                          <div className={`mt-1 p-1 rounded-full ${isPending ? 'bg-blue-100' : (isApproved || isFinished) ? 'bg-green-100' : 'bg-gray-200'}`}>
-                            {(isApproved || isFinished) ? <LucideCheck className="text-green-600" size={16} /> : isPending ? <LucideClock className="text-blue-600" size={16} /> : <LucideClock className="text-gray-400" size={16} />}
+                          <div className={`mt-1 p-1 rounded-full ${isPending ? 'bg-blue-100' : 'bg-green-100'}`}>
+                            {isPending ? <LucideClock className="text-blue-600" size={16} /> : <LucideCheck className="text-green-600" size={16} />}
                           </div>
                           <div className="flex-1">
-                            <p className={`text-sm ${isPending ? 'font-semibold text-gray-700' : (isApproved || isFinished) ? 'text-gray-700' : 'text-gray-400'}`}>Pending request</p>
+                            <p className={`text-sm ${isPending ? 'font-semibold text-gray-700' : 'text-gray-700'}`}>Pending request</p>
                           </div>
                         </div>
-                        {/* Approved & in progress */}
+                        
+                        {/* Step 2: Approved */}
                         <div className="flex items-start gap-3">
-                          <div className={`mt-1 p-1 rounded-full ${isFinished ? 'bg-green-100' : isApproved ? 'bg-blue-100' : 'bg-gray-200'}`}>
-                            {isFinished ? <LucideCheck className="text-green-600" size={16} /> : isApproved ? <LucideWrench className="text-blue-600" size={16} /> : <LucideWrench className="text-gray-400" size={16} />}
+                          <div className={`mt-1 p-1 rounded-full ${isApproved ? 'bg-blue-100' : (isInProgress || isCompleted) ? 'bg-green-100' : 'bg-gray-200'}`}>
+                            {(isInProgress || isCompleted) ? <LucideCheck className="text-green-600" size={16} /> : isApproved ? <LucideCheck className="text-blue-600" size={16} /> : <LucideCheck className="text-gray-400" size={16} />}
                           </div>
                           <div className="flex-1">
-                            <p className={`text-sm ${isApproved ? 'font-semibold text-gray-700' : isFinished ? 'text-gray-700' : 'text-gray-400'}`}>Approved & in progress</p>
+                            <p className={`text-sm ${isApproved ? 'font-semibold text-gray-700' : (isInProgress || isCompleted) ? 'text-gray-700' : 'text-gray-400'}`}>Approved</p>
                           </div>
                         </div>
-                        {/* Finished */}
+                        
+                        {/* Step 3: In Progress */}
                         <div className="flex items-start gap-3">
-                          <div className={`mt-1 p-1 rounded-full ${isFinished ? 'bg-green-100' : 'bg-gray-200'}`}>
-                            {isFinished ? <LucideCheck className="text-green-600" size={16} /> : <LucideSearch className="text-gray-400" size={16} />}
+                          <div className={`mt-1 p-1 rounded-full ${isInProgress ? 'bg-blue-100' : isCompleted ? 'bg-green-100' : 'bg-gray-200'}`}>
+                            {isCompleted ? <LucideCheck className="text-green-600" size={16} /> : isInProgress ? <LucideWrench className="text-blue-600" size={16} /> : <LucideWrench className="text-gray-400" size={16} />}
                           </div>
                           <div className="flex-1">
-                            <p className={`text-sm ${isFinished ? 'font-semibold text-gray-700' : 'text-gray-400'}`}>Finished</p>
+                            <p className={`text-sm ${isInProgress ? 'font-semibold text-gray-700' : isCompleted ? 'text-gray-700' : 'text-gray-400'}`}>In Progress</p>
+                          </div>
+                        </div>
+                        
+                        {/* Step 4: Completed */}
+                        <div className="flex items-start gap-3">
+                          <div className={`mt-1 p-1 rounded-full ${isCompleted ? 'bg-green-100' : 'bg-gray-200'}`}>
+                            {isCompleted ? <LucideCheck className="text-green-600" size={16} /> : <LucideCheck className="text-gray-400" size={16} />}
+                          </div>
+                          <div className="flex-1">
+                            <p className={`text-sm ${isCompleted ? 'font-semibold text-gray-700' : 'text-gray-400'}`}>Completed</p>
                           </div>
                         </div>
                       </div>

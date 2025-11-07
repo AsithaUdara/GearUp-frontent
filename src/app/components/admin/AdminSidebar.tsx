@@ -1,7 +1,7 @@
 // app/components/admin/AdminSidebar.tsx
 'use client';
 
-import { LayoutDashboard, Calendar, Users, Wrench, LogOut, Star, Clock, Package, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, Wrench, LogOut, Star, Clock, Package, BarChart3, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { clsx } from 'clsx';
@@ -12,6 +12,7 @@ const navLinks = [
   { href: '/admin/appointments', label: 'Appointments', icon: Calendar },
   { href: '/admin/users', label: 'User Management', icon: Users },
   { href: '/admin/services', label: 'Service Templates', icon: Wrench },
+  { href: '/admin/modifications', label: 'Modifications', icon: Settings },
   { href: '/admin/available-slots', label: 'Available Slots', icon: Clock },
   { href: '/admin/material-request', label: 'Material Request', icon: Package },
   { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
