@@ -3,8 +3,6 @@
 import React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { auth } from "@/lib/firebase";
-import { signOut } from "firebase/auth";
 import {
   LucideCar,
   LucideCalendar,
@@ -12,14 +10,16 @@ import {
   LucideSettings,
   LucideBot,
   LucideLogOut,
+  LucideCreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { icon: LucideCar, label: "Dashboard", href: "/customer/dashboard" },
-  { icon: LucideCalendar, label: "Book Appointment", href: "/customer/book-appointment" },
-  { icon: LucideHistory, label: "Service History", href: "/customer/service-history" },
+  { icon: LucideCalendar, label: "Book Appointment", href: "/customer/appointment" },
+  { icon: LucideHistory, label: "Service History", href: "/customer/progress" },
   { icon: LucideCar, label: "My Vehicles", href: "/customer/vehicles" },
+  { icon: LucideCreditCard, label: "Payment", href: "/customer/payment" },
   { icon: LucideSettings, label: "Settings", href: "/customer/settings" },
   { icon: LucideBot, label: "AI Chatbot", href: "/customer/chatbot" },
 ];
@@ -31,7 +31,9 @@ export default function CustomerSidebar() {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      // Clear any auth tokens or session data
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('authToken');
       router.push("/");
     } catch (error) {
       console.error("Logout failed:", error);
@@ -53,7 +55,6 @@ export default function CustomerSidebar() {
             className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
             style={{
               backgroundImage: `url('${
-                user?.photoURL ||
                 (user?.displayName || user?.email
                   ? "https://api.dicebear.com/7.x/initials/svg?seed=" +
                     encodeURIComponent(user?.displayName || user?.email || "User")
