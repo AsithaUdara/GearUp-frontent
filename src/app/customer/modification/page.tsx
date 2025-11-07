@@ -24,7 +24,8 @@ import {
   DollarSign,
   AlertTriangle,
   CheckSquare,
-  XCircle
+  XCircle,
+  Loader2
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -185,18 +186,18 @@ export default function ServiceModification() {
     }
   ];
 
-  // Commented out for testing - allow access without authentication
-  // useEffect(() => {
-  //   if (!loading && !user) {
-  //     router.push('/');
-  //   }
-  // }, [user, loading, router]);
+  
+   useEffect(() => {
+     if (!loading && !user) {
+       router.push('/');
+     }
+  }, [user, loading, router]);
 
   // Fetch available modification services from backend
   useEffect(() => {
     const fetchServices = async () => {
-      // Commented out for testing - allow access without authentication
-      // if (!user) return;
+      
+       if (!user) return;
       
       setLoadingServices(true);
       try {
@@ -213,10 +214,10 @@ export default function ServiceModification() {
       }
     };
 
-    // Commented out for testing - allow loading without authentication
-    // if (user) {
+    
+     if (user) {
       fetchServices();
-    // }
+     }
   }, [user]);
 
   const handleRefresh = async () => {
@@ -226,6 +227,11 @@ export default function ServiceModification() {
   };
 
   const handleSubmitRequest = async () => {
+    if (!user) {
+      setError('You must be logged in to submit a modification request');
+      return;
+    }
+
     if (!newRequest.title || !newRequest.title.trim()) {
       setError('Please specify the modification service type');
       return;
@@ -250,8 +256,8 @@ export default function ServiceModification() {
       
       const response = await createModificationRequest({
         serviceId: serviceId,
-        customerName: newRequest.customerName || 'Test User',
-        customerEmail: newRequest.customerEmail || 'test@example.com',
+        customerName: newRequest.customerName,
+        customerEmail: newRequest.customerEmail,
         customerPhone: newRequest.customerPhone,
         customerAddress: newRequest.customerAddress,
         preferredDate: newRequest.preferredDate,
@@ -329,18 +335,17 @@ export default function ServiceModification() {
     }
   };
 
-  // Commented out for testing - allow access without authentication
-  // if (loading) {
-  //   return (
-  //     <div className="flex items-center justify-center h-screen">
-  //       <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-  //     </div>
-  //   );
-  // }
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
-  // if (!user) {
-  //   return null;
-  // }
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -439,48 +444,10 @@ export default function ServiceModification() {
               </motion.div>
             </div>
 
-              {/* 
-                Modification Requests Tracking Section - DISABLED
-                
-                This section requires backend implementation:
-                - GET /api/customers/{customerId}/modification-requests
-                - Integration with appointment service for technician/location data
-                
-                The page now focuses on browsing available services and creating new requests.
-                Request tracking will be added once the backend endpoints are ready.
-              */}
-
-              {/* Modification Requests */}
-              {/* <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="bg-white rounded-lg shadow-lg p-8"
-              >
-                <h3 className="text-xl font-bold font-heading text-foreground mb-6">Modification Requests</h3>
-                
-                <div className="space-y-6">
-                  {serviceModification.modificationRequests.map((request) => (
-                    <div key={request.id} className="p-6 border border-gray-200 rounded-lg">
-                      ... Request details would go here ...
-                    </div>
-                  ))} 
-                </div>
-              </motion.div> */}
-            {/* </div> */}
-
-            {/* Sidebar - Contact Information and Service Summary - Commented out until backend ready */}
-            {/* <div className="space-y-6">
-              <motion.div>
-                <h3>Contact Information</h3>
-                <div>Technician info would go here</div>
-              </motion.div>
               
-              <motion.div>
-                <h3>Service Summary</h3>
-                <div>Service summary would go here</div>
-              </motion.div>
-            </div> */}
+
+              
+            
           </div>
         </div>
       </div>

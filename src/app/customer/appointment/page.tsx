@@ -68,18 +68,18 @@ export default function AppointmentBooking() {
     }
   }, [user]);
 
-  // Check authentication - commented out for testing
-  // useEffect(() => {
-  //   if (!authLoading && !user) {
-  //     router.push('/customer/appointment');
-  //   }
-  // }, [user, authLoading, router]);
+  
+   useEffect(() => {
+     if (!authLoading && !user) {
+       router.push('/customer/appointment');
+     }
+  }, [user, authLoading, router]);
 
   // Check backend connection and load initial data
   useEffect(() => {
     const initializeData = async () => {
       // Allow loading services without authentication for testing
-      // if (!user) return;
+       if (!user) return;
       
       setLoading(true);
       setError(null);
@@ -240,18 +240,18 @@ export default function AppointmentBooking() {
     setError(null);
   };
 
-  // Commented out for testing - allow access without authentication
-  // if (loading) {
-  //   return (
-  //     <div className="flex items-center justify-center h-screen">
-  //       <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-  //     </div>
-  //   );
-  // }
+  
+   if (loading) {
+     return (
+       <div className="flex items-center justify-center h-screen">
+         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+       </div>
+     );
+   }
 
-  // if (!user) {
-  //   return null;
-  // }
+   if (!user) {
+     return null;
+   }
 
   // Show error state if backend is not connected
   if (!backendConnected && !loading) {
