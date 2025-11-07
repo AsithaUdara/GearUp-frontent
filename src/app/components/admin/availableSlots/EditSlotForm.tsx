@@ -17,7 +17,9 @@ export default function EditSlotForm({ slot, onSubmit, onCancel }: Props) {
     technician: slot.technician || '',
     notes: slot.notes || '',
     serviceType: slot.serviceType || 'General Service',
-    bay: slot.bay || 'Bay 1'
+    bay: slot.bay || 'Bay 1',
+    capacity: 5,
+    available: 5
   });
 
   function handleChange(
@@ -26,7 +28,7 @@ export default function EditSlotForm({ slot, onSubmit, onCancel }: Props) {
     const { name, value } = e.target;
     setForm((prev) => ({
       ...prev,
-      [name]: value
+      [name]: name === 'capacity' || name === 'available' ? Number(value) : value
     }));
   }
 

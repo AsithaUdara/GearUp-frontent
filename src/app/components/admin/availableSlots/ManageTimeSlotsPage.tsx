@@ -77,12 +77,12 @@ export default function ManageTimeSlotsPage() {
 
   function addSlot(input: SlotInput) {
     const id = rid();
-    setSlots(prev => [{ id, ...input }, ...prev]);
+    setSlots(prev => [{ id, ...input, bookings: [] }, ...prev]);
     setShowAdd(false);
   }
 
   function updateSlot(id: string, input: SlotInput) {
-    setSlots(prev => prev.map(s => s.id === id ? { id, ...input } as Slot : s));
+    setSlots(prev => prev.map(s => s.id === id ? { id, ...input, bookings: s.bookings } : s));
     setShowEdit(false);
     setEditing(null);
   }
