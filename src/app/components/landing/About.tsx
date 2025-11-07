@@ -4,12 +4,20 @@ import Image from 'next/image';
 import { useInView } from 'react-intersection-observer';
 
 const FeatureCard = ({ image, text }: { image: string, text: string }) => (
-    <div className="relative h-48 overflow-hidden rounded-lg shadow-xl group">
-      <Image src={image} alt={text} fill className="object-cover transition-transform duration-500 group-hover:scale-110" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-      <h3 className="absolute bottom-4 left-4 font-heading text-4xl font-bold text-white tracking-widest">{text}</h3>
-    </div>
-  );
+  <div className="relative h-48 overflow-hidden rounded-lg shadow-xl group">
+    <Image
+      src={image}
+      alt={text}
+      fill
+      // Provide sizes to silence Next.js warning and improve responsive loading
+      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+      className="object-cover transition-transform duration-500 group-hover:scale-110"
+      priority
+    />
+    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+    <h3 className="absolute bottom-4 left-4 font-heading text-4xl font-bold text-white tracking-widest">{text}</h3>
+  </div>
+);
   
 export default function About() {
     const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.2 });

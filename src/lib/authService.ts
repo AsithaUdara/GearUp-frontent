@@ -2,7 +2,7 @@
 import { auth } from './firebase';
 import { signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8088';
 
 // Backend response structures
 interface RoleResponse {
@@ -60,7 +60,7 @@ export async function loginUser(email: string, password: string): Promise<LoginR
     console.log('Fetching user profile from:', `${API_BASE_URL}/api/v1/users/profile`);
     console.log('Using token:', idToken.substring(0, 20) + '...');
     
-    const response = await fetch(`${API_BASE_URL}/api/v1/users/profile`, {
+    let response = await fetch(`${API_BASE_URL}/api/v1/users/profile`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${idToken}`,
@@ -70,11 +70,62 @@ export async function loginUser(email: string, password: string): Promise<LoginR
     });
 
     console.log('Response status:', response.status);
-    
+    // If user does not exist in backend yet, auto-register then retry profile
+    if (response.status === 404) {
+      console.warn('User profile not found in backend (404). Attempting auto-registration...');
+      const u = userCredential.user;
+      const registerBody = {
+        firebaseUid: u.uid,
+        email: u.email ?? email,
+        displayName: u.displayName || (u.email ? u.email.split('@')[0] : 'Customer'),
+        phoneNumber: u.phoneNumber || undefined,
+        photoUrl: u.photoURL || undefined,
+        role: 'CUSTOMER'
+      };
+      const regRes = await fetch(`${API_BASE_URL}/api/v1/users/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(registerBody),
+        mode: 'cors'
+      });
+      if (!regRes.ok && regRes.status !== 409) {
+        let regMsg = `HTTP ${regRes.status}`;
+        try {
+          const regJson = await regRes.json();
+          regMsg = regJson?.message || regMsg;
+        } catch {}
+        throw new Error(`Failed to auto-register user: ${regMsg}`);
+      }
+      console.log('Auto-registration complete. Retrying profile fetch...');
+      response = await fetch(`${API_BASE_URL}/api/v1/users/profile`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        mode: 'cors'
+      });
+    }
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Backend error:', errorText);
-      throw new Error(`Failed to fetch user profile: ${response.status} - ${errorText}`);
+      // Try to parse JSON error first
+      let errMsg = `HTTP ${response.status}`;
+      try {
+        const errJson = await response.json();
+        if (typeof errJson === 'string') errMsg = errJson;
+        else if (errJson?.message) errMsg = errJson.message;
+        else if (errJson?.error) errMsg = errJson.error;
+      } catch {
+        const errorText = await response.text().catch(() => '');
+        if (errorText) errMsg = errorText;
+      }
+
+      if (response.status === 401 || response.status === 403) {
+        throw new Error('You are not authorized to access this resource. Please sign in with an admin account.');
+      }
+      throw new Error(`Failed to fetch user profile: ${errMsg}`);
     }
 
     // Parse the backend ApiResponse wrapper

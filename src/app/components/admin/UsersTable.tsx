@@ -11,10 +11,13 @@ const statusStyles = {
 };
 
 const roleStyles = {
+    ADMIN: "border-primary text-primary",
     Admin: "border-primary text-primary",
+    EMPLOYEE: "border-blue-500 text-blue-600",
     Employee: "border-blue-500 text-blue-600",
+    CUSTOMER: "border-gray-300 text-muted-foreground",
     Customer: "border-gray-300 text-muted-foreground",
-    "No Role": "border-red-300 text-red-600", // Add styling for No Role
+    "No Role": "border-red-300 text-red-600",
 };
 
 // Accept users as a prop for filtering
@@ -49,7 +52,7 @@ export default function UsersTable({ users, onEditUser, onDeleteUser }: Props) {
                 </td>
                 <td className="px-4 py-4">
                     <span className={`inline-block rounded border px-2 py-0.5 text-xs font-semibold ${roleStyles[user.role]}`}>
-                        {user.role}
+                        {user.role === "No Role" ? user.role : user.role.charAt(0).toUpperCase() + user.role.slice(1).toLowerCase()}
                     </span>
                 </td>
                 <td className="px-4 py-4 text-muted-foreground">
