@@ -22,6 +22,7 @@ function createMock(): Slot[] {
       capacity: 5,
       available: Math.max(0, 5 - i),
       notes: i === 0 ? 'Morning slot' : undefined,
+      bookings: [],
     };
   });
 }
@@ -33,11 +34,11 @@ export default function AvailableSlotsPage() {
 
   function addSlot(input: SlotInput) {
     const id = rid(8);
-    setSlots((prev) => [{ id, available: input.available ?? input.capacity, ...input }, ...prev]);
+    setSlots((prev) => [{ id, ...input, bookings: [] }, ...prev]);
   }
 
   function updateSlot(id: string, input: SlotInput) {
-    setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, ...input, available: input.available ?? s.available } : s)));
+    setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, ...input, bookings: s.bookings } : s)));
     setEditing(null);
   }
 

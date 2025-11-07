@@ -1,54 +1,56 @@
+"use client";
+import { useSyncExternalStore } from "react";
+import { subscribe as subscribeAppts, getAppointments, updateAppointment } from "@/lib/appointmentsStore";
 import Link from "next/link";
 
-interface AppointmentItem {
-  id: string;
-  time: string;
-  title: string;
-  customer: string;
-  vehicle: string;
-  highlighted?: boolean;
-}
-
-const items: AppointmentItem[] = [
-  { id: "1", time: "10:00 AM", title: "Diagnostic Test", customer: "Sarah Connor", vehicle: "Honda Accord", highlighted: true },
-  { id: "2", time: "02:00 PM", title: "Annual Service", customer: "David Chen", vehicle: "Lexus RX" },
-  { id: "3", time: "04:00 PM", title: "Tire Change", customer: "Emily Rodriguez", vehicle: "Jeep Wrangler" },
-];
+// Server snapshot function cached outside component
+const getServerSnapshot = () => [];
 
 export default function AppointmentManagementCard() {
+
+  const appointments = useSyncExternalStore(subscribeAppts, getAppointments, getServerSnapshot);
+
+  const appointments = useSyncExternalStore(subscribeAppts, getAppointments, getAppointments);
+
+  // show only the next upcoming appointment (non-past), sorted by date then time
+  const sorted = [...appointments].sort((a, b) => {
+    if (a.date === b.date) return (a.time || "").localeCompare(b.time || "");
+    return a.date.localeCompare(b.date);
+  });
+
+  const upcoming = sorted.filter((a) => !a.past);
+  const next = upcoming.length > 0 ? upcoming[0] : null;
+
+  const handleConfirm = (id: string) => updateAppointment({ id, status: "Confirmed" });
+
   return (
-    <div className="rounded-lg border border-white bg-white p-6 shadow-sm transition-transform hover:shadow-md hover:-translate-y-0.5">
+    <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
       <h3 className="font-heading text-lg font-semibold mb-3">Appointment Management</h3>
-      <ul className="space-y-3">
-        {items.map((a) => (
-          <li
-            key={a.id}
-            className={`rounded-lg border border-gray-200 p-3 ${a.highlighted ? "border-red-200 bg-red-50" : ""}`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  {a.highlighted && <span className="h-5 w-1 rounded bg-red-500" />}
-                  <p className="text-sm font-semibold">
-                    {a.time} - {a.title}
-                  </p>
-                </div>
-                <p className="text-[11px] text-gray-600">
-                  {a.customer} - {a.vehicle}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <button className="text-xs font-medium text-red-600 hover:underline">Confirm</button>
-                <button className="text-xs text-gray-600 hover:underline">Reschedule</button>
-              </div>
+
+      <div className="mb-3 text-sm font-medium">Upcoming Appointment</div>
+
+      {!next ? (
+        <p className="text-xs text-gray-600">No upcoming appointments.</p>
+      ) : (
+        <div className="rounded-lg border border-gray-100 p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold">{next.date} {next.time ? `— ${next.time}` : ""} — {next.service ?? "Service"}</div>
+              <div className="text-[12px] text-gray-600">{next.customer} — {next.vehicle}</div>
+              <div className="text-[12px] text-gray-500 mt-1">Status: <span className="font-medium">{next.status ?? "Unknown"}</span></div>
             </div>
-          </li>
-        ))}
-      </ul>
-      <div className="mt-3">
-        <Link href="#" className="text-xs font-medium text-red-600 hover:underline">
-          View All Appointments
-        </Link>
+            <div className="flex flex-col items-end gap-2">
+              <Link href={`/employee/schedule?appointmentId=${encodeURIComponent(next.id)}`} className="text-xs text-red-600 hover:underline">View</Link>
+              {next.status !== "Confirmed" && (
+                <button onClick={() => handleConfirm(next.id)} className="text-xs text-green-600 hover:underline">Confirm</button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-4">
+        <Link href="/employee/schedule" className="text-xs font-medium text-red-600 hover:underline">View Schedule</Link>
       </div>
     </div>
   );

@@ -60,14 +60,14 @@ export default function CommunicationPage() {
                 content: `Hi, this is ${c.name}. Any update on my ${c.role.split(" • ")[0]}?`,
                 timestamp: "10:05 AM",
                 type: "text",
-              },
+              } as Message,
               {
                 id: `${c.id}-2`,
                 senderId: "current",
                 content: "Hi! We started work and will keep you posted.",
                 timestamp: "10:07 AM",
                 type: "text",
-              },
+              } as Message,
               ...(idx % 2 === 0
                 ? [
                     {
@@ -76,7 +76,7 @@ export default function CommunicationPage() {
                       content: "Great, please share a photo once complete.",
                       timestamp: "10:09 AM",
                       type: "text",
-                    },
+                    } as Message,
                   ]
                 : []),
             ];

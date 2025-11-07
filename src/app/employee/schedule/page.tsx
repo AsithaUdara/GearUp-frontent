@@ -1,84 +1,127 @@
 "use client";
 import ScheduleToolbar from "../../components/employee/schedule/ScheduleToolbar";
 import AvailabilityPanel from "../../components/employee/schedule/AvailabilityPanel";
-import CalendarMonth from "../../components/employee/schedule/CalendarMonth";
+import CalendarInteractive from "../../components/employee/schedule/CalendarInteractive";
 import UpcomingAppointmentsTable from "../../components/employee/schedule/UpcomingAppointmentsTable";
-import NewAppointmentModal from "../../components/employee/schedule/NewAppointmentModal";
-import AppointmentConfirmationModal from "../../components/employee/schedule/AppointmentConfirmationModal";
-import AppointmentDetailsModal from "../../components/employee/schedule/AppointmentDetailsModal";
 import SetAvailabilityModal from "../../components/employee/schedule/SetAvailabilityModal";
+import AppointmentDetailsModal from "../../components/employee/schedule/AppointmentDetailsModal";
+import RescheduleRequestModal from "../../components/employee/schedule/RescheduleRequestModal";
 import { useState } from "react";
 
+type Appointment = {
+  id: string;
+  date: string;
+  time: string;
+  customer: string;
+  vehicle: string;
+  service: string;
+  assignee: string;
+  status: string;
+  communications?: Array<{ title: string; detail: string; at: string }>;
+  past?: boolean;
+};
+
 export default function EmployeeSchedulePage() {
-  const [openNew, setOpenNew] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const [availabilityOpen, setAvailabilityOpen] = useState(false);
-  const [confirmationNumber, setConfirmationNumber] = useState<string | undefined>(undefined);
-  const [lastAppointment, setLastAppointment] = useState<any | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [unavailableDates, setUnavailableDates] = useState<string[]>([
+    // sample blocked dates
+    "2025-10-25",
+  ]);
+
+  const [appointments, setAppointments] = useState<Appointment[]>([
+    { id: "A1", date: "2025-11-05", time: "09:00 AM", customer: "John Doe", vehicle: "Toyota Camry", service: "Oil Change", assignee: "You", status: "Assigned", past: false, communications: [] },
+    { id: "A2", date: "2025-11-05", time: "11:30 AM", customer: "Jane Smith", vehicle: "Honda Civic", service: "Brake Inspection", assignee: "You", status: "Awaiting Parts", past: false, communications: [] },
+    { id: "A3", date: "2025-10-28", time: "02:00 PM", customer: "Peter Jones", vehicle: "Ford F-150", service: "Tire Rotation", assignee: "You", status: "Completed", past: true, communications: [] },
+  ]);
+
+  const [selected, setSelected] = useState<Appointment | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+
+  function handleView(row: Appointment) {
+    setSelected(row);
+    setDetailsOpen(true);
+  }
+
+  function handleSubmitReschedule(payload: { preferredDate?: string; preferredTime?: string; reason?: string }) {
+    if (!selected) return;
+    const note = `Reschedule requested: ${payload.preferredDate ?? ""} ${payload.preferredTime ?? ""} - ${payload.reason ?? ""}`;
+    setAppointments((prev) => prev.map((a) => (a.id === selected.id ? { ...a, status: "Reschedule Requested", communications: [...(a.communications ?? []), { title: "Reschedule Requested", detail: note, at: new Date().toLocaleString() }] } : a)));
+    setRescheduleOpen(false);
+    setDetailsOpen(false);
+  }
+
+  // Filter appointments based on search query
+  const filteredAppointments = appointments.filter((appointment) => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    return (
+      appointment.customer.toLowerCase().includes(query) ||
+      appointment.vehicle.toLowerCase().includes(query) ||
+      appointment.service.toLowerCase().includes(query) ||
+      appointment.status.toLowerCase().includes(query) ||
+      appointment.date.includes(query) ||
+      appointment.time.toLowerCase().includes(query) ||
+      appointment.id.toLowerCase().includes(query)
+    );
+  });
+
+  const upcoming = filteredAppointments.filter((a) => !a.past);
+  const history = filteredAppointments.filter((a) => a.past);
 
   return (
     <div className="space-y-6">
-      <ScheduleToolbar onNewAppointment={() => setOpenNew(true)} onSetAvailability={() => setAvailabilityOpen(true)} />
+      <ScheduleToolbar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <CalendarMonth />
+          <CalendarInteractive
+            appointments={filteredAppointments.map(a => ({ id: a.id, date: a.date, time: a.time, customer: a.customer, vehicle: a.vehicle, service: a.service, status: a.status }))}
+            unavailableDates={unavailableDates}
+            onView={(a) => handleView(appointments.find((x) => x.id === a.id) as Appointment)}
+          />
         </div>
         <div className="lg:col-span-1">
-          <AvailabilityPanel />
+          <AvailabilityPanel onOpenSetAvailability={() => setAvailabilityOpen(true)} />
         </div>
       </div>
-      <UpcomingAppointmentsTable />
-      <NewAppointmentModal
-        open={openNew}
-        onClose={() => setOpenNew(false)}
-        onSubmit={(data) => {
-          // frontend-only: generate a fake confirmation number and store details
-          const fakeNumber = `#${Math.floor(100000 + Math.random() * 900000)}`;
-          setConfirmationNumber(fakeNumber);
-          setLastAppointment({
-            id: fakeNumber.replace("#", "APPT-"),
-            customerName: data.customerName || "",
-            contact: data.customerContact,
-            email: undefined,
-            vehicle: {
-              make: data.vehicleMake,
-              model: data.vehicleModel,
-              vin: data.vehicleVin,
-            },
-            services: data.serviceType ? [data.serviceType] : [],
-            date: data.preferredDate,
-            time: data.preferredTime,
-            assignee: "Unassigned",
-            status: "Scheduled",
-            communications: [
-              { title: "Confirmation created", detail: "Appointment created via New Appointment form.", at: new Date().toLocaleString() },
-            ],
-          });
-          setConfirmOpen(true);
-        }}
+
+      <UpcomingAppointmentsTable
+        title="Upcoming Appointments"
+        rows={upcoming.map((a) => ({ id: a.id, time: `${a.date} ${a.time}`, customer: a.customer, vehicle: a.vehicle, service: a.service, status: a.status }))}
+        onView={(r) => handleView(appointments.find((x) => x.id === r.id) as Appointment)}
       />
-      <AppointmentConfirmationModal
-        open={confirmOpen}
-        confirmationNumber={confirmationNumber}
-        onViewDetails={() => {
-          setConfirmOpen(false);
-          setDetailsOpen(true);
-        }}
-        onReturn={() => {
-          setConfirmOpen(false);
-          // stays on schedule page; could navigate to dashboard if needed later
-        }}
-        onClose={() => setConfirmOpen(false)}
+
+      <UpcomingAppointmentsTable
+        title="Appointment History"
+        rows={history.map((a) => ({ id: a.id, time: `${a.date} ${a.time}`, customer: a.customer, vehicle: a.vehicle, service: a.service, status: a.status }))}
+        onView={(r) => handleView(appointments.find((x) => x.id === r.id) as Appointment)}
       />
-      {lastAppointment && (
+
+  <SetAvailabilityModal open={availabilityOpen} onClose={() => setAvailabilityOpen(false)} unavailableDates={unavailableDates} onSave={(d) => setUnavailableDates(d)} />
+
+      {selected && (
         <AppointmentDetailsModal
           open={detailsOpen}
-          details={lastAppointment}
+          details={{
+            id: selected.id,
+            customerName: selected.customer,
+            contact: undefined,
+            email: undefined,
+            vehicle: { make: selected.vehicle },
+            services: [selected.service],
+            date: selected.date,
+            time: selected.time,
+            assignee: selected.assignee,
+            status: selected.status,
+            communications: selected.communications,
+          }}
           onClose={() => setDetailsOpen(false)}
         />
       )}
-      <SetAvailabilityModal open={availabilityOpen} onClose={() => setAvailabilityOpen(false)} />
+
+      <RescheduleRequestModal open={rescheduleOpen} onClose={() => setRescheduleOpen(false)} onSubmit={handleSubmitReschedule} />
     </div>
   );
 }

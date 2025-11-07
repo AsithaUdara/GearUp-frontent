@@ -5,9 +5,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
 import { serviceCategories } from '@/lib/servicesData';
 import Image from 'next/image';
+import Link from 'next/link';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
 export default function CustomerHeader() {
@@ -15,7 +16,13 @@ export default function CustomerHeader() {
   const [isServicesMenuOpen, setServicesMenuOpen] = useState(false);
   const [isUserMenuOpen, setUserMenuOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
   const { user } = useAuth();
+  
+  // Check if we're on the appointment or modification page
+  const isAppointmentPage = pathname === '/customer/appointment';
+  const isModificationPage = pathname === '/customer/modification';
+  const shouldHideButtons = isAppointmentPage || isModificationPage;
   
   const navLinks = ["HOME", "ABOUT US", "PACKAGES", "NEWS", "CONTACT"];
 
@@ -35,6 +42,7 @@ export default function CustomerHeader() {
   };
 
   return (
+    <>
     <header 
       className={clsx(
         "fixed top-0 z-50 w-full transition-all duration-300",
@@ -46,7 +54,7 @@ export default function CustomerHeader() {
       }}
     >
       <div className="container mx-auto flex h-full items-center justify-between px-6">
-        <a href="/" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
           <Image
             src="/logos/gearup_logo.png"
             alt="GearUp"
@@ -56,7 +64,7 @@ export default function CustomerHeader() {
             className="h-14 md:h-16 lg:h-20 w-auto"
           />
           <span className="sr-only">GearUp</span>
-        </a>
+        </Link>
         
         <nav className="hidden items-center gap-10 lg:flex">
           {navLinks.map((link) => {
@@ -73,14 +81,14 @@ export default function CustomerHeader() {
             };
             
             return (
-              <a 
+              <Link 
                 key={link} 
                 href={getHref(link)}
                 className="group relative font-heading text-sm font-semibold tracking-wider uppercase text-foreground transition-colors hover:text-primary"
               >
                 {link}
                 <span className="absolute -bottom-2 left-1/2 h-0.5 w-0 -translate-x-1/2 bg-primary transition-all duration-300 group-hover:w-full" />
-              </a>
+              </Link>
             );
           })}
           <div onMouseEnter={() => setServicesMenuOpen(true)}>
@@ -92,7 +100,7 @@ export default function CustomerHeader() {
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
-          <div className="relative" onMouseEnter={() => setUserMenuOpen(true)}>
+          <div className={clsx("relative", shouldHideButtons && "invisible")} onMouseEnter={() => !shouldHideButtons && setUserMenuOpen(true)}>
             <button className="group relative inline-flex items-center gap-2 rounded-md border border-border px-5 py-3 font-heading text-sm font-bold uppercase text-foreground shadow-sm transition-colors duration-300 hover:border-primary hover:bg-primary/5">
               <User className="h-4 w-4" />
               <span>{user?.displayName || user?.email?.split('@')[0] || 'User'}</span>
@@ -100,7 +108,7 @@ export default function CustomerHeader() {
             </button>
             
             <AnimatePresence>
-              {isUserMenuOpen && (
+              {isUserMenuOpen && !shouldHideButtons && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -110,10 +118,10 @@ export default function CustomerHeader() {
                   onMouseLeave={() => setUserMenuOpen(false)}
                 >
                   <div className="py-2">
-                    <a href="/customer/dashboard" className="block px-4 py-2 text-sm text-foreground hover:bg-gray-100">Dashboard</a>
-                    <a href="/customer/vehicles" className="block px-4 py-2 text-sm text-foreground hover:bg-gray-100">My Vehicles</a>
-                    <a href="/customer/service-history" className="block px-4 py-2 text-sm text-foreground hover:bg-gray-100">Service History</a>
-                    <a href="/customer/settings" className="block px-4 py-2 text-sm text-foreground hover:bg-gray-100">Settings</a>
+                    <Link href="/customer/dashboard" className="block px-4 py-2 text-sm text-foreground hover:bg-gray-100">Dashboard</Link>
+                    <Link href="/customer/vehicles" className="block px-4 py-2 text-sm text-foreground hover:bg-gray-100">My Vehicles</Link>
+                    <Link href="/customer/service-history" className="block px-4 py-2 text-sm text-foreground hover:bg-gray-100">Service History</Link>
+                    <Link href="/customer/settings" className="block px-4 py-2 text-sm text-foreground hover:bg-gray-100">Settings</Link>
                     <hr className="my-2" />
                     <button 
                       onClick={handleLogout}
@@ -128,18 +136,22 @@ export default function CustomerHeader() {
             </AnimatePresence>
           </div>
           
-          <a
-            href="/customer/book-appointment"
-            className="group relative inline-flex items-center gap-2 overflow-hidden rounded-md bg-primary px-5 py-3 font-heading text-sm font-bold uppercase text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-primary/80 transition-all duration-300 hover:bg-white hover:text-primary"
+          <Link
+            href="/customer/appointment"
+            className={clsx(
+              "group relative inline-flex items-center gap-2 overflow-hidden rounded-md bg-primary px-5 py-3 font-heading text-sm font-bold uppercase text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-primary/80 transition-all duration-300 hover:bg-white hover:text-primary",
+              shouldHideButtons && "invisible"
+            )}
           >
             <span className="absolute inset-0 bg-white/0 transition-colors duration-300 group-hover:bg-white/10" />
             <span className="relative">BOOK NOW</span>
             <MoveRight className="relative h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-          </a>
+          </Link>
         </div>
       </div>
+    </header>
 
-      <AnimatePresence>
+    <AnimatePresence>
         {isServicesMenuOpen && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -158,11 +170,11 @@ export default function CustomerHeader() {
                   <ul className="mt-6 space-y-4">
                     {category.services.map((service) => (
                       <li key={service.name}>
-                        <a href="/#services" className="group flex items-center gap-4 text-muted-foreground transition-colors hover:text-primary">
+                        <Link href="/#services" className="group flex items-center gap-4 text-muted-foreground transition-colors hover:text-primary">
                           <service.icon className="h-6 w-6 text-primary/70 transition-colors group-hover:text-primary" />
                           <span className="font-body text-base">{service.name}</span>
                           <span className="ml-auto h-px flex-1 bg-border/50" />
-                        </a>
+                        </Link>
                       </li>
                     ))}
                   </ul>
@@ -172,6 +184,6 @@ export default function CustomerHeader() {
           </motion.div>
         )}
       </AnimatePresence>
-    </header>
+    </>
   );
 }

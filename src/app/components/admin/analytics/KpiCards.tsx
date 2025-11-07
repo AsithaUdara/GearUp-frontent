@@ -1,23 +1,92 @@
-import { TrendingUp, Users, Wrench } from 'lucide-react';
+'use client';
+
+import { Users, Wrench } from 'lucide-react';
+import { useEffect, useState } from 'react';
+
+interface MetricsData {
+  appointments: number;
+  appointmentsChange: string;
+  newCustomers: number;
+  newCustomersChange: string;
+  growth: string;
+}
 
 export default function KpiCards() {
+  const [metrics, setMetrics] = useState<MetricsData>({
+    appointments: 342,
+    appointmentsChange: '+3.1%',
+    newCustomers: 97,
+    newCustomersChange: '+5.5%',
+    growth: '12.4%',
+  });
+
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+        const response = await fetch('http://localhost:8087/api/analytics/metrics');
+        if (response.ok) {
+          const data = await response.json();
+          setMetrics(data);
+        }
+      } catch (error) {
+        console.error('Error fetching metrics:', error);
+      }
+    };
+
+    fetchMetrics();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(fetchMetrics, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const items = [
-    { id: 'appt', label: 'Appointments', value: '342', delta: '+3.1%', icon: Wrench, accent: 'text-red-600' },
-    { id: 'cust', label: 'New Customers', value: '97', delta: '+5.5%', icon: Users, accent: 'text-blue-600' },
-    { id: 'growth', label: 'Growth', value: '12.4%', delta: <span className="text-emerald-700">▲</span>, icon: TrendingUp, accent: 'text-emerald-600' },
+    { 
+      id: 'appt', 
+      label: 'Total Appointments', 
+      value: metrics.appointments.toString(), 
+      delta: metrics.appointmentsChange, 
+      icon: Wrench, 
+      bgColor: 'bg-red-50',
+      iconColor: 'text-red-600',
+      borderColor: 'border-red-100'
+    },
+    { 
+      id: 'cust', 
+      label: 'New Customers', 
+      value: metrics.newCustomers.toString(), 
+      delta: metrics.newCustomersChange, 
+      icon: Users, 
+      bgColor: 'bg-blue-50',
+      iconColor: 'text-blue-600',
+      borderColor: 'border-blue-100'
+    },
   ];
 
+  const isPositive = (delta: string) => delta.startsWith('+');
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-      {items.map(({ id, label, value, delta, icon: Icon, accent }) => (
-        <div key={id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md hover:-translate-y-0.5">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs text-gray-500">{label}</div>
-              <div className="text-lg font-semibold text-gray-900 mt-1">{value}</div>
-              <div className="text-[11px] text-gray-600 mt-0.5">{delta}</div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {items.map(({ id, label, value, delta, icon: Icon, bgColor, iconColor, borderColor }) => (
+        <div 
+          key={id} 
+          className={`relative overflow-hidden rounded-xl border-2 ${borderColor} bg-white p-6 shadow-sm transition-all duration-200 hover:shadow-lg hover:-translate-y-1`}
+        >
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">{label}</p>
+              <div className="mt-3 flex items-baseline gap-2">
+                <h3 className="text-4xl font-bold text-gray-900">{value}</h3>
+                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                  isPositive(delta) ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }`}>
+                  {delta}
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-gray-500">vs. last period</p>
             </div>
-            <Icon className={`h-5 w-5 ${accent}`} />
+            <div className={`flex-shrink-0 p-3 rounded-xl ${bgColor}`}>
+              <Icon className={`h-8 w-8 ${iconColor}`} />
+            </div>
           </div>
         </div>
       ))}

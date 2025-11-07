@@ -1,5 +1,6 @@
 "use client";
-import { Pencil, X, XCircle, Printer } from "lucide-react";
+import { X } from "lucide-react";
+import Link from "next/link";
 
 type AppointmentDetails = {
   id: string;
@@ -19,9 +20,10 @@ type Props = {
   open: boolean;
   details: AppointmentDetails;
   onClose: () => void;
+  showScheduleLink?: boolean;
 };
 
-export default function AppointmentDetailsModal({ open, details, onClose }: Props) {
+export default function AppointmentDetailsModal({ open, details, onClose, showScheduleLink = false }: Props) {
   if (!open) return null;
   const s = details;
   return (
@@ -30,15 +32,12 @@ export default function AppointmentDetailsModal({ open, details, onClose }: Prop
         <div className="flex items-center justify-between border-b px-6 py-4">
           <h2 className="font-heading text-lg font-semibold">Appointment Details</h2>
           <div className="flex items-center gap-2">
-            <button className="inline-flex items-center gap-2 rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700">
-              <Pencil className="h-4 w-4" /> Edit Appointment
-            </button>
-            <button className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-gray-50">
-              <XCircle className="h-4 w-4" /> Cancel Appointment
-            </button>
-            <button className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-gray-50">
-              <Printer className="h-4 w-4" />
-            </button>
+            {showScheduleLink && (
+              <Link href="/employee/schedule" className="inline-flex items-center gap-2 rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700">
+                View My Schedule
+              </Link>
+            )}
+            {/* print removed for employee details view */}
             <button aria-label="Close" onClick={onClose} className="rounded-md p-1 hover:bg-gray-100">
               <X className="h-5 w-5" />
             </button>
@@ -72,7 +71,6 @@ export default function AppointmentDetailsModal({ open, details, onClose }: Prop
               <div className="space-y-1 text-sm">
                 <div><span className="font-medium">Service:</span> {s.services?.join(", ")}</div>
                 <div><span className="font-medium">Date & Time:</span> {s.date}, {s.time}</div>
-                {s.assignee && <div><span className="font-medium">Assigned to:</span> {s.assignee}</div>}
               </div>
             </div>
             <div className="rounded-lg border bg-white p-4">

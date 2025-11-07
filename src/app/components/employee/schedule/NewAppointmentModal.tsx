@@ -26,8 +26,8 @@ export default function NewAppointmentModal({ open, onClose, onSubmit }: Props) 
     const formData = new FormData(e.currentTarget);
     const data: Record<string, string> = {};
     formData.forEach((v, k) => (data[k] = String(v)));
-  onSubmit?.(data);
-  onClose();
+    onSubmit?.(data);
+    onClose();
   }
 
   return (
@@ -88,6 +88,7 @@ export default function NewAppointmentModal({ open, onClose, onSubmit }: Props) 
               <option>Battery Replacement</option>
             </select>
           </div>
+
 
           {/* Row 5 */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
