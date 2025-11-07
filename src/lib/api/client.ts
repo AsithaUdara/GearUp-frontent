@@ -5,7 +5,12 @@ import { auth } from '@/lib/firebase';
 // IMPORTANT: Next.js only inlines env vars referenced statically.
 // Do NOT use dynamic keys to read NEXT_PUBLIC_* values.
 export function getGatewayBase(): string | undefined {
-  return (process.env.NEXT_PUBLIC_API_BASE as string | undefined)?.trim() || undefined;
+  // Prefer explicit gateway var; fall back to legacy API base.
+  return (
+    (process.env.NEXT_PUBLIC_GATEWAY_BASE as string | undefined)?.trim() ||
+    (process.env.NEXT_PUBLIC_API_BASE as string | undefined)?.trim() ||
+    undefined
+  );
 }
 
 export function getVehicleBase(): string | undefined {

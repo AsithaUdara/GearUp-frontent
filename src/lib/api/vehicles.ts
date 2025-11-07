@@ -3,8 +3,8 @@
 import { apiFetchJson, getGatewayBase, getVehicleBase } from './client';
 
 function base(): string | undefined {
-  // Dev proxy to avoid CORS in direct mode
-  if (process.env.NEXT_PUBLIC_USE_DEV_PROXY === '1') {
+  // Route through Next.js proxy by default (which forwards to the 8080 gateway)
+  if (process.env.NEXT_PUBLIC_USE_DEV_PROXY !== '0') {
     return '/api/proxy/vehicles';
   }
   const gw = getGatewayBase();

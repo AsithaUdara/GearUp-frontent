@@ -2,17 +2,30 @@ import { NextRequest } from 'next/server';
 
 export const runtime = 'nodejs';
 
-function getTargetBase(): string {
-  const base = process.env.NEXT_PUBLIC_API_BASE as string | undefined;
-  if (base) return `${base.replace(/\/$/, '')}/api/vehicles`;
-  const direct = process.env.NEXT_PUBLIC_API_BASE_VEHICLE as string | undefined;
-  return `${(direct || 'http://localhost:8083').replace(/\/$/, '')}/api/vehicles`;
+function getGatewayBase(): string {
+  const gw = (process.env.NEXT_PUBLIC_GATEWAY_BASE as string | undefined)?.trim();
+  const alt = (process.env.NEXT_PUBLIC_API_BASE as string | undefined)?.trim();
+  return (gw || alt || 'http://localhost:8080').replace(/\/$/, '');
+}
+
+function getDirectServiceBase(): string {
+  const direct = (process.env.NEXT_PUBLIC_API_BASE_VEHICLE as string | undefined)?.trim() || 'http://localhost:8083';
+  return direct.replace(/\/$/, '');
+}
+
+function getTargetBase(): { url: string; viaGateway: boolean; fallbackUrl: string } {
+  const useGateway = (process.env.NEXT_PUBLIC_USE_GATEWAY as string | undefined) !== '0';
+  const gw = `${getGatewayBase()}/api/vehicles`;
+  const direct = `${getDirectServiceBase()}/api/vehicles`;
+  if (useGateway) return { url: gw, viaGateway: true, fallbackUrl: direct };
+  return { url: direct, viaGateway: false, fallbackUrl: gw };
 }
 
 async function proxy(req: NextRequest, params: { path?: string[] }) {
-  const base = getTargetBase();
+  const { url: base, viaGateway, fallbackUrl } = getTargetBase();
   const suffix = (params.path || []).join('/');
-  const url = `${base}${suffix ? '/' + suffix : ''}`;
+  const qs = req.nextUrl.search || '';
+  const url = `${base}${suffix ? '/' + suffix : ''}${qs}`;
 
   const headers = new Headers();
   const ct = req.headers.get('content-type');
@@ -43,6 +56,21 @@ async function proxy(req: NextRequest, params: { path?: string[] }) {
     if (respCT) outHeaders.set('content-type', respCT);
     return new Response(body, { status: resp.status, headers: outHeaders });
   } catch (err) {
+    // If gateway path failed and we intended to use gateway, try direct service as a soft fallback
+    if (viaGateway) {
+      const alt = `${fallbackUrl}${suffix ? '/' + suffix : ''}${qs}`;
+      try {
+        console.warn(`[vehicles-proxy] primary failed, retrying direct service: ${alt}`);
+        const resp = await fetch(alt, init);
+        const body = await resp.arrayBuffer();
+        const outHeaders = new Headers();
+        const respCT = resp.headers.get('content-type');
+        if (respCT) outHeaders.set('content-type', respCT);
+        return new Response(body, { status: resp.status, headers: outHeaders });
+      } catch (e2) {
+        console.error(`[vehicles-proxy] fallback fetch error for ${alt}:`, e2);
+      }
+    }
     console.error(`[vehicles-proxy] fetch error for ${url}:`, err);
     return new Response(JSON.stringify({ error: 'Backend service unavailable', details: String(err) }), {
       status: 500,

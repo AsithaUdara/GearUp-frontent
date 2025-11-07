@@ -2,17 +2,30 @@ import { NextRequest } from 'next/server';
 
 export const runtime = 'nodejs';
 
-function getTargetBase(): string {
-  const base = process.env.NEXT_PUBLIC_API_BASE as string | undefined;
-  if (base) return `${base.replace(/\/$/, '')}/api/customers`;
-  const direct = process.env.NEXT_PUBLIC_API_BASE_CUSTOMER as string | undefined;
-  return `${(direct || 'http://localhost:8084').replace(/\/$/, '')}/api/customers`;
+function getGatewayBase(): string {
+  const gw = (process.env.NEXT_PUBLIC_GATEWAY_BASE as string | undefined)?.trim();
+  const alt = (process.env.NEXT_PUBLIC_API_BASE as string | undefined)?.trim();
+  return (gw || alt || 'http://localhost:8080').replace(/\/$/, '');
+}
+
+function getDirectServiceBase(): string {
+  const direct = (process.env.NEXT_PUBLIC_API_BASE_CUSTOMER as string | undefined)?.trim() || 'http://localhost:8084';
+  return direct.replace(/\/$/, '');
+}
+
+function getTargetBase(): { url: string; viaGateway: boolean; fallbackUrl: string } {
+  const useGateway = (process.env.NEXT_PUBLIC_USE_GATEWAY as string | undefined) !== '0';
+  const gw = `${getGatewayBase()}/api/customers`;
+  const direct = `${getDirectServiceBase()}/api/customers`;
+  if (useGateway) return { url: gw, viaGateway: true, fallbackUrl: direct };
+  return { url: direct, viaGateway: false, fallbackUrl: gw };
 }
 
 async function proxy(req: NextRequest, params: { path?: string[] }) {
-  const base = getTargetBase();
+  const { url: base, viaGateway, fallbackUrl } = getTargetBase();
   const suffix = (params.path || []).join('/');
-  const url = `${base}${suffix ? '/' + suffix : ''}`;
+  const qs = req.nextUrl.search || '';
+  const url = `${base}${suffix ? '/' + suffix : ''}${qs}`;
 
   const headers = new Headers();
   const ct = req.headers.get('content-type');
@@ -33,12 +46,36 @@ async function proxy(req: NextRequest, params: { path?: string[] }) {
     next: { revalidate: 0 },
   };
 
-  const resp = await fetch(url, init);
-  const body = await resp.arrayBuffer();
-  const outHeaders = new Headers();
-  const respCT = resp.headers.get('content-type');
-  if (respCT) outHeaders.set('content-type', respCT);
-  return new Response(body, { status: resp.status, headers: outHeaders });
+  try {
+    console.log(`[customers-proxy] ${req.method} ${url}`);
+    const resp = await fetch(url, init);
+    console.log(`[customers-proxy] response status: ${resp.status}`);
+    const body = await resp.arrayBuffer();
+    const outHeaders = new Headers();
+    const respCT = resp.headers.get('content-type');
+    if (respCT) outHeaders.set('content-type', respCT);
+    return new Response(body, { status: resp.status, headers: outHeaders });
+  } catch (err) {
+    if (viaGateway) {
+      const alt = `${fallbackUrl}${suffix ? '/' + suffix : ''}${qs}`;
+      try {
+        console.warn(`[customers-proxy] primary failed, retrying direct service: ${alt}`);
+        const resp = await fetch(alt, init);
+        const body = await resp.arrayBuffer();
+        const outHeaders = new Headers();
+        const respCT = resp.headers.get('content-type');
+        if (respCT) outHeaders.set('content-type', respCT);
+        return new Response(body, { status: resp.status, headers: outHeaders });
+      } catch (e2) {
+        console.error(`[customers-proxy] fallback fetch error for ${alt}:`, e2);
+      }
+    }
+    console.error(`[customers-proxy] fetch error for ${url}:`, err);
+    return new Response(JSON.stringify({ error: 'Backend service unavailable', details: String(err) }), {
+      status: 500,
+      headers: { 'content-type': 'application/json' }
+    });
+  }
 }
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ path?: string[] }> }) {
