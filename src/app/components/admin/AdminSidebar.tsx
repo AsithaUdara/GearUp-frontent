@@ -5,8 +5,6 @@ import { LayoutDashboard, Calendar, Users, Wrench, LogOut, Star, Clock, Package,
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { clsx } from 'clsx';
-import { auth } from '@/lib/firebase';
-import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 
 const navLinks = [
@@ -25,7 +23,9 @@ export default function AdminSidebar() {
   const router = useRouter();
 
   const handleSignOut = async () => {
-    await signOut(auth);
+    // Clear any auth tokens or session data
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('authToken');
     router.push('/'); // Redirect to landing page after sign out
   };
 
