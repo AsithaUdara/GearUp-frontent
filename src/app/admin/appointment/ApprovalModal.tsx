@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { Appointment } from "./page";
+import { Appointment } from "./types";
 
 interface ApprovalModalProps {
   appointment: Appointment;
@@ -25,9 +25,15 @@ export default function ApprovalModal({
         {/* Details */}
         <div className="space-y-2 text-sm">
           <Detail label="Customer" value={appointment.customerName} />
-          <Detail label="Vehicle" value={appointment.vehicleModel} />
-          <Detail label="Service Type" value={appointment.serviceType} />
-          <Detail label="Date" value={appointment.date} />
+          <Detail label="Service" value={appointment.serviceName} />
+          <Detail label="Date" value={appointment.timeSlot.slotDate} />
+          <Detail
+            label="Time"
+            value={`${appointment.timeSlot.startTime} - ${appointment.timeSlot.endTime}`}
+          />
+          <Detail label="Phone" value={appointment.customerPhone} />
+          <Detail label="Email" value={appointment.customerEmail} />
+          <Detail label="Notes" value={appointment.notes || "No notes"} />
         </div>
 
         {/* Buttons */}
@@ -36,7 +42,7 @@ export default function ApprovalModal({
             onClick={onApprove}
             className="px-4 py-2 rounded-md bg-green-500 hover:bg-green-700 text-white font-medium transition-colors duration-200"
           >
-            Approve
+            Confirm
           </button>
           <button
             onClick={onClose}

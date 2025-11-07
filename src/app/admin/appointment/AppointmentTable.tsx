@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { Appointment } from "./page";
+import { Appointment } from "./types";
 
 import {
   DotIcon,
@@ -103,11 +103,11 @@ export default function AppointmentTable({
     .filter((app) => {
       const searchFields = [
         app.customerName,
-        app.vehicleModel,
-        app.appointmentId,
-        app.customerContact.phone,
-        app.customerContact.email,
-        app.serviceType,
+        app.serviceName,
+        app.customerPhone,
+        app.customerEmail,
+        String(app.id),
+        app.notes || "",
       ]
         .join(" ")
         .toLowerCase();
@@ -121,7 +121,9 @@ export default function AppointmentTable({
   const sortedAppointments = [...filteredAppointments].sort((a, b) => {
     let compare = 0;
     if (sortBy === "date") {
-      compare = new Date(a.date).getTime() - new Date(b.date).getTime();
+      compare =
+        new Date(a.timeSlot.slotDate).getTime() -
+        new Date(b.timeSlot.slotDate).getTime();
     }
 
     return sortOrder === "asc" ? compare : -compare;
@@ -196,28 +198,10 @@ export default function AppointmentTable({
 
   const getStatusChipColor = (status: Appointment["status"]) => {
     switch (status) {
-      case "pending":
-        return "bg-yellow-100 text-yellow-700";
-      case "approved":
+      case "CONFIRMED":
         return "bg-green-100 text-green-700";
-      case "assigned":
-        return "bg-blue-100 text-blue-700";
-      case "checked-in":
-        return "bg-indigo-100 text-indigo-700";
-      case "in-service":
-        return "bg-purple-100 text-purple-700";
-      case "completed":
-        return "bg-lime-100 text-lime-700";
-      case "no-show":
-        return "bg-red-100 text-red-700";
-      case "cancelled":
-        return "bg-pink-100 text-pink-700";
-      case "rejected":
-        return "bg-red-100 text-red-700";
-      case "rescheduled":
-        return "bg-orange-100 text-orange-700";
-      case "locked":
-        return "bg-gray-100 text-gray-700";
+      case "PENDING":
+        return "bg-yellow-100 text-yellow-700";
       default:
         return "bg-gray-100 text-gray-700";
     }
@@ -269,17 +253,8 @@ export default function AppointmentTable({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="assigned">Assigned</SelectItem>
-              <SelectItem value="checked-in">Checked-in</SelectItem>
-              <SelectItem value="in-service">In-Service</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="no-show">No-Show</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
-              <SelectItem value="rescheduled">Rescheduled</SelectItem>
-              <SelectItem value="locked">Locked</SelectItem>
+              <SelectItem value="PENDING">Pending</SelectItem>
+              <SelectItem value="CONFIRMED">Confirmed</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -333,14 +308,12 @@ export default function AppointmentTable({
                 onCheckedChange={handleSelectAll}
               />
             </th>
-            <th className="px-4 py-3 font-semibold w-[120px]">
-              Appointment ID
-            </th>
+            <th className="px-4 py-3 font-semibold w-[120px]">Booking ID</th>
+            <th className="px-4 py-3 font-semibold">Service</th>
             <th className="px-4 py-3 font-semibold">Customer</th>
-            <th className="px-4 py-3 font-semibold">Vehicle</th>
+            <th className="px-4 py-3 font-semibold">Contact</th>
             <th className="px-4 py-3 font-semibold">Date</th>
-            <th className="px-4 py-3 font-semibold">Time Slot</th>
-            <th className="px-4 py-3 font-semibold">Service Type</th>
+            <th className="px-4 py-3 font-semibold">Time</th>
             <th className="px-4 py-3 font-semibold">Status</th>
             <th className="px-4 py-3 font-semibold text-center">Actions</th>
           </tr>
@@ -361,25 +334,24 @@ export default function AppointmentTable({
                     }
                   />
                 </td>
-                <td className="px-4 py-3 font-medium w-[120px]">
-                  {app.appointmentId}
-                </td>
-                <td className="px-4 py-3 font-medium flex items-center space-x-2">
+                <td className="px-4 py-3 font-medium w-[120px]">{app.id}</td>
+                <td className="px-4 py-3">{app.serviceName}</td>
+                <td className="px-4 py-3 font-medium">
                   <span>{app.customerName}</span>
-                  <a href={`tel:${app.customerContact.phone}`}>
+                </td>
+                <td className="px-4 py-3 flex items-center space-x-2">
+                  <a href={`tel:${app.customerPhone}`}>
                     <PhoneIcon size={16} className="text-blue-500" />
                   </a>
-                  <a href={`mailto:${app.customerContact.email}`}>
+                  <a href={`mailto:${app.customerEmail}`}>
                     <MailIcon size={16} className="text-blue-500" />
                   </a>
                 </td>
-                <td className="px-4 py-3">{app.vehicleModel}</td>
-                <td className="px-4 py-3">{app.date}</td>
+                <td className="px-4 py-3">{app.timeSlot.slotDate}</td>
                 <td className="px-4 py-3 flex items-center space-x-2">
                   <ClockIcon size={16} className="text-muted-foreground" />
-                  <span>{app.timeSlot}</span>
+                  <span>{`${app.timeSlot.startTime} - ${app.timeSlot.endTime}`}</span>
                 </td>
-                <td className="px-4 py-3">{app.serviceType}</td>
                 <td className="px-4 py-3">
                   <span
                     className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${getStatusChipColor(
@@ -410,30 +382,25 @@ export default function AppointmentTable({
                       >
                         View details
                       </DropdownMenuItem>
-                      {app.status === "pending" && (
+                      {app.status === "PENDING" && (
                         <DropdownMenuItem
                           onClick={() => onOpenApproveDialog(app)}
                         >
                           Approve
                         </DropdownMenuItem>
                       )}
-                      {app.status !== "cancelled" &&
-                        app.status !== "rejected" && (
-                          <DropdownMenuItem onClick={() => onReject(app)}>
-                            Reject with reason
-                          </DropdownMenuItem>
-                        )}
-                      {app.status !== "completed" && (
-                        <DropdownMenuItem onClick={() => onReschedule(app)}>
-                          Reschedule
+                      {app.status === "PENDING" && (
+                        <DropdownMenuItem onClick={() => onReject(app)}>
+                          Reject
                         </DropdownMenuItem>
                       )}
+                      <DropdownMenuItem onClick={() => onReschedule(app)}>
+                        Reschedule
+                      </DropdownMenuItem>
                       <DropdownMenuItem>Print job card</DropdownMenuItem>
-                      {app.status !== "cancelled" && (
-                        <DropdownMenuItem onClick={() => onCancel(app)}>
-                          Cancel
-                        </DropdownMenuItem>
-                      )}
+                      <DropdownMenuItem onClick={() => onCancel(app)}>
+                        Cancel
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </td>

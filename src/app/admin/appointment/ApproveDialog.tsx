@@ -11,10 +11,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -22,23 +21,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Appointment } from "./page";
-import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
-import { Badge, badgeVariants } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import { format } from "date-fns";
 import {
   PhoneIcon,
   MailIcon,
   CarIcon,
-  CalendarIcon,
   ClockIcon,
   TagIcon,
   PencilIcon,
-  DollarSignIcon,
   AlertCircleIcon,
 } from "lucide-react";
+import { Appointment } from "./types";
 
 interface Employee {
   id: number;
@@ -47,6 +43,7 @@ interface Employee {
 
 interface ApproveDialogProps {
   appointment: Appointment | null;
+  open: boolean;
   onClose: () => void;
   onApprove: (
     id: number,
@@ -61,157 +58,148 @@ interface ApproveDialogProps {
     employeeId?: string,
     onAssignmentSuccess?: () => void
   ) => void;
-  open: boolean;
-  onAssignmentSuccess?: () => void; // Add this line
+  onAssignmentSuccess?: () => void;
 }
 
 export default function ApproveDialog({
   appointment,
+  open,
   onClose,
   onApprove,
   onAssign,
-  open,
-  onAssignmentSuccess, // Destructure the new prop
+  onAssignmentSuccess,
 }: ApproveDialogProps) {
-  const [newTimeSlot, setNewTimeSlot] = useState(appointment?.timeSlot || "");
-  const [serviceAdvisor, setServiceAdvisor] = useState<string | undefined>(
-    undefined
-  );
-  // const [notifyCustomer, setNotifyCustomer] = useState(true);
-  const [conflictWarning, setConflictWarning] = useState(false); // Placeholder for actual conflict detection
+  const [newTimeSlot, setNewTimeSlot] = useState("");
+  const [serviceAdvisor, setServiceAdvisor] = useState<string>("");
+  const [conflictWarning, setConflictWarning] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [employeeFreeSlots, setEmployeeFreeSlots] = useState<string[]>([]);
 
-  React.useEffect(() => {
+  // Reset local state when a new appointment is loaded
+  useEffect(() => {
     if (appointment) {
-      setNewTimeSlot(appointment.timeSlot);
-      setServiceAdvisor(undefined);
-      // setNotifyCustomer(true);
-      setConflictWarning(false); // Reset on new appointment
+      setNewTimeSlot(
+        `${appointment.timeSlot.startTime} - ${appointment.timeSlot.endTime}`
+      );
+      setServiceAdvisor("");
+      setConflictWarning(false);
     }
   }, [appointment]);
 
+  // Load employees once when component mounts
   useEffect(() => {
-    const fetchEmployees = async () => {
+    async function fetchEmployees() {
       try {
         const res = await fetch("/api/employees/available");
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data: Employee[] = await res.json();
         setEmployees(data);
-        console.log("Fetched employees:", data);
-      } catch (error) {
-        console.error("Failed to fetch employees:", error);
+        console.log("✅ Employees loaded successfully:", data);
+      } catch (err) {
+        console.error("❌ Failed to fetch employees:", err);
         toast.error("Failed to load employee list.");
       }
-    };
+    }
     fetchEmployees();
-  }, []); // Empty dependency array means this runs once on mount
+  }, []);
 
+  // Load employee free slots when advisor or date changes
   useEffect(() => {
-    const fetchEmployeeSlots = async () => {
+    async function fetchEmployeeSlots() {
       if (serviceAdvisor && appointment?.date) {
         try {
           const res = await fetch(
             `/api/employees/${serviceAdvisor}/free-slots?date=${appointment.date}`
           );
-          if (!res.ok) {
-            throw new Error(`HTTP error! status: ${res.status}`);
-          }
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const data: string[] = await res.json();
           setEmployeeFreeSlots(data);
-          console.log("Fetched employee free slots:", data);
-        } catch (error) {
-          console.error("Failed to fetch employee free slots:", error);
+        } catch (err) {
+          console.error("Failed to fetch free slots:", err);
           toast.error("Failed to load employee free slots.");
-          setEmployeeFreeSlots([]); // Clear slots on error
+          setEmployeeFreeSlots([]);
         }
       } else {
-        setEmployeeFreeSlots([]); // Clear slots if no employee or date selected
+        setEmployeeFreeSlots([]);
       }
-    };
-    fetchEmployeeSlots();
-  }, [serviceAdvisor, appointment?.date]); // Re-fetch when selected employee or date changes
-
-  const handleApproveAction = () => {
-    if (appointment) {
-      // In a real app, you'd perform a more robust capacity check
-      if (conflictWarning) {
-        toast.warning("Capacity conflict detected. Proceed with caution.");
-      }
-      onApprove(
-        appointment.id,
-        newTimeSlot,
-        serviceAdvisor,
-        false, // notifyCustomer is always false now
-        false // This is an approval, not a direct assignment
-      );
-      onClose();
     }
-  };
+    fetchEmployeeSlots();
+  }, [serviceAdvisor, appointment?.date]);
 
-  const handleAssignAction = () => {
-    if (appointment && serviceAdvisor) {
+  function handleApprove() {
+    if (!appointment) return;
+    if (conflictWarning) {
+      toast.warning("Capacity conflict detected. Proceed with caution.");
+    }
+    onApprove(appointment.id, newTimeSlot, serviceAdvisor, false, false);
+    onClose();
+  }
+
+  async function handleAssign() {
+    if (!appointment || !serviceAdvisor) {
+      toast.warning("Please select an employee to assign the appointment.");
+      return;
+    }
+
+    console.log("🚀 Assigning employee...", {
+      appointmentId: appointment.id,
+      employeeId: serviceAdvisor,
+      timeSlot: newTimeSlot,
+    });
+
+    try {
+      const url = `http://localhost:8084/api/bookings/${
+        appointment.id
+      }/assign?employeeId=${serviceAdvisor}&timeSlot=${encodeURIComponent(
+        newTimeSlot
+      )}`;
+      const res = await fetch(url, { method: "PUT" });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const updatedBooking = await res.json();
+
+      console.log("✅ Employee assigned successfully!", {
+        bookingId: updatedBooking.id,
+        assignedEmployeeId: serviceAdvisor,
+        response: updatedBooking,
+      });
+
+      toast.success("Employee assigned successfully!");
+
+      // Call the parent's assignment success handler
+      if (onAssignmentSuccess) {
+        onAssignmentSuccess();
+      }
+
       onAssign(
         appointment.id,
         newTimeSlot,
         serviceAdvisor,
         onAssignmentSuccess
       );
-      onClose();
-    } else {
-      toast.warning("Please select an employee to assign the appointment.");
+    } catch (err) {
+      console.error("❌ Failed to assign employee:", err);
+      toast.error("Failed to assign employee. Please try again.");
     }
-  };
 
-  // Dummy list of employees for the select dropdown
-  // const employees = [
-  //   { id: "emp1", name: "Alice Johnson" },
-  //   { id: "emp2", name: "Bob Williams" },
-  //   { id: "emp3", name: "Charlie Brown" },
-  // ];
+    onClose();
+  }
 
-  if (!appointment) return null; // Don't render if no appointment is selected
+  if (!appointment) return null;
 
   const getStatusVariant = (status: Appointment["status"]) => {
     switch (status) {
-      case "pending":
+      case "PENDING":
         return "pending";
-      case "approved":
+      case "CONFIRMED":
         return "approved";
-      case "assigned":
-        return "assigned";
-      case "checked-in":
-        return "checked-in";
-      case "in-service":
-        return "in-service";
-      case "completed":
-        return "completed";
-      case "no-show":
-        return "no-show";
-      case "cancelled":
+      case "CANCELLED":
         return "cancelled";
-      case "rejected":
-        return "rejected";
-      case "rescheduled":
-        return "rescheduled";
-      case "locked":
-        return "locked";
       default:
         return "default";
-    }
-  };
-
-  const getPriorityVariant = (priority: Appointment["priority"]) => {
-    switch (priority) {
-      case "Urgent":
-        return "destructive";
-      case "VIP":
-        return "default";
-      case "Normal":
-      default:
-        return "secondary";
     }
   };
 
@@ -220,8 +208,8 @@ export default function ApproveDialog({
       <AlertDialogContent className="sm:max-w-[800px] p-6 max-h-[90vh] overflow-y-auto">
         <AlertDialogHeader>
           <AlertDialogTitle className="text-2xl font-bold">
-            Approve Appointment #
-            <span className="text-primary">{appointment.appointmentId}</span>
+            Approve Appointment&nbsp;
+            <span className="text-primary">#{appointment.id}</span>
           </AlertDialogTitle>
           <AlertDialogDescription className="text-muted-foreground">
             Review and confirm the appointment details below.
@@ -229,7 +217,7 @@ export default function ApproveDialog({
         </AlertDialogHeader>
 
         <div className="grid md:grid-cols-2 gap-8 py-4">
-          {/* Left Column: Details */}
+          {/* Left column */}
           <div className="grid gap-4">
             <h3 className="font-semibold text-lg flex items-center gap-2">
               <CarIcon className="h-5 w-5 text-primary" /> Customer & Vehicle
@@ -240,25 +228,20 @@ export default function ApproveDialog({
               <div className="font-medium">Contact:</div>
               <div className="flex flex-col">
                 <a
-                  href={`tel:${appointment.customerContact.phone}`}
+                  href={`tel:${appointment.customerPhone}`}
                   className="flex items-center gap-1 text-blue-600 hover:underline"
                 >
                   <PhoneIcon className="h-4 w-4" />
-                  {appointment.customerContact.phone}
+                  {appointment.customerPhone}
                 </a>
                 <a
-                  href={`mailto:${appointment.customerContact.email}`}
+                  href={`mailto:${appointment.customerEmail}`}
                   className="flex items-center gap-1 text-blue-600 hover:underline"
                 >
                   <MailIcon className="h-4 w-4" />
-                  {appointment.customerContact.email}
+                  {appointment.customerEmail}
                 </a>
               </div>
-              <div className="font-medium">Vehicle:</div>
-              <div>{appointment.vehicleModel}</div>
-              <div className="font-medium">License Plate:</div>
-              <div>{appointment.appointmentId}</div>
-              {/* Assuming appointmentId can be used as a placeholder for license plate for now */}
             </div>
 
             <Separator className="my-4" />
@@ -267,20 +250,12 @@ export default function ApproveDialog({
               <TagIcon className="h-5 w-5 text-primary" /> Service Summary
             </h3>
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="font-medium">Service Type:</div>
-              <div>{appointment.serviceType}</div>
-              <div className="font-medium">Duration:</div>
-              <div>{appointment.duration} minutes</div>
-              <div className="font-medium">Price Estimate:</div>
-              <div>
-                {appointment.priceEstimate
-                  ? `$${appointment.priceEstimate.toFixed(2)}`
-                  : "N/A"}
-              </div>
-              {appointment.specialNotes && (
+              <div className="font-medium">Service:</div>
+              <div>{appointment.serviceName}</div>
+              {appointment.notes && (
                 <>
                   <div className="font-medium">Notes:</div>
-                  <div>{appointment.specialNotes}</div>
+                  <div>{appointment.notes}</div>
                 </>
               )}
             </div>
@@ -288,20 +263,16 @@ export default function ApproveDialog({
             <Separator className="my-4" />
 
             <h3 className="font-semibold text-lg flex items-center gap-2">
-              <ClockIcon className="h-5 w-5 text-primary" /> Status & Priority
+              <ClockIcon className="h-5 w-5 text-primary" /> Status
             </h3>
             <div className="flex items-center gap-2">
               <Badge variant={getStatusVariant(appointment.status)}>
-                {appointment.status.charAt(0).toUpperCase() +
-                  appointment.status.slice(1)}
-              </Badge>
-              <Badge variant={getPriorityVariant(appointment.priority)}>
-                {appointment.priority}
+                {appointment.status}
               </Badge>
             </div>
           </div>
 
-          {/* Right Column: Approval Controls */}
+          {/* Right column */}
           <div className="grid gap-4">
             <h3 className="font-semibold text-lg flex items-center gap-2">
               <PencilIcon className="h-5 w-5 text-primary" /> Approval &
@@ -309,19 +280,18 @@ export default function ApproveDialog({
             </h3>
             <div className="grid gap-4 rounded-lg border p-4 shadow-sm">
               <div className="grid gap-2">
-                <Label htmlFor="newTimeSlot" className="text-left">
-                  Time Slot
-                </Label>
+                <Label>Time Slot</Label>
                 <Input
-                  id="newTimeSlot"
-                  type="text"
-                  value={newTimeSlot}
-                  onChange={(e) => setNewTimeSlot(e.target.value)}
-                  className="w-full"
+                  value={`${appointment.timeSlot?.startTime ?? ""} - ${
+                    appointment.timeSlot?.endTime ?? ""
+                  }`}
+                  readOnly
                 />
                 <p className="text-sm text-muted-foreground">
-                  Current: {appointment.timeSlot} on{" "}
-                  {format(new Date(appointment.date), "PPP")}
+                  Date:{" "}
+                  {appointment.timeSlot?.slotDate
+                    ? format(new Date(appointment.timeSlot.slotDate), "PPP")
+                    : ""}
                 </p>
                 {conflictWarning && (
                   <div className="flex items-center gap-2 text-amber-600 text-sm">
@@ -332,32 +302,18 @@ export default function ApproveDialog({
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="serviceAdvisor" className="text-left">
-                  Employee
-                </Label>
+                <Label>Employee</Label>
                 <Select
                   value={serviceAdvisor}
-                  onValueChange={(value) => {
-                    console.log("Selected employee ID:", value);
-                    setServiceAdvisor(value);
-                  }}
+                  onValueChange={(value) => setServiceAdvisor(value)}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select an employee">
-                      {serviceAdvisor
-                        ? employees.find(
-                            (emp) => emp.id.toString() === serviceAdvisor
-                          )?.name
-                        : "Select an employee"}
-                    </SelectValue>
+                    <SelectValue placeholder="Select an employee" />
                   </SelectTrigger>
                   <SelectContent className="z-[999]" position="popper">
-                    {employees.map((employee) => (
-                      <SelectItem
-                        key={employee.id}
-                        value={employee.id.toString()}
-                      >
-                        {employee.name}
+                    {employees.map((emp) => (
+                      <SelectItem key={emp.id} value={String(emp.id)}>
+                        {emp.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -366,9 +322,7 @@ export default function ApproveDialog({
 
               {employeeFreeSlots.length > 0 && (
                 <div className="grid gap-2">
-                  <Label htmlFor="freeTimeSlot" className="text-left">
-                    Available Time Slots
-                  </Label>
+                  <Label>Available Time Slots</Label>
                   <div className="grid grid-cols-2 gap-2">
                     {employeeFreeSlots.map((slot) => (
                       <Button
@@ -383,17 +337,6 @@ export default function ApproveDialog({
                   </div>
                 </div>
               )}
-
-              {/* <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="notify-customer"
-                  checked={notifyCustomer}
-                  onCheckedChange={(checked: boolean) =>
-                    setNotifyCustomer(checked)
-                  }
-                />
-                <Label htmlFor="notify-customer">Notify customer</Label>
-              </div> */}
             </div>
           </div>
         </div>
@@ -406,13 +349,13 @@ export default function ApproveDialog({
           </AlertDialogCancel>
           <Button
             variant="secondary"
-            onClick={handleAssignAction}
+            onClick={handleAssign}
             disabled={!serviceAdvisor}
           >
             Assign Appointment
           </Button>
           <AlertDialogAction asChild>
-            <Button onClick={handleApproveAction}>Approve Appointment</Button>
+            <Button onClick={handleApprove}>Approve Appointment</Button>
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

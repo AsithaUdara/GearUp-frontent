@@ -1,16 +1,29 @@
+// app/api/employees/route.ts
 export async function GET() {
-  const employees = [
-    { id: 1, name: "Nimal Perera" },
-    { id: 2, name: "Kamal Silva" },
-    { id: 3, name: "Saman Jayasuriya" },
-    { id: 4, name: "Ashan Fernando" },
-    { id: 5, name: "Mithun Abeysekara" },
-    { id: 6, name: "Ruwan Samarasinghe" },
-    { id: 7, name: "Tharindu Gunasekara" },
-    { id: 8, name: "Chathura Senanayake" },
-    { id: 9, name: "Dinesh Rajapaksa" },
-    { id: 10, name: "Manoj Weerakoon" },
-  ];
+  try {
+    // Call your backend service endpoint that talks to the DB
+    const res = await fetch("http://localhost:8084/api/employees/available", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      // avoid Next.js caching if you want live data
+      cache: "no-store",
+    });
 
-  return Response.json(employees);
+    if (!res.ok) {
+      console.error("Backend responded with:", res.status);
+      return new Response(
+        JSON.stringify({ error: `Backend error ${res.status}` }),
+        { status: res.status }
+      );
+    }
+
+    const employees = await res.json();
+    return Response.json(employees);
+  } catch (err) {
+    console.error("Failed to fetch employees from backend:", err);
+    return new Response(
+      JSON.stringify({ error: "Failed to fetch employees" }),
+      { status: 500 }
+    );
+  }
 }
