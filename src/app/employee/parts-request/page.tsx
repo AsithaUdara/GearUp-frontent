@@ -4,7 +4,7 @@ import React from 'react';
 
 const PartsRequestPage = () => {
   return (
-    <main className="p-4 sm:p-6 lg:p-8">
+    <main className="p-3 sm:p-4 lg:p-5">
       <div className="max-w-7xl mx-auto">
         <PartsRequest />
       </div>

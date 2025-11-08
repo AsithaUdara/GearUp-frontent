@@ -1,9 +1,7 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, MapPin, User, Phone, Car, CheckCircle, AlertCircle } from 'lucide-react';
-import Header from '@/app/components/landing/Header';
-import Footer from '@/app/components/landing/Footer';
+import { Calendar, Clock, User, Car, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 
@@ -115,11 +113,13 @@ export default function AppointmentBooking() {
   const [isBooking, setIsBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/');
-    }
-  }, [user, loading, router]);
+  // TODO: Re-enable authentication check after login system is properly set up
+  // Temporarily disabled to allow access without login for testing/development
+  // useEffect(() => {
+  //   if (!loading && !user) {
+  //     router.push('/');
+  //   }
+  // }, [user, loading, router]);
 
   const getAvailableDates = () => {
     const dates = [];
@@ -173,15 +173,16 @@ export default function AppointmentBooking() {
     );
   }
 
-  if (!user) {
-    return null;
-  }
+  // TODO: Re-enable authentication check after login system is properly set up
+  // Temporarily disabled to allow access without login for testing/development
+  // if (!user) {
+  //   return null;
+  // }
 
   if (bookingSuccess) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header onLoginClick={() => {}} showDefaultActions={false} preserveActionSpace={true} />
-        <div className="pt-24 pb-16">
+      <div className="p-6">
+        <div className="pb-16">
           <div className="container mx-auto px-6">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -247,16 +248,13 @@ export default function AppointmentBooking() {
             </motion.div>
           </div>
         </div>
-        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header onLoginClick={() => {}} showDefaultActions={false} preserveActionSpace={true} />
-      
-      <div className="pt-24 pb-16">
+    <div className="p-6">
+      <div className="pb-16">
         <div className="container mx-auto px-6">
           {/* Header */}
           <motion.div
@@ -268,7 +266,7 @@ export default function AppointmentBooking() {
               Book Your Service
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Schedule your vehicle service with our expert technicians. Choose your preferred time slot and we'll take care of the rest.
+              Schedule your vehicle service with our expert technicians. Choose your preferred time slot and we&apos;ll take care of the rest.
             </p>
           </motion.div>
 
@@ -557,8 +555,6 @@ export default function AppointmentBooking() {
           </div>
         </div>
       </div>
-      
-      <Footer />
     </div>
   );
 }

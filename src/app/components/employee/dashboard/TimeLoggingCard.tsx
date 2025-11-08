@@ -1,12 +1,13 @@
 // src/app/components/employee/dashboard/TimeLoggingCard.tsx
 "use client";
 
-import { Pause, Square, PenSquare, Play } from "lucide-react";
+import { Pause, Square, Play } from "lucide-react";
 import React, { useState, useEffect, useRef } from 'react';
+import { startTaskTimeLog, stopTaskTimeLog } from '@/lib/trackingApi';
 
-// --- MODIFICATION: `isClockedIn` is no longer part of the props ---
 type TaskProps = {
   task: { id: string; title: string; } | null;
+  user?: { getIdToken?: () => Promise<string> } | null;
 };
 
 const formatTime = (totalSeconds: number): string => {
@@ -16,23 +17,26 @@ const formatTime = (totalSeconds: number): string => {
     return [hours, minutes, seconds].map(v => v.toString().padStart(2, '0')).join(':');
 };
 
-// --- MODIFICATION: The component no longer accepts `isClockedIn` ---
-export default function TimeLoggingCard({ task }: TaskProps) {
+export default function TimeLoggingCard({ task, user }: TaskProps) {
     const [isActive, setIsActive] = useState(false);
     const [timeElapsed, setTimeElapsed] = useState(0);
+    const [isSaving, setIsSaving] = useState(false);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const startTimeRef = useRef<number | null>(null);
 
     // Reset timer when a new task is selected
     useEffect(() => {
         setIsActive(false);
         setTimeElapsed(0);
+        startTimeRef.current = null;
     }, [task]);
-    
-    // --- MODIFICATION: The useEffect that watched for `isClockedIn` has been removed ---
 
     // Timer logic
     useEffect(() => {
         if (isActive && task) {
+            if (startTimeRef.current === null) {
+                startTimeRef.current = Date.now();
+            }
             timerRef.current = setInterval(() => setTimeElapsed(prev => prev + 1), 1000);
         } else {
             if (timerRef.current) clearInterval(timerRef.current);
@@ -41,6 +45,54 @@ export default function TimeLoggingCard({ task }: TaskProps) {
             if (timerRef.current) clearInterval(timerRef.current);
         };
     }, [isActive, task]);
+
+    const handleStart = async () => {
+        if (!task) return;
+        
+        try {
+            setIsSaving(true);
+            // Start the task in the backend (set status to in_progress)
+            await startTaskTimeLog(task.id, user);
+            setIsActive(true);
+        } catch (error) {
+            console.error('Failed to start task:', error);
+            alert('Failed to start task. Please try again.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handlePause = () => {
+        setIsActive(false);
+        // Don't save on pause - just pause the timer
+        // Time will be saved when user clicks Stop
+    };
+
+    const handleStop = async () => {
+        if (!task) return;
+        
+        setIsActive(false);
+        
+        if (timeElapsed > 0) {
+            try {
+                setIsSaving(true);
+                const minutes = Math.floor(timeElapsed / 60);
+                // Save the actual duration to the backend
+                await stopTaskTimeLog(task.id, minutes, user);
+                // Reset timer after saving
+                setTimeElapsed(0);
+                startTimeRef.current = null;
+            } catch (error) {
+                console.error('Failed to stop task:', error);
+                alert('Failed to save time log. Please try again.');
+            } finally {
+                setIsSaving(false);
+            }
+        } else {
+            setTimeElapsed(0);
+            startTimeRef.current = null;
+        }
+    };
   
     const mainContent = (
       <>
@@ -57,17 +109,16 @@ export default function TimeLoggingCard({ task }: TaskProps) {
             </div>
           </div>
           <div className="mt-3 flex items-center gap-2">
-             {/* --- MODIFICATION: Button is only disabled if no task is selected --- */}
              <button 
-                  onClick={() => setIsActive(!isActive)}
-                  disabled={!task}
+                  onClick={isActive ? handlePause : handleStart}
+                  disabled={!task || isSaving}
                   className="inline-flex w-24 justify-center items-center gap-2 rounded-lg bg-black text-white px-3 py-1.5 text-xs hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed">
                   {isActive ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                  {isActive ? 'Pause' : 'Start'}
+                  {isSaving ? 'Saving...' : (isActive ? 'Pause' : 'Start')}
              </button>
              <button 
-                  onClick={() => { setIsActive(false); setTimeElapsed(0); }}
-                  disabled={!task}
+                  onClick={handleStop}
+                  disabled={!task || isSaving || (!isActive && timeElapsed === 0)}
                   className="inline-flex w-24 justify-center items-center gap-2 rounded-lg bg-red-600 text-white px-3 py-1.5 text-xs hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
                   <Square className="h-3.5 w-3.5" /> Stop
              </button>

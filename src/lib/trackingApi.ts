@@ -63,6 +63,7 @@ export interface TaskResponse {
 export interface TaskListResponse {
   currentTask: TaskResponse | null;
   assignedTasks: TaskResponse[];
+  inWorkTasks?: TaskResponse[];
   completedTasks: TaskResponse[];
   totalAssigned: number;
   totalInProgress: number;
@@ -203,6 +204,70 @@ export async function updateTaskProgress(
 }
 
 /**
+ * Start task time logging (set status to in_progress)
+ */
+export async function startTaskTimeLog(
+  taskId: string,
+  user?: { getIdToken?: () => Promise<string> } | null
+): Promise<TaskResponse> {
+  return updateTaskProgress(
+    taskId,
+    { status: 'in_progress' },
+    user
+  );
+}
+
+/**
+ * Stop task time logging (update actual duration)
+ * If the task already has an actualDuration, it will be accumulated
+ */
+export async function stopTaskTimeLog(
+  taskId: string,
+  additionalMinutes: number,
+  user?: { getIdToken?: () => Promise<string> } | null
+): Promise<TaskResponse> {
+  // First, get the current task to check existing actualDuration
+  try {
+    const baseUrl = getBaseUrl();
+    const headers = await getAuthHeaders(user);
+    
+    // Fetch current task to get existing actualDuration
+    const getResponse = await fetch(`${baseUrl}/tasks/${taskId}`, {
+      method: 'GET',
+      headers,
+    });
+    
+    if (getResponse.ok) {
+      const currentTask: TaskResponse = await getResponse.json();
+      const existingMinutes = currentTask.actualDuration || 0;
+      const totalMinutes = existingMinutes + additionalMinutes;
+      
+      // Update with accumulated time
+      return updateTaskProgress(
+        taskId,
+        { 
+          status: 'in_progress', // Keep as in_progress unless explicitly completed
+          actualDuration: totalMinutes 
+        },
+        user
+      );
+    }
+  } catch (error) {
+    console.warn('Failed to fetch current task for accumulation, using provided minutes:', error);
+  }
+  
+  // Fallback: just use the provided minutes if we can't fetch current task
+  return updateTaskProgress(
+    taskId,
+    { 
+      status: 'in_progress',
+      actualDuration: additionalMinutes 
+    },
+    user
+  );
+}
+
+/**
  * Get service progress for customer
  */
 export async function getServiceProgress(
@@ -267,6 +332,51 @@ export async function getTasksByVehicle(
   }
   
   return response.json();
+}
+
+/**
+ * Get tasks by service ID
+ */
+export async function getTasksByServiceId(
+  serviceId: string,
+  user?: { getIdToken?: () => Promise<string> } | null
+): Promise<TaskResponse[]> {
+  const baseUrl = getBaseUrl();
+  const headers = await getAuthHeaders(user);
+  const url = `${baseUrl}/tasks/service/${serviceId}`;
+  
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => response.statusText);
+      throw new Error(
+        `Failed to fetch tasks by service ID (${response.status}): ${errorText || response.statusText}. ` +
+        `URL: ${url}. ` +
+        `Please ensure the backend is running and accessible at ${baseUrl}`
+      );
+    }
+    
+    return response.json();
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      const baseUrl = getBaseUrl();
+      const isGateway = !baseUrl.includes('8086');
+      
+      throw new Error(
+        `Network error: Unable to connect to backend API at ${baseUrl}. ` +
+        `Please ensure the backend services are running. ` +
+        (isGateway 
+          ? `Expected API Gateway at: ${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}. ` +
+            `Alternatively, set NEXT_PUBLIC_USE_DIRECT_TRACKING=true to connect directly to tracking service on port 8086.`
+          : `Expected Tracking Service at: http://localhost:8086`)
+      );
+    }
+    throw error;
+  }
 }
 
 /**
