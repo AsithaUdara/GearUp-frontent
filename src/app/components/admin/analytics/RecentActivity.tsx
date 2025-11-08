@@ -1,25 +1,48 @@
+'use client';
+
 import { Clock3, CheckCircle2, XCircle, ArrowUpRight } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 type Activity = {
-  id: string;
-  when: string;
-  message: string;
-  type: 'success' | 'warn' | 'error';
+  id?: number;
+  timestamp: string;
+  event: string;
+  status: 'OK' | 'ATTENTION' | 'WARNING';
+  timeAgo: string;
 };
 
-const items: Activity[] = [
-  { id: 'a1', when: '2m ago', message: 'Appointment confirmed: BMW 3 Series', type: 'success' },
-  { id: 'a2', when: '15m ago', message: 'Inventory low: Oil Filter (OF-67890)', type: 'warn' },
-  { id: 'a3', when: '1h ago', message: 'Service completed: Toyota Camry', type: 'success' },
-  { id: 'a4', when: '3h ago', message: 'Payment failed: Invoice #1458', type: 'error' },
-  { id: 'a5', when: '6h ago', message: 'New customer registered: Sarah Lee', type: 'success' },
-];
-
 export default function RecentActivity() {
-  function badge(t: Activity['type']) {
-    if (t === 'success') return { cls: 'text-emerald-700 bg-emerald-100', icon: CheckCircle2 };
-    if (t === 'warn') return { cls: 'text-amber-700 bg-amber-100', icon: Clock3 };
-    return { cls: 'text-red-700 bg-red-100', icon: XCircle };
+  const [activities, setActivities] = useState<Activity[]>([
+    { timestamp: '2025-11-06T10:00:00', event: 'Appointment confirmed: BMW 3 Series', status: 'OK', timeAgo: '2m ago' },
+    { timestamp: '2025-11-06T09:45:00', event: 'Inventory low: Oil Filter (OF-67890)', status: 'ATTENTION', timeAgo: '15m ago' },
+    { timestamp: '2025-11-06T09:00:00', event: 'Service completed: Toyota Camry', status: 'OK', timeAgo: '1h ago' },
+    { timestamp: '2025-11-06T07:00:00', event: 'Payment failed: Invoice #1458', status: 'WARNING', timeAgo: '3h ago' },
+    { timestamp: '2025-11-06T04:00:00', event: 'New customer registered: Sarah Lee', status: 'OK', timeAgo: '6h ago' },
+  ]);
+
+  useEffect(() => {
+    const fetchActivities = async () => {
+      try {
+        const response = await fetch('http://localhost:8087/api/analytics/activities/recent?limit=5');
+        if (response.ok) {
+          const data = await response.json();
+          setActivities(data);
+        }
+      } catch (error) {
+        console.error('Error fetching activities:', error);
+      }
+    };
+
+    fetchActivities();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(fetchActivities, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  function badge(status: Activity['status']) {
+    if (status === 'OK') return { cls: 'text-emerald-700 bg-emerald-100', icon: CheckCircle2, label: 'OK' };
+    if (status === 'ATTENTION') return { cls: 'text-amber-700 bg-amber-100', icon: Clock3, label: 'Attention' };
+    return { cls: 'text-red-700 bg-red-100', icon: XCircle, label: 'Issue' };
   }
 
   return (
@@ -40,17 +63,17 @@ export default function RecentActivity() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {items.map((i) => {
-              const b = badge(i.type);
+            {activities.map((activity, index) => {
+              const b = badge(activity.status);
               const Icon = b.icon;
               return (
-                <tr key={i.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 text-sm text-gray-600">{i.when}</td>
-                  <td className="px-4 py-2 text-sm text-gray-900">{i.message}</td>
+                <tr key={activity.id || index} className="hover:bg-gray-50">
+                  <td className="px-4 py-2 text-sm text-gray-600">{activity.timeAgo}</td>
+                  <td className="px-4 py-2 text-sm text-gray-900">{activity.event}</td>
                   <td className="px-4 py-2 text-sm">
                     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${b.cls}`}>
                       <Icon className="h-3.5 w-3.5" />
-                      {i.type === 'success' ? 'OK' : i.type === 'warn' ? 'Attention' : 'Issue'}
+                      {b.label}
                     </span>
                   </td>
                 </tr>

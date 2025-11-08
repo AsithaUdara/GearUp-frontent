@@ -1,8 +1,18 @@
-import { CalendarDays } from 'lucide-react';
+'use client';
 
-// Simple inline SVG area+line chart with mock data (no external deps)
+import { CalendarDays } from 'lucide-react';
+import { useEffect, useState } from 'react';
+
+interface TrendData {
+  date: string;
+  count: number;
+  period: string;
+}
+
+// Simple inline SVG area+line chart with API data
 export default function TrendsChart() {
-  const points = [
+  const [trendData, setTrendData] = useState<TrendData[]>([]);
+  const [points, setPoints] = useState([
     { x: 0, y: 38 },
     { x: 1, y: 42 },
     { x: 2, y: 40 },
@@ -15,7 +25,35 @@ export default function TrendsChart() {
     { x: 9, y: 71 },
     { x: 10, y: 68 },
     { x: 11, y: 75 },
-  ];
+  ]);
+
+  useEffect(() => {
+    const fetchTrend = async () => {
+      try {
+        const response = await fetch('http://localhost:8087/api/analytics/appointments/trend?weeks=12');
+        if (response.ok) {
+          const data: TrendData[] = await response.json();
+          setTrendData(data);
+          
+          // Convert API data to points for the chart
+          if (data.length > 0) {
+            const newPoints = data.map((item, index) => ({
+              x: index,
+              y: item.count
+            }));
+            setPoints(newPoints);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching trend data:', error);
+      }
+    };
+
+    fetchTrend();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(fetchTrend, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const width = 720;
   const height = 260;

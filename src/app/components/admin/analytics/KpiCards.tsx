@@ -1,14 +1,51 @@
-import { TrendingUp, Users, Wrench } from 'lucide-react';
+'use client';
+
+import { Users, Wrench } from 'lucide-react';
+import { useEffect, useState } from 'react';
+
+interface MetricsData {
+  appointments: number;
+  appointmentsChange: string;
+  newCustomers: number;
+  newCustomersChange: string;
+  growth: string;
+}
 
 export default function KpiCards() {
+  const [metrics, setMetrics] = useState<MetricsData>({
+    appointments: 342,
+    appointmentsChange: '+3.1%',
+    newCustomers: 97,
+    newCustomersChange: '+5.5%',
+    growth: '12.4%',
+  });
+
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+        const response = await fetch('http://localhost:8087/api/analytics/metrics');
+        if (response.ok) {
+          const data = await response.json();
+          setMetrics(data);
+        }
+      } catch (error) {
+        console.error('Error fetching metrics:', error);
+      }
+    };
+
+    fetchMetrics();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(fetchMetrics, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const items = [
-    { id: 'appt', label: 'Appointments', value: '342', delta: '+3.1%', icon: Wrench, accent: 'text-red-600' },
-    { id: 'cust', label: 'New Customers', value: '97', delta: '+5.5%', icon: Users, accent: 'text-blue-600' },
-    { id: 'growth', label: 'Growth', value: '12.4%', delta: <span className="text-emerald-700">▲</span>, icon: TrendingUp, accent: 'text-emerald-600' },
+    { id: 'appt', label: 'Appointments', value: metrics.appointments.toString(), delta: metrics.appointmentsChange, icon: Wrench, accent: 'text-red-600' },
+    { id: 'cust', label: 'New Customers', value: metrics.newCustomers.toString(), delta: metrics.newCustomersChange, icon: Users, accent: 'text-blue-600' },
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-2 gap-4">
       {items.map(({ id, label, value, delta, icon: Icon, accent }) => (
         <div key={id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md hover:-translate-y-0.5">
           <div className="flex items-center justify-between">
