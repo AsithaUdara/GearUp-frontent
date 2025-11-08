@@ -37,14 +37,10 @@ export async function apiFetchJson<T = any>(url: string, init: RequestInit = {})
     headers.set('Content-Type', 'application/json');
   }
 
-  const gateway = getGatewayBase();
+  // Get Firebase ID token and send as Authorization Bearer
   const token = await getIdToken();
-  if (gateway && token) {
+  if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
-  } else if (!gateway) {
-    // Direct service mode: add X-User-ID if we have a logged-in user
-    const u = auth.currentUser;
-    if (u && !headers.has('X-User-ID')) headers.set('X-User-ID', u.uid);
   }
 
   const resp = await fetch(url, { ...init, headers });

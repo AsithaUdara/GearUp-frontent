@@ -130,12 +130,6 @@ export async function updateVehicle(
       const safeExt = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext) ? ext : 'jpg';
       const filename = `${vehicleId}.${safeExt}`;
       const url = await uploadViaLocalApi(imageFile, `users/${uid}/vehicles`, filename);
-      /* Firebase Storage upload path (disabled in local mode)
-      const objectRef = ref(storage, `users/${uid}/vehicles/${vehicleId}.${safeExt}`);
-      await uploadBytes(objectRef, imageFile, { contentType: imageFile.type || `image/${safeExt}` });
-      const firebaseUrl = await getDownloadURL(objectRef);
-      updateData.photoURL = firebaseUrl;
-      */
       updateData.photoURL = url;
     } else {
       try {

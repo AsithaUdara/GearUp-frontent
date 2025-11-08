@@ -11,8 +11,8 @@ type AppointmentDoc = {
   id: string;
   userId: string;
   serviceName: string;
-  appointmentDate: string; // YYYY-MM-DD
-  timeSlot: string; // e.g. 10:00 AM
+  appointmentDate: string;
+  timeSlot: string;
   status: "scheduled" | "completed" | "cancelled";
   appointmentAt?: { seconds: number; nanoseconds: number } | null;
 };
@@ -38,6 +38,7 @@ export default function CustomerDashboard() {
   const [modLoading, setModLoading] = useState(false);
   const [modError, setModError] = useState<string | null>(null);
 
+  // Fetch vehicles from backend (using Firebase uid)
   useEffect(() => {
     if (!user) return;
     let unsub: null | (() => void) = null;
@@ -53,9 +54,9 @@ export default function CustomerDashboard() {
     return () => { if (unsub) unsub(); };
   }, [user]);
 
+  // Fetch appointments from Firestore (temporary until backend accepts Firebase tokens)
   useEffect(() => {
     if (!user) {
-      // No user yet; avoid indefinite loading state
       setApptLoading(false);
       return;
     }
@@ -78,6 +79,7 @@ export default function CustomerDashboard() {
     return () => unsub();
   }, [user]);
 
+  // Fetch modifications from Firestore (temporary until backend accepts Firebase tokens)
   useEffect(() => {
     if (!user) {
       setModLoading(false);
@@ -112,7 +114,6 @@ export default function CustomerDashboard() {
       }
       return { ...a, _ms: ms } as AppointmentDoc & { _ms: number | null };
     });
-    // Prefer appointments with a future timestamp; otherwise fall back to the most recent scheduled
     const future = withMs
       .filter((a) => a.status === "scheduled" && (a._ms == null || a._ms >= nowMs))
       .sort((a, b) => (a._ms ?? Infinity) - (b._ms ?? Infinity));
@@ -135,9 +136,7 @@ export default function CustomerDashboard() {
   }, [mods]);
   const ongoingModification = useMemo(() => {
     if (!mods.length) return null;
-    // Consider pending/approved/in_progress as ongoing
     const ongoing = mods.filter((m) => m.status === "pending" || m.status === "approved" || m.status === "in_progress");
-    // Sort by createdAt desc if available
     const withMs = ongoing.map((m) => {
       let ms: number | null = null;
       if (m.createdAt && typeof m.createdAt.seconds === "number") {

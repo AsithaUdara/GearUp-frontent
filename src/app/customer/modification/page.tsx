@@ -46,7 +46,7 @@ export default function ServiceModification() {
     return () => unsub && unsub();
   }, [user]);
 
-  // Fetch user's modification history
+  // Fetch user's modification history from Firestore (temporary until backend ready)
   useEffect(() => {
     if (!user) {
       setHistoryLoading(false);
