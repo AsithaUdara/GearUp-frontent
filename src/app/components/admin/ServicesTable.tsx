@@ -1,17 +1,14 @@
 // app/components/admin/ServicesTable.tsx
-import type { ServiceTemplate } from '@/app/admin/services/page';
+import { useEffect } from 'react';
+import { useServiceTemplates, type ServiceTemplateDto } from '@/hooks/useServiceTemplates';
 
-const mockTemplates: ServiceTemplate[] = [
-  { id: 'svc_001', name: 'Oil Change & Filter', description: 'Complete oil change with premium filter replacement', price: 15000, duration: 30 },
-  { id: 'svc_002', name: 'Full Service', description: 'Comprehensive vehicle inspection and maintenance', price: 45000, duration: 120 },
-  { id: 'svc_003', name: 'Brake Service', description: 'Brake pad replacement and brake fluid check', price: 35000, duration: 90 },
-];
-
-type Props = {
-  onEditTemplate: (template: ServiceTemplate) => void;
-};
+type Props = { onEditTemplate: (template: ServiceTemplateDto) => void };
 
 export default function ServicesTable({ onEditTemplate }: Props) {
+  const { items, listTemplates, deleteTemplate } = useServiceTemplates();
+
+  useEffect(() => { listTemplates().catch(() => {}); }, [listTemplates]);
+
   return (
     <div className="rounded-xl border border-border bg-white shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
@@ -26,14 +23,17 @@ export default function ServicesTable({ onEditTemplate }: Props) {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {mockTemplates.map((template) => (
+            {items.map((template) => (
               <tr key={template.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-medium text-foreground">{template.name}</td>
                 <td className="px-4 py-3 text-muted-foreground max-w-sm truncate">{template.description}</td>
-                <td className="px-4 py-3">{template.price.toLocaleString()}</td>
-                <td className="px-4 py-3">{template.duration}</td>
+                <td className="px-4 py-3">{Number(template.price).toLocaleString()}</td>
+                <td className="px-4 py-3">{template.durationMinutes}</td>
                 <td className="px-4 py-3 text-right">
-                  <button onClick={() => onEditTemplate(template)} className="font-semibold text-primary hover:underline">Edit</button>
+                  <div className="flex items-center justify-end gap-3">
+                    <button onClick={() => onEditTemplate(template)} className="font-semibold text-primary hover:underline">Edit</button>
+                    <button onClick={() => template.id && deleteTemplate(template.id)} className="text-red-600 hover:underline">Delete</button>
+                  </div>
                 </td>
               </tr>
             ))}

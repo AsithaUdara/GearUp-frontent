@@ -1,41 +1,52 @@
 // app/components/admin/ServiceEditModal.tsx
 'use client';
 import { X } from "lucide-react";
-import type { ServiceTemplate } from '@/app/admin/services/page';
+import type { ServiceTemplateDto } from '@/hooks/useServiceTemplates';
+import { useServiceTemplates } from '@/hooks/useServiceTemplates';
 import { useEffect, useState } from "react";
 
 type Props = { 
   isOpen: boolean; 
   onClose: () => void;
-  template: ServiceTemplate | null;
+  template: ServiceTemplateDto | null;
 };
 
 export default function ServiceEditModal({ isOpen, onClose, template }: Props) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [durationMinutes, setDurationMinutes] = useState(0);
+  const { createTemplate, updateTemplate } = useServiceTemplates();
 
   useEffect(() => {
     if (template) {
       setName(template.name);
       setDescription(template.description);
       setPrice(template.price);
-      setDuration(template.duration);
+      setDurationMinutes(template.durationMinutes);
     } else {
       setName('');
       setDescription('');
       setPrice(0);
-      setDuration(0);
+      setDurationMinutes(0);
     }
   }, [template, isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log({ id: template?.id, name, description, price, duration });
-    onClose();
+    const payload: ServiceTemplateDto = { name, description, price: Number(price), durationMinutes: Number(durationMinutes), active: true };
+    try {
+      if (template?.id) {
+        await updateTemplate(template.id, payload);
+      } else {
+        await createTemplate(payload);
+      }
+      onClose();
+    } catch (err) {
+      console.error('Template save failed', err);
+    }
   };
 
   return (
@@ -61,7 +72,7 @@ export default function ServiceEditModal({ isOpen, onClose, template }: Props) {
             </div>
             <div>
               <label className="text-sm font-medium">Duration (minutes)</label>
-              <input type="number" value={duration} onChange={(e) => setDuration(Number(e.target.value))} className="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+              <input type="number" value={durationMinutes} onChange={(e) => setDurationMinutes(Number(e.target.value))} className="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-4">
