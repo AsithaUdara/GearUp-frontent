@@ -1,7 +1,7 @@
 // app/components/admin/AdminSidebar.tsx
 'use client';
 
-import { LayoutDashboard, Calendar, Users, UserCheck, Wrench, Clock, Package, BarChart3, Star, LogOut } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, UserCheck, Wrench, Clock, Package, BarChart3, Star, LogOut, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { clsx } from 'clsx';
