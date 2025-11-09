@@ -23,6 +23,7 @@ type Appointment = {
 
 export default function EmployeeSchedulePage() {
   const [availabilityOpen, setAvailabilityOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [unavailableDates, setUnavailableDates] = useState<string[]>([
     // sample blocked dates
     "2025-10-25",
@@ -75,16 +76,32 @@ export default function EmployeeSchedulePage() {
     setDetailsOpen(false);
   }
 
-  const upcoming = appointments.filter((a) => !a.past);
-  const history = appointments.filter((a) => a.past);
+  // Filter appointments based on search query
+  const filteredAppointments = appointments.filter((appointment) => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    return (
+      appointment.customer.toLowerCase().includes(query) ||
+      appointment.vehicle.toLowerCase().includes(query) ||
+      appointment.service.toLowerCase().includes(query) ||
+      appointment.status.toLowerCase().includes(query) ||
+      appointment.date.includes(query) ||
+      appointment.time.toLowerCase().includes(query) ||
+      appointment.id.toLowerCase().includes(query)
+    );
+  });
+
+  const upcoming = filteredAppointments.filter((a) => !a.past);
+  const history = filteredAppointments.filter((a) => a.past);
 
   return (
     <div className="space-y-6">
-      <ScheduleToolbar />
+      <ScheduleToolbar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <CalendarInteractive
-            appointments={appointments.map(a => ({ id: a.id, date: a.date, time: a.time, customer: a.customer, vehicle: a.vehicle, service: a.service, status: a.status }))}
+            appointments={filteredAppointments.map(a => ({ id: a.id, date: a.date, time: a.time, customer: a.customer, vehicle: a.vehicle, service: a.service, status: a.status }))}
             unavailableDates={unavailableDates}
             onView={(a) => handleView(appointments.find((x) => x.id === a.id) as Appointment)}
           />
