@@ -1,12 +1,35 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { db } from '@/lib/firebase';
-import { addDoc, collection, serverTimestamp, query, where, onSnapshot, orderBy } from 'firebase/firestore';
-import { subscribeVehicles, type VehicleDoc } from '@/lib/vehicles';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Clock, 
+  CheckCircle, 
+  AlertCircle, 
+  Car, 
+  Wrench, 
+  User, 
+  Phone, 
+  MapPin,
+  Calendar,
+  Timer,
+  FileText,
+  Camera,
+  MessageSquare,
+  RefreshCw,
+  Bell,
+  Plus,
+  Edit,
+  Trash2,
+  Send,
+  DollarSign,
+  AlertTriangle,
+  CheckSquare,
+  XCircle,
+  Loader2
+} from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { LucideCheck, LucideX, LucideClock, LucideWrench, LucideAlertCircle } from 'lucide-react';
+import { getModificationServices, createModificationRequest, ModificationService as BackendModificationService } from '@/services/modificationService';
 
 type ModificationDoc = {
   id: string;
@@ -22,29 +45,154 @@ type ModificationDoc = {
 export default function ServiceModification() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  // Simplified page: hero + request form only
-  // Vehicle-based modification inquiry form state
-  const [vehicles, setVehicles] = useState<VehicleDoc[]>([]);
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
-  const [subject, setSubject] = useState('');
-  const [inquiry, setInquiry] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [submitMsg, setSubmitMsg] = useState<string | null>(null);
-  const [submitErr, setSubmitErr] = useState<string | null>(null);
-  const [myModifications, setMyModifications] = useState<ModificationDoc[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(true);
+  // Remove mock data - we'll show only available services and submission form
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showNewRequest, setShowNewRequest] = useState(false);
+  const [availableServices, setAvailableServices] = useState<BackendModificationService[]>([]);
+  const [loadingServices, setLoadingServices] = useState(false);
+  const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [newRequest, setNewRequest] = useState({
+    title: '',
+    description: '',
+    selectedServiceId: 0,
+    customerName: user?.displayName || '',
+    customerEmail: user?.email || '',
+    customerPhone: '',
+    customerAddress: '',
+    preferredDate: ''
+  });
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/');
+  const dummyServices = [
+    {
+      id: 1,
+      name: 'Custom Paint Finish',
+      description: 'Premium body prep with multi-layer custom colour and ceramic protection.',
+      estimatedDurationHours: 12,
+      basePrice: 145000
+    },
+    {
+      id: 2,
+      name: 'Performance ECU Tune',
+      description: 'Dyno-tested ECU remap for improved horsepower and throttle response.',
+      estimatedDurationHours: 6,
+      basePrice: 88000
+    },
+    {
+      id: 3,
+      name: 'Interior Detailing & Upholstery',
+      description: 'Full cabin detailing with custom leather or Alcantara upholstery upgrade.',
+      estimatedDurationHours: 10,
+      basePrice: 120000
     }
+  ];
+
+  
+   useEffect(() => {
+     if (!loading && !user) {
+       router.push('/');
+     }
   }, [user, loading, router]);
 
+  // Fetch available modification services from backend
   useEffect(() => {
-    if (!user) return;
-    const unsub = subscribeVehicles(user.uid, (items) => setVehicles(items));
-    return () => unsub && unsub();
+    const fetchServices = async () => {
+      
+       if (!user) return;
+      
+      setLoadingServices(true);
+      try {
+        const response = await getModificationServices();
+        if (response.success && response.data) {
+          setAvailableServices(response.data);
+        } else {
+          setError(response.error || 'Failed to load services');
+        }
+      } catch (err) {
+        setError('Error loading modification services');
+      } finally {
+        setLoadingServices(false);
+      }
+    };
+
+    
+     if (user) {
+      fetchServices();
+     }
   }, [user]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setIsRefreshing(false);
+  };
+
+  const handleSubmitRequest = async () => {
+    if (!user) {
+      setError('You must be logged in to submit a modification request');
+      return;
+    }
+
+    if (!newRequest.title || !newRequest.title.trim()) {
+      setError('Please specify the modification service type');
+      return;
+    }
+
+    if (!newRequest.description || !newRequest.description.trim()) {
+      setError('Please describe your modification requirements');
+      return;
+    }
+
+    if (!newRequest.customerName || !newRequest.customerEmail || !newRequest.customerPhone) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
+    setSubmittingRequest(true);
+    setError(null);
+
+    try {
+      // Use selectedServiceId if clicked from a card, otherwise use 1 as default service
+      const serviceId = newRequest.selectedServiceId > 0 ? newRequest.selectedServiceId : 1;
+      
+      const response = await createModificationRequest({
+        serviceId: serviceId,
+        customerName: newRequest.customerName,
+        customerEmail: newRequest.customerEmail,
+        customerPhone: newRequest.customerPhone,
+        customerAddress: newRequest.customerAddress,
+        preferredDate: newRequest.preferredDate,
+        notes: `${newRequest.title}\n\n${newRequest.description}`
+      });
+
+      if (response.success) {
+        setSuccess('Modification request submitted successfully! We will contact you soon.');
+
+        // Reset form
+        setNewRequest({
+          title: '',
+          description: '',
+          selectedServiceId: 0,
+          customerName: user?.displayName || '',
+          customerEmail: user?.email || '',
+          customerPhone: '',
+          customerAddress: '',
+          preferredDate: ''
+        });
+        setShowNewRequest(false);
+
+        // Clear success message after 5 seconds
+        setTimeout(() => setSuccess(null), 5000);
+      } else {
+        setError(response.error || 'Failed to submit modification request');
+      }
+    } catch (err) {
+      setError('Error submitting modification request');
+    } finally {
+      setSubmittingRequest(false);
+    }
+  };
 
   // Fetch user's modification history from Firestore (temporary until backend ready)
   useEffect(() => {
@@ -100,7 +248,7 @@ export default function ServiceModification() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
@@ -111,167 +259,238 @@ export default function ServiceModification() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <div className="relative w-full overflow-hidden bg-black">
-        <div className="relative w-full h-[400px] md:h-[500px]">
-          <img 
-            src="https://res.cloudinary.com/dgyqfax25/image/upload/v1762481097/ChatGPT_Image_Nov_7_2025_07_30_26_AM_eegbwf.png"
-            alt="Vehicle Modifications"
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-transparent flex items-center">
-            <div className="container mx-auto px-8">
-              <div className="max-w-2xl">
-                <h1 className="text-white text-4xl md:text-5xl lg:text-6xl font-black leading-tight tracking-tight mb-4">
-                  Vehicle Modifications
-                </h1>
-                <p className="text-white/90 text-lg md:text-xl font-normal leading-relaxed">
-                  Customize your vehicle with our expert modification services.
-                </p>
-              </div>
+      <div className="pt-24 pb-16">
+        <div className="container mx-auto px-6">
+          {/* Success Message */}
+          {success && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg flex items-center gap-2"
+            >
+              <CheckCircle className="h-5 w-5" />
+              {success}
+            </motion.div>
+          )}
+
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-12"
+          >
+            <h1 className="text-5xl font-bold font-heading text-foreground mb-4">
+              Service Modifications
+            </h1>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Request changes to your ongoing service. Add, remove, or modify services as needed.
+            </p>
+          </motion.div>
+
+          {/* Temporarily hiding the service tracking view - will implement with real backend data later */}
+          {/* Service Overview section commented out - requires appointment context */}
+
+          <div className="grid grid-cols-1 gap-8">
+            {/* Available Services - Clickable Cards */}
+            <div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="bg-white rounded-lg shadow-lg p-8"
+              >
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-bold font-heading text-foreground">Available Modification Services</h3>
+                  <button
+                    onClick={() => setShowNewRequest(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Request Custom Modification
+                  </button>
+                </div>
+
+                {loadingServices ? (
+                  <p className="text-center text-muted-foreground">Loading services...</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {(availableServices.length > 0 ? availableServices : dummyServices).map((service) => (
+                      <motion.div
+                        key={service.id}
+                        whileHover={{ y: -4, scale: 1.02 }}
+                        onClick={() => {
+                          setNewRequest(prev => ({
+                            ...prev,
+                            selectedServiceId: service.id,
+                            title: service.name,
+                            description: service.description
+                          }));
+                          setShowNewRequest(true);
+                        }}
+                        className="p-6 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-primary hover:shadow-lg transition-all"
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className="p-3 bg-primary/10 rounded-full">
+                            <Wrench className="h-6 w-6 text-primary" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-bold text-foreground mb-1">{service.name}</h4>
+                            <p className="text-sm text-muted-foreground mb-3">{service.description}</p>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Timer className="h-4 w-4" />
+                                {service.estimatedDurationHours}h
+                              </span>
+                              <span className="text-primary font-semibold">
+                                LKR {service.basePrice.toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
             </div>
+
+              
+
+              
+            
           </div>
         </div>
       </div>
 
-      <div className="pt-10 pb-16">
-        <div className="container mx-auto px-6">
-          {/* Simple Vehicle Modification Inquiry */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-lg shadow-lg p-8 mb-8"
-          >
-            <h2 className="text-2xl md:text-3xl font-bold font-heading text-foreground mb-2">Request a Vehicle Modification</h2>
-            <p className="text-muted-foreground mb-6">Choose one of your registered vehicles and describe the modification you want (e.g., stickering, bulb change).</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-              <div className="md:col-span-1">
-                <label className="block text-sm font-semibold text-foreground mb-2">Vehicle</label>
-                <select
-                  value={selectedVehicleId}
-                  onChange={(e) => setSelectedVehicleId(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
-                >
-                  <option value="" disabled>
-                    {vehicles.length ? 'Select your vehicle' : 'No vehicles found'}
-                  </option>
-                  {vehicles.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {`${v.year} ${v.make} ${v.model} — ${v.numberPlate}`}
-                    </option>
-                  ))}
-                </select>
-                {/* Selected vehicle preview */}
-                {selectedVehicleId && (
-                  (() => {
-                    const v = vehicles.find(x => x.id === selectedVehicleId);
-                    if (!v) return null;
-                    const img = v.photoURL || 'https://via.placeholder.com/400x200?text=No+Photo';
-                    return (
-                      <div className="mt-4 rounded-lg border border-gray-200 overflow-hidden">
-                        <div
-                          className="w-full h-40 bg-center bg-cover"
-                          style={{ backgroundImage: `url('${img}')` }}
-                        />
-                        <div className="p-3">
-                          <p className="text-sm text-gray-500">{v.numberPlate}</p>
-                          <p className="text-sm font-semibold text-[#181111]">{v.year} {v.make} {v.model}</p>
-                        </div>
-                      </div>
-                    );
-                  })()
-                )}
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-foreground mb-2">Topic</label>
-                <input
-                  type="text"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  placeholder="e.g., Wheels / Body Kit / Paint"
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 mb-4"
-                />
-                <label className="block text-sm font-semibold text-foreground mb-2">Your message</label>
-                <textarea
-                  rows={4}
-                  value={inquiry}
-                  onChange={(e) => setInquiry(e.target.value)}
-                  placeholder="Describe your requested modification..."
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-            </div>
-            <div className="flex flex-col gap-3 mt-4">
-              <button
-                disabled={submitting || !selectedVehicleId || !subject.trim() || !inquiry.trim()}
-                onClick={async () => {
-                  if (!user || !selectedVehicleId || !subject.trim() || !inquiry.trim()) return;
-                  console.log('Submitting modification request...');
-                  setSubmitting(true);
-                  setSubmitMsg(null);
-                  setSubmitErr(null);
-                  try {
-                    const vehicle = vehicles.find(v => v.id === selectedVehicleId);
-                    console.log('Creating document in Firestore...');
-                    const docRef = await addDoc(collection(db, 'modifications'), {
-                      userId: user.uid,
-                      vehicleId: selectedVehicleId,
-                      vehicleLabel: vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model} — ${vehicle.numberPlate}` : null,
-                      subject: subject.trim(),
-                      message: inquiry.trim(),
-                      status: 'pending',
-                      createdAt: serverTimestamp(),
-                    });
-                    console.log('Document created successfully:', docRef.id);
-                    setSubmitMsg('✓ Your modification request has been submitted successfully! We will review it soon.');
-                    setSelectedVehicleId('');
-                    setSubject('');
-                    setInquiry('');
-                    // Auto-hide success message after 5 seconds
-                    setTimeout(() => setSubmitMsg(null), 5000);
-                  } catch (e: any) {
-                    console.error('Error submitting modification:', e);
-                    setSubmitErr(e?.message || 'Failed to submit request. Please try again.');
-                  } finally {
-                    console.log('Submit complete, resetting state');
-                    setSubmitting(false);
-                  }
-                }}
-                className={`px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors ${submitting ? 'opacity-80 cursor-not-allowed' : ''}`}
-              >
-                {submitting ? 'Submitting…' : 'Submit Request'}
-              </button>
-              {submitMsg && (
-                <div className="px-4 py-3 rounded-lg bg-green-100 text-green-700 text-sm border border-green-300 font-medium">
-                  {submitMsg}
-                </div>
-              )}
-              {submitErr && (
-                <div className="px-4 py-3 rounded-lg bg-red-100 text-red-700 text-sm border border-red-300 font-medium">
-                  {submitErr}
-                </div>
-              )}
-            </div>
-          </motion.div>
-
           {/* My Modification History */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white rounded-lg shadow-lg p-8"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto"
           >
-            <h2 className="text-2xl font-bold font-heading text-foreground mb-4">My Modification History</h2>
-            {historyLoading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-                <p className="text-gray-600 mt-4">Loading your history...</p>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white rounded-lg shadow-xl p-8 w-full max-w-2xl my-8"
+            >
+              <h3 className="text-2xl font-bold font-heading text-foreground mb-6">Request Vehicle Modification</h3>
+              
+              {error && (
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+                  {error}
+                </div>
+              )}
+
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Modification Service Type *
+                  </label>
+                  <input
+                    type="text"
+                    value={newRequest.title}
+                    onChange={(e) => setNewRequest(prev => ({ ...prev, title: e.target.value }))}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    placeholder="e.g., Custom Paint Job, Performance Upgrade, Custom Exhaust..."
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Type the modification you need or click a service card above to auto-fill
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Modification Details *
+                  </label>
+                  <textarea
+                    value={newRequest.description}
+                    onChange={(e) => setNewRequest(prev => ({ ...prev, description: e.target.value }))}
+                    rows={4}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    placeholder="Describe your modification requirements in detail..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-foreground mb-2">Your Name *</label>
+                    <input
+                      type="text"
+                      value={newRequest.customerName}
+                      onChange={(e) => setNewRequest(prev => ({ ...prev, customerName: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      placeholder="John Doe"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-foreground mb-2">Email *</label>
+                    <input
+                      type="email"
+                      value={newRequest.customerEmail}
+                      onChange={(e) => setNewRequest(prev => ({ ...prev, customerEmail: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      placeholder="john@example.com"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-foreground mb-2">Phone *</label>
+                    <input
+                      type="tel"
+                      value={newRequest.customerPhone}
+                      onChange={(e) => setNewRequest(prev => ({ ...prev, customerPhone: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      placeholder="077 123 4567"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-foreground mb-2">Preferred Date</label>
+                    <input
+                      type="date"
+                      value={newRequest.preferredDate}
+                      onChange={(e) => setNewRequest(prev => ({ ...prev, preferredDate: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">Address</label>
+                  <input
+                    type="text"
+                    value={newRequest.customerAddress}
+                    onChange={(e) => setNewRequest(prev => ({ ...prev, customerAddress: e.target.value }))}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    placeholder="123 Main Street, Colombo"
+                  />
+                </div>
               </div>
-            ) : myModifications.length === 0 ? (
-              <div className="text-center py-12">
-                <LucideAlertCircle className="mx-auto text-gray-400 mb-4" size={48} />
-                <p className="text-gray-600">No modification requests yet</p>
-                <p className="text-gray-500 text-sm mt-2">Submit your first request above to get started</p>
+
+              <div className="flex gap-4 justify-end mt-8">
+                <button
+                  onClick={() => {
+                    setShowNewRequest(false);
+                    setError(null);
+                  }}
+                  className="px-6 py-3 border border-gray-300 text-foreground rounded-lg hover:bg-gray-50 transition-colors"
+                  disabled={submittingRequest}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmitRequest}
+                  disabled={submittingRequest}
+                  className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submittingRequest ? 'Submitting...' : 'Submit Request'}
+                </button>
               </div>
             ) : (
               <div className="space-y-4">
@@ -306,8 +525,8 @@ export default function ServiceModification() {
               </div>
             )}
           </motion.div>
-        </div>
-      </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
