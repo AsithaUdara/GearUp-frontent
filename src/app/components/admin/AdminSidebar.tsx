@@ -12,6 +12,7 @@ const navLinks = [
   { href: '/admin/appointment', label: 'Appointments', icon: Calendar },
   { href: '/admin/users', label: 'User Management', icon: Users },
   { href: '/admin/services', label: 'Service Templates', icon: Wrench },
+  { href: '/admin/modifications', label: 'Modifications', icon: Settings },
   { href: '/admin/available-slots', label: 'Available Slots', icon: Clock },
   { href: '/admin/material-request', label: 'Material Request', icon: Package },
   { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
