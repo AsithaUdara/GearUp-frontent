@@ -40,16 +40,6 @@ export default function AppointmentDetailsModal({ open, details, onClose, onConf
                 View My Schedule
               </Link>
             )}
-            {allowActions && (
-              <>
-                <button onClick={() => onConfirm?.()} className="inline-flex items-center gap-2 rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700">
-                  Confirm
-                </button>
-                <button onClick={() => onRequestReschedule?.()} className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-gray-50">
-                  Request Reschedule
-                </button>
-              </>
-            )}
             {/* print removed for employee details view */}
             <button aria-label="Close" onClick={onClose} className="rounded-md p-1 hover:bg-gray-100">
               <X className="h-5 w-5" />
