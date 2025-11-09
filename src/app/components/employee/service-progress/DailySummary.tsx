@@ -38,39 +38,39 @@ export default function DailySummary({
       let yPos = 20;
       
       // Title
-      doc.setFontSize(20);
-      doc.setFont(undefined, 'bold');
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
       doc.text('Service Completion Report', pageWidth / 2, yPos, { align: 'center' });
       yPos += 10;
       
       // Date
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'normal');
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
       doc.text(`Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, pageWidth / 2, yPos, { align: 'center' });
       yPos += 15;
       
       // Vehicle and Customer Info
       const firstTask = tasks[0];
-      doc.setFontSize(14);
-      doc.setFont(undefined, 'bold');
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
       doc.text('Vehicle Information', 20, yPos);
       yPos += 8;
       
-      doc.setFontSize(11);
-      doc.setFont(undefined, 'normal');
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
       doc.text(`Vehicle: ${vehicle}`, 20, yPos);
       yPos += 6;
       doc.text(`Customer: ${firstTask?.customer || 'N/A'}`, 20, yPos);
       yPos += 10;
       
       // Completed Services
-      doc.setFontSize(14);
-      doc.setFont(undefined, 'bold');
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
       doc.text('Completed Services', 20, yPos);
       yPos += 8;
       
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'normal');
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
       
       allServices.filter(s => s.status === 'completed').forEach((service, index) => {
         if (yPos > pageHeight - 30) {
@@ -78,11 +78,11 @@ export default function DailySummary({
           yPos = 20;
         }
         
-        doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
         doc.text(`${index + 1}. ${service.serviceType}`, 25, yPos);
         yPos += 5;
         
-        doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
         doc.text(`   Service ID: ${service.serviceId}`, 25, yPos);
         yPos += 5;
         doc.text(`   Completed: ${service.time || 'N/A'}`, 25, yPos);
@@ -104,13 +104,13 @@ export default function DailySummary({
         }
         
         yPos += 5;
-        doc.setFontSize(14);
-        doc.setFont(undefined, 'bold');
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
         doc.text('Modification Requests', 20, yPos);
         yPos += 8;
         
-        doc.setFontSize(10);
-        doc.setFont(undefined, 'normal');
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
         
         modifications.filter(m => m.status === 'completed' || m.status === 'approved').forEach((mod, index) => {
           if (yPos > pageHeight - 30) {
@@ -118,11 +118,11 @@ export default function DailySummary({
             yPos = 20;
           }
           
-          doc.setFont(undefined, 'bold');
+          doc.setFont('helvetica', 'bold');
           doc.text(`${index + 1}. ${mod.title}`, 25, yPos);
           yPos += 5;
           
-          doc.setFont(undefined, 'normal');
+          doc.setFont('helvetica', 'normal');
           const descLines = doc.splitTextToSize(`   Description: ${mod.description}`, pageWidth - 50);
           doc.text(descLines, 25, yPos);
           yPos += descLines.length * 5;
@@ -147,13 +147,13 @@ export default function DailySummary({
         }
         
         yPos += 5;
-        doc.setFontSize(14);
-        doc.setFont(undefined, 'bold');
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
         doc.text('Parts & Materials Requests', 20, yPos);
         yPos += 8;
         
-        doc.setFontSize(10);
-        doc.setFont(undefined, 'normal');
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
         
         approvedParts.forEach((part: PartsRequest, index: number) => {
           if (yPos > pageHeight - 30) {
@@ -161,11 +161,11 @@ export default function DailySummary({
             yPos = 20;
           }
           
-          doc.setFont(undefined, 'bold');
+          doc.setFont('helvetica', 'bold');
           doc.text(`${index + 1}. ${part.material}`, 25, yPos);
           yPos += 5;
           
-          doc.setFont(undefined, 'normal');
+          doc.setFont('helvetica', 'normal');
           doc.text(`   Quantity: ${part.quantity}`, 25, yPos);
           yPos += 5;
           doc.text(`   Status: ${part.status}`, 25, yPos);
@@ -189,13 +189,13 @@ export default function DailySummary({
       }
       
       yPos += 5;
-      doc.setFontSize(14);
-      doc.setFont(undefined, 'bold');
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
       doc.text('Summary', 20, yPos);
       yPos += 8;
       
-      doc.setFontSize(11);
-      doc.setFont(undefined, 'normal');
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
       doc.text(`Total Services Completed: ${totalServices}`, 20, yPos);
       yPos += 6;
       doc.text(`Modification Requests: ${modifications.filter(m => m.status === 'completed' || m.status === 'approved').length}`, 20, yPos);

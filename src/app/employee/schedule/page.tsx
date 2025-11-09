@@ -98,8 +98,6 @@ export default function EmployeeSchedulePage() {
         title="Upcoming Appointments"
         rows={upcoming.map((a) => ({ id: a.id, time: `${a.date} ${a.time}`, customer: a.customer, vehicle: a.vehicle, service: a.service, status: a.status }))}
         onView={(r) => handleView(appointments.find((x) => x.id === r.id) as Appointment)}
-        onConfirm={(r) => handleConfirmRow(appointments.find((x) => x.id === r.id) as Appointment)}
-        onRequest={(r) => handleRequestRow(appointments.find((x) => x.id === r.id) as Appointment)}
       />
 
       <UpcomingAppointmentsTable
