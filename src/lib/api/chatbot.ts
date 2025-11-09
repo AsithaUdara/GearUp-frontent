@@ -63,10 +63,21 @@ export class ChatbotApiService {
   static async sendMessage(
     request: ChatMessageRequest
   ): Promise<ChatMessageResponse> {
-    return this.fetchWithAuth(`${API_BASE_URL}/api/chat/send`, {
-      method: "POST",
-      body: JSON.stringify(request),
-    });
+    try {
+      return await this.fetchWithAuth(`${API_BASE_URL}/api/chat/send`, {
+        method: "POST",
+        body: JSON.stringify(request),
+      });
+    } catch (error) {
+      console.warn('Chatbot service unavailable');
+      // Return a fallback response when service is down
+      return {
+        content: "I'm sorry, the chatbot service is currently unavailable. Please try again later.",
+        sessionId: request.sessionId,
+        sender: "bot",
+        timestamp: Date.now(),
+      };
+    }
   }
 
   static async getHistory(sessionId: string): Promise<ConversationHistory[]> {
@@ -77,9 +88,14 @@ export class ChatbotApiService {
     sessionId: string,
     limit: number = 10
   ): Promise<ConversationHistory[]> {
-    return this.fetchWithAuth(
-      `${API_BASE_URL}/api/chat/history/${sessionId}/recent?limit=${limit}`
-    );
+    try {
+      return await this.fetchWithAuth(
+        `${API_BASE_URL}/api/chat/history/${sessionId}/recent?limit=${limit}`
+      );
+    } catch (error) {
+      console.warn('Chatbot service unavailable, starting with empty history');
+      return [];
+    }
   }
 
   static async closeSession(sessionId: string): Promise<void> {

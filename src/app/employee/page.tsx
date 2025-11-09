@@ -10,8 +10,6 @@ import AppointmentManagementCard from "@/app/components/employee/dashboard/Appoi
 import TimeLoggingCard from "@/app/components/employee/dashboard/TimeLoggingCard";
 import StatsCards from "@/app/components/employee/dashboard/StatsCards";
 import UpcomingAppointmentsCard from "@/app/components/employee/dashboard/UpcomingAppointmentsCard";
-import QuickCommunicationCard from "@/app/components/employee/dashboard/QuickCommunicationCard";
-import MaterialRequestsCard from "@/app/components/employee/dashboard/MaterialRequestsCard";
 
 const mockTasks: Task[] = [
   { id: "1", title: "Oil Change - Toyota Camry", customer: "John Doe", vehicle: "V-XYZ123", status: "In Progress" },
@@ -54,13 +52,6 @@ export default function EmployeeOverviewPage() {
       <div className="lg:col-span-1 space-y-6">
   <SmallCalendar />
   <ScheduleCard />
-      </div>
-      {/* Inline row for quick communication and material requests */}
-      <div className="col-span-1 lg:col-span-3">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <QuickCommunicationCard />
-          <MaterialRequestsCard />
-        </div>
       </div>
     </section>
   );

@@ -18,8 +18,6 @@ import {
   RefreshCw,
   Bell
 } from 'lucide-react';
-import Header from '@/app/components/landing/Header';
-import Footer from '@/app/components/landing/Footer';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 
@@ -379,8 +377,6 @@ export default function ServiceProgress() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onLoginClick={() => {}} showDefaultActions={false} preserveActionSpace={true} />
-      
       <div className="pt-24 pb-16">
         <div className="container mx-auto px-6">
           {/* Header */}
@@ -841,9 +837,7 @@ export default function ServiceProgress() {
           </motion.div>
         )}
       </AnimatePresence>
-        </div>
       </div>
-      <Footer />
     </div>
   );
 }

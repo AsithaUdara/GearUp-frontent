@@ -115,15 +115,24 @@ export async function getTimeSlots(date?: string, serviceId?: number): Promise<T
 // Get time slots for customer (excludes already booked slots)
 export async function getAvailableTimeSlotsForCustomer(date?: string, serviceId?: number): Promise<TimeSlotDTO[]> {
   try {
+    // Date is required by the backend, use today if not provided
+    const dateParam = date || new Date().toISOString().split('T')[0];
+    
     const params = new URLSearchParams();
-    if (date) params.append('date', date);
+    params.append('date', dateParam);
     if (serviceId) params.append('serviceId', serviceId.toString());
     
-    const url = `${API_BASE_URL}/timeslots/customer${params.toString() ? '?' + params.toString() : ''}`;
+    const url = `${API_BASE_URL}/timeslots?${params.toString()}`;
+    console.log('[DEBUG] API_BASE_URL:', API_BASE_URL);
+    console.log('[DEBUG] Full URL:', url);
+    console.log('[DEBUG] Date param:', dateParam);
+    console.log('[DEBUG] Service ID:', serviceId);
     const response = await fetch(url);
     
     if (!response.ok) {
-      throw new Error(`Failed to fetch available time slots: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('[DEBUG] Time slots fetch failed:', response.status, response.statusText, errorText);
+      throw new Error(`Failed to fetch available time slots: ${response.statusText} - ${errorText}`);
     }
     
     return await response.json();

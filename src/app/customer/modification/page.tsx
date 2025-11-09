@@ -25,11 +25,17 @@ import {
   AlertTriangle,
   CheckSquare,
   XCircle,
-  Loader2
+  Loader2,
+  Clock as LucideClock,
+  Check as LucideCheck,
+  Wrench as LucideWrench,
+  X as LucideX
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { getModificationServices, createModificationRequest, ModificationService as BackendModificationService } from '@/services/modificationService';
+import { db } from '@/lib/firebase';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 
 type ModificationDoc = {
   id: string;
@@ -53,6 +59,8 @@ export default function ServiceModification() {
   const [submittingRequest, setSubmittingRequest] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [myModifications, setMyModifications] = useState<ModificationDoc[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [newRequest, setNewRequest] = useState({
     title: '',
     description: '',
@@ -362,7 +370,9 @@ export default function ServiceModification() {
         </div>
       </div>
 
-          {/* My Modification History */}
+      {/* New Request Modal */}
+      <AnimatePresence>
+        {showNewRequest && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -492,38 +502,7 @@ export default function ServiceModification() {
                   {submittingRequest ? 'Submitting...' : 'Submit Request'}
                 </button>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {myModifications.map((mod) => (
-                  <motion.div
-                    key={mod.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {mod.subject || 'Vehicle Modification'}
-                          </h3>
-                          {getStatusBadge(mod.status)}
-                        </div>
-                        <p className="text-sm text-gray-600 mb-1">
-                          <span className="font-medium">Vehicle:</span> {mod.vehicleLabel || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Submitted:</span> {formatDate(mod.createdAt)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap">{mod.message}</p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            )}
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
