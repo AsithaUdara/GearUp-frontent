@@ -1,7 +1,16 @@
-// lib/api/index.ts
-export { ChatbotApiService } from "./chatbot";
-export type {
-  ChatMessageRequest,
-  ChatMessageResponse,
-  ConversationHistory,
-} from "./chatbot";
+/**
+ * API Services Index
+ * Central export for all API services
+ */
+
+// Configuration
+export * from './config';
+
+// Payment Service
+export * from './paymentService';
+
+// Bill Service
+export * from './billService';
+
+// Review Service
+export * from './reviewService';
