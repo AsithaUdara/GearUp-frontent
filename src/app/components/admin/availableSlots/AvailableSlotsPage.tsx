@@ -34,13 +34,11 @@ export default function AvailableSlotsPage() {
 
   function addSlot(input: SlotInput) {
     const id = rid(8);
-    const { capacity, available, ...rest } = input;
-    setSlots((prev) => [{ id, bookings: [], ...rest }, ...prev]);
+    setSlots((prev) => [{ id, ...input, bookings: [] }, ...prev]);
   }
 
   function updateSlot(id: string, input: SlotInput) {
-    const { capacity, available, ...rest } = input;
-    setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, ...rest, bookings: s.bookings ?? [] } : s)));
+    setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, ...input, bookings: s.bookings } : s)));
     setEditing(null);
   }
 
