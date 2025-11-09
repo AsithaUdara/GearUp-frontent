@@ -1,159 +1,38 @@
-'use client';
+"use client";
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Clock, 
-  CheckCircle, 
-  AlertCircle, 
-  Car, 
-  Wrench, 
-  User, 
-  Phone, 
-  MapPin,
-  Calendar,
-  Timer,
-  FileText,
-  Camera,
-  MessageSquare,
-  RefreshCw,
-  Bell,
-  Plus,
-  Edit,
-  Trash2,
-  Send,
-  DollarSign,
-  AlertTriangle,
-  CheckSquare,
-  XCircle
-} from 'lucide-react';
-import Header from '@/app/components/landing/Header';
-import Footer from '@/app/components/landing/Footer';
+import { motion } from 'framer-motion';
+import { db } from '@/lib/firebase';
+import { addDoc, collection, serverTimestamp, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { subscribeVehicles, type VehicleDoc } from '@/lib/vehicles';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import { LucideCheck, LucideX, LucideClock, LucideWrench, LucideAlertCircle } from 'lucide-react';
 
-interface ModificationRequest {
+type ModificationDoc = {
   id: string;
-  serviceId: string;
-  type: 'add_service' | 'remove_service' | 'change_service' | 'urgent_repair';
-  title: string;
-  description: string;
-  
-  estimatedCost: number;
-  estimatedDuration: number;
-  status: 'pending' | 'approved' | 'rejected' | 'in_progress' | 'completed';
-  requestedBy: string;
-  requestedAt: string;
-  approvedBy?: string;
-  approvedAt?: string;
-  rejectionReason?: string;
-  technician?: string;
-  notes?: string;
-  attachments?: string[];
-}
-
-interface ServiceModification {
-  id: string;
-  serviceName: string;
-  vehicleModel: string;
-  vehicleYear: string;
-  customerName: string;
-  phone: string;
-  email: string;
-  appointmentDate: string;
-  appointmentTime: string;
-  currentStatus: 'scheduled' | 'in-progress' | 'completed' | 'delayed';
-  originalServices: string[];
-  currentServices: string[];
-  totalCost: number;
-  estimatedCompletion: string;
-  technician: {
-    name: string;
-    phone: string;
-    photo: string;
-  };
-  location: {
-    name: string;
-    address: string;
-    phone: string;
-  };
-  modificationRequests: ModificationRequest[];
-  lastUpdate: string;
-}
-
-const mockServiceModification: ServiceModification = {
-  id: 'SRV-2024-001',
-  serviceName: 'Full Service',
-  vehicleModel: 'Toyota Camry',
-  vehicleYear: '2020',
-  customerName: 'John Doe',
-  phone: '+94 77 123 4567',
-  email: 'john.doe@email.com',
-  appointmentDate: '2024-01-15',
-  appointmentTime: '10:00 AM',
-  currentStatus: 'in-progress',
-  originalServices: ['Oil Change', 'Brake Inspection', 'Engine Check'],
-  currentServices: ['Oil Change', 'Brake Inspection', 'Engine Check', 'Brake Pad Replacement'],
-  totalCost: 53000,
-  estimatedCompletion: '3:00 PM',
-  technician: {
-    name: 'Mike Johnson',
-    phone: '+94 77 987 6543',
-    photo: '/team-workshop.jpg'
-  },
-  location: {
-    name: 'GearUp Service Center - Colombo',
-    address: '123 Galle Road, Colombo 03',
-    phone: '+94 11 234 5678'
-  },
-  modificationRequests: [
-    {
-      id: 'MOD-001',
-      serviceId: 'SRV-2024-001',
-      type: 'add_service',
-      title: 'Brake Pad Replacement',
-      description: 'Customer requested brake pad replacement after inspection revealed 20% wear',
-      
-      estimatedCost: 8500,
-      estimatedDuration: 45,
-      status: 'approved',
-      requestedBy: 'John Doe',
-      requestedAt: '2024-01-15 10:30 AM',
-      approvedBy: 'Mike Johnson',
-      approvedAt: '2024-01-15 10:35 AM',
-      technician: 'Sarah Wilson',
-      notes: 'Approved for safety reasons. Customer informed of additional cost.'
-    },
-    {
-      id: 'MOD-002',
-      serviceId: 'SRV-2024-001',
-      type: 'add_service',
-      title: 'Air Filter Replacement',
-      description: 'Air filter is dirty and affecting engine performance',
-      
-      estimatedCost: 2500,
-      estimatedDuration: 15,
-      status: 'pending',
-      requestedBy: 'John Doe',
-      requestedAt: '2024-01-15 11:00 AM'
-    }
-  ],
-  lastUpdate: '2024-01-15 11:00 AM'
+  userId: string;
+  vehicleId: string;
+  vehicleLabel?: string | null;
+  subject?: string | null;
+  message: string;
+  status: "pending" | "approved" | "in_progress" | "completed" | "rejected";
+  createdAt?: { seconds: number; nanoseconds: number } | null;
 };
 
 export default function ServiceModification() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [serviceModification, setServiceModification] = useState<ServiceModification>(mockServiceModification);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showNewRequest, setShowNewRequest] = useState(false);
-  const [newRequest, setNewRequest] = useState({
-    type: 'add_service' as const,
-    title: '',
-    description: '',
-    priority: 'medium' as const,
-    estimatedCost: 0,
-    estimatedDuration: 0
-  });
+  // Simplified page: hero + request form only
+  // Vehicle-based modification inquiry form state
+  const [vehicles, setVehicles] = useState<VehicleDoc[]>([]);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
+  const [subject, setSubject] = useState('');
+  const [inquiry, setInquiry] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitMsg, setSubmitMsg] = useState<string | null>(null);
+  const [submitErr, setSubmitErr] = useState<string | null>(null);
+  const [myModifications, setMyModifications] = useState<ModificationDoc[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -161,92 +40,62 @@ export default function ServiceModification() {
     }
   }, [user, loading, router]);
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsRefreshing(false);
-  };
+  useEffect(() => {
+    if (!user) return;
+    const unsub = subscribeVehicles(user.uid, (items) => setVehicles(items));
+    return () => unsub && unsub();
+  }, [user]);
 
-  const handleSubmitRequest = () => {
-    const request: ModificationRequest = {
-      id: `MOD-${Date.now()}`,
-      serviceId: serviceModification.id,
-      type: newRequest.type,
-      title: newRequest.title,
-      description: newRequest.description,
-<<<<<<< HEAD:src/app/modification/page.tsx
-      priority: newRequest.priority,
-      estimatedCost: newRequest.estimatedCost,
-      estimatedDuration: newRequest.estimatedDuration,
-=======
-      // Customers shouldn't set priority/cost/duration — default these for staff to update
-      
-      estimatedCost: 0,
-      estimatedDuration: 0,
->>>>>>> origin/development:src/app/customer/modification/page.tsx
-      status: 'pending',
-      requestedBy: user?.displayName || 'Customer',
-      requestedAt: new Date().toLocaleString()
-    };
+  // Fetch user's modification history from Firestore (temporary until backend ready)
+  useEffect(() => {
+    if (!user) {
+      setHistoryLoading(false);
+      return;
+    }
+    const q = query(
+      collection(db, 'modifications'),
+      where('userId', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const list: ModificationDoc[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+        setMyModifications(list);
+        setHistoryLoading(false);
+      },
+      (err) => {
+        console.error('modifications history error', err);
+        setHistoryLoading(false);
+      }
+    );
+    return () => unsub();
+  }, [user]);
 
-    setServiceModification(prev => ({
-      ...prev,
-      modificationRequests: [...prev.modificationRequests, request]
-    }));
-
-    setNewRequest({
-      type: 'add_service',
-      title: '',
-      description: '',
-      priority: 'medium',
-      estimatedCost: 0,
-      estimatedDuration: 0
-    });
-    setShowNewRequest(false);
-  };
-
-  const getStatusColor = (status: string) => {
+  const getStatusBadge = (status: ModificationDoc['status']) => {
     switch (status) {
+      case 'pending':
+        return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs font-medium"><LucideClock size={14} />Pending</span>;
       case 'approved':
-        return 'text-green-600 bg-green-100';
-      case 'rejected':
-        return 'text-red-600 bg-red-100';
+        return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium"><LucideCheck size={14} />Approved</span>;
       case 'in_progress':
-        return 'text-blue-600 bg-blue-100';
+        return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-medium"><LucideWrench size={14} />In Progress</span>;
       case 'completed':
-        return 'text-green-600 bg-green-100';
+        return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium"><LucideCheck size={14} />Completed</span>;
+      case 'rejected':
+        return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-medium"><LucideX size={14} />Rejected</span>;
       default:
-        return 'text-yellow-600 bg-yellow-100';
+        return <span className="text-gray-500 text-xs">{status}</span>;
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return <CheckCircle className="h-5 w-5" />;
-      case 'rejected':
-        return <XCircle className="h-5 w-5" />;
-      case 'in_progress':
-        return <RefreshCw className="h-5 w-5 animate-spin" />;
-      case 'completed':
-        return <CheckSquare className="h-5 w-5" />;
-      default:
-        return <Clock className="h-5 w-5" />;
-    }
+  const formatDate = (timestamp?: { seconds: number; nanoseconds: number } | null) => {
+    if (!timestamp || typeof timestamp.seconds !== 'number') return 'N/A';
+    const date = new Date(timestamp.seconds * 1000);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'urgent':
-        return 'text-red-600 bg-red-100';
-      case 'high':
-        return 'text-orange-600 bg-orange-100';
-      case 'medium':
-        return 'text-yellow-600 bg-yellow-100';
-      default:
-        return 'text-green-600 bg-green-100';
-    }
-  };
+  // (Removed old mock handlers and status helpers)
 
   if (loading) {
     return (
@@ -262,470 +111,203 @@ export default function ServiceModification() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header 
-        showDefaultActions={false}
-        customActions={(
-          <button
-            onClick={() => router.push('/customer/progress')}
-            className="group relative inline-flex items-center gap-2 overflow-hidden rounded-md bg-primary px-5 py-3 font-heading text-sm font-bold uppercase text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-primary/80 transition-all duration-300 hover:bg-white hover:text-primary"
-          >
-            <span className="absolute inset-0 bg-white/0 transition-colors duration-300 group-hover:bg-white/10" />
-            <span className="relative">View Progress</span>
-          </button>
-        )}
-      />
-      
-      <div className="pt-24 pb-16">
-        <div className="container mx-auto px-6">
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-12"
-          >
-            <h1 className="text-5xl font-bold font-heading text-foreground mb-4">
-              Service Modifications
-            </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Request changes to your ongoing service. Add, remove, or modify services as needed.
-            </p>
-          </motion.div>
-
-          {/* Service Overview */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white rounded-lg shadow-lg p-8 mb-8"
-          >
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h2 className="text-2xl font-bold font-heading text-foreground mb-2">
-                  Service #{serviceModification.id}
-                </h2>
-                <p className="text-lg text-muted-foreground">{serviceModification.serviceName}</p>
+      {/* Hero Section */}
+      <div className="relative w-full overflow-hidden bg-black">
+        <div className="relative w-full h-[400px] md:h-[500px]">
+          <img 
+            src="https://res.cloudinary.com/dgyqfax25/image/upload/v1762481097/ChatGPT_Image_Nov_7_2025_07_30_26_AM_eegbwf.png"
+            alt="Vehicle Modifications"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-transparent flex items-center">
+            <div className="container mx-auto px-8">
+              <div className="max-w-2xl">
+                <h1 className="text-white text-4xl md:text-5xl lg:text-6xl font-black leading-tight tracking-tight mb-4">
+                  Vehicle Modifications
+                </h1>
+                <p className="text-white/90 text-lg md:text-xl font-normal leading-relaxed">
+                  Customize your vehicle with our expert modification services.
+                </p>
               </div>
-              <div className="text-right">
-                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold ${
-                  serviceModification.currentStatus === 'in-progress' ? 'text-blue-600 bg-blue-100' : 'text-gray-600 bg-gray-100'
-                }`}>
-                  <Clock className="h-5 w-5" />
-                  {serviceModification.currentStatus.toUpperCase()}
-                </div>
-                <button
-                  onClick={handleRefresh}
-                  disabled={isRefreshing}
-                  className="mt-2 p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                >
-                  <RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-primary/10 rounded-lg">
-                  <Car className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Vehicle</p>
-                  <p className="font-semibold">{serviceModification.vehicleModel} {serviceModification.vehicleYear}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-primary/10 rounded-lg">
-                  <Calendar className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Appointment</p>
-                  <p className="font-semibold">{serviceModification.appointmentDate} at {serviceModification.appointmentTime}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-primary/10 rounded-lg">
-                  <DollarSign className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Cost</p>
-                  <p className="font-semibold">LKR {serviceModification.totalCost.toLocaleString()}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-primary/10 rounded-lg">
-                  <Timer className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Est. Completion</p>
-                  <p className="font-semibold">{serviceModification.estimatedCompletion}</p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Current Services */}
-            <div className="lg:col-span-2">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="bg-white rounded-lg shadow-lg p-8 mb-8"
-              >
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-xl font-bold font-heading text-foreground">Current Services</h3>
-                  <button
-                    onClick={() => setShowNewRequest(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Request Modification
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  {serviceModification.currentServices.map((service, index) => (
-                    <div key={index} className="p-4 border border-gray-200 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-primary/10 rounded-full">
-                            <Wrench className="h-5 w-5 text-primary" />
-                          </div>
-                          <span className="font-semibold text-foreground">{service}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {serviceModification.originalServices.includes(service) ? (
-                            <span className="px-2 py-1 text-xs bg-green-100 text-green-600 rounded-full">Original</span>
-                          ) : (
-                            <span className="px-2 py-1 text-xs bg-blue-100 text-blue-600 rounded-full">Added</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-
-              {/* Modification Requests */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="bg-white rounded-lg shadow-lg p-8"
-              >
-                <h3 className="text-xl font-bold font-heading text-foreground mb-6">Modification Requests</h3>
-                
-                <div className="space-y-6">
-                  {serviceModification.modificationRequests.map((request) => (
-                    <div key={request.id} className="p-6 border border-gray-200 rounded-lg">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h4 className="text-lg font-semibold text-foreground">{request.title}</h4>
-                          <p className="text-sm text-muted-foreground">{request.description}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-<<<<<<< HEAD:src/app/modification/page.tsx
-                          <span className={`px-2 py-1 text-xs rounded-full ${getPriorityColor(request.priority)}`}>
-                            {request.priority.toUpperCase()}
-                          </span>
-=======
-                          {request.status === 'pending' ? (
-                            <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-600">PENDING</span>
-                          ) : null}
->>>>>>> origin/development:src/app/customer/modification/page.tsx
-                          <span className={`px-3 py-1 text-sm rounded-full ${getStatusColor(request.status)}`}>
-                            {getStatusIcon(request.status)}
-                            {request.status.toUpperCase()}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <div>
-<<<<<<< HEAD:src/app/modification/page.tsx
-                          <p className="text-sm text-muted-foreground">Estimated Cost</p>
-                          <p className="font-semibold">LKR {request.estimatedCost.toLocaleString()}</p>
-                        </div>
-                        <div>
-=======
->>>>>>> origin/development:src/app/customer/modification/page.tsx
-                          <p className="text-sm text-muted-foreground">Duration</p>
-                          <p className="font-semibold">{request.estimatedDuration} minutes</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Requested</p>
-                          <p className="font-semibold">{request.requestedAt}</p>
-                        </div>
-                      </div>
-
-                      {request.approvedBy && (
-                        <div className="p-3 bg-green-50 rounded-lg mb-4">
-                          <div className="flex items-center gap-2 mb-2">
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                            <span className="text-sm font-semibold text-green-800">Approved by {request.approvedBy}</span>
-                          </div>
-                          <p className="text-sm text-green-700">Approved at {request.approvedAt}</p>
-                          {request.technician && (
-                            <p className="text-sm text-green-700">Assigned to: {request.technician}</p>
-                          )}
-                        </div>
-                      )}
-
-                      {request.rejectionReason && (
-                        <div className="p-3 bg-red-50 rounded-lg mb-4">
-                          <div className="flex items-center gap-2 mb-2">
-                            <XCircle className="h-4 w-4 text-red-600" />
-                            <span className="text-sm font-semibold text-red-800">Rejected</span>
-                          </div>
-                          <p className="text-sm text-red-700">Reason: {request.rejectionReason}</p>
-                        </div>
-                      )}
-
-                      {request.notes && (
-                        <div className="p-3 bg-gray-50 rounded-lg">
-                          <p className="text-sm text-muted-foreground">
-                            <strong>Notes:</strong> {request.notes}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            </div>
-
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Contact Information */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="bg-white rounded-lg shadow-lg p-6"
-              >
-                <h3 className="text-lg font-bold font-heading text-foreground mb-4">Contact Information</h3>
-                
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <User className="h-5 w-5 text-primary" />
-                    <div>
-                      <p className="font-semibold">{serviceModification.technician.name}</p>
-                      <p className="text-sm text-muted-foreground">Lead Technician</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3">
-                    <Phone className="h-5 w-5 text-primary" />
-                    <a href={`tel:${serviceModification.technician.phone}`} className="text-primary hover:underline">
-                      {serviceModification.technician.phone}
-                    </a>
-                  </div>
-                  
-                  <div className="flex items-center gap-3">
-                    <MapPin className="h-5 w-5 text-primary" />
-                    <div>
-                      <p className="font-semibold">{serviceModification.location.name}</p>
-                      <p className="text-sm text-muted-foreground">{serviceModification.location.address}</p>
-                      <p className="text-sm text-muted-foreground">{serviceModification.location.phone}</p>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-
-<<<<<<< HEAD:src/app/modification/page.tsx
-              {/* Quick Actions */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="bg-white rounded-lg shadow-lg p-6"
-              >
-                <h3 className="text-lg font-bold font-heading text-foreground mb-4">Quick Actions</h3>
-                
-                <div className="space-y-3">
-                  <button
-                    onClick={() => setShowNewRequest(true)}
-                    className="w-full flex items-center gap-3 p-3 border border-primary text-primary rounded-lg hover:bg-primary/5 transition-colors"
-                  >
-                    <Plus className="h-5 w-5" />
-                    <span>Add Service</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => router.push('/progress')}
-                    className="w-full flex items-center gap-3 p-3 border border-gray-300 text-foreground rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <Clock className="h-5 w-5" />
-                    <span>View Progress</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => router.push('/appointment')}
-                    className="w-full flex items-center gap-3 p-3 border border-gray-300 text-foreground rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <Calendar className="h-5 w-5" />
-                    <span>Book New Service</span>
-                  </button>
-                </div>
-              </motion.div>
-=======
-              
->>>>>>> origin/development:src/app/customer/modification/page.tsx
-
-              {/* Service Summary */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-                className="bg-white rounded-lg shadow-lg p-6"
-              >
-                <h3 className="text-lg font-bold font-heading text-foreground mb-4">Service Summary</h3>
-                
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Service ID:</span>
-                    <span className="font-semibold">{serviceModification.id}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Customer:</span>
-                    <span className="font-semibold">{serviceModification.customerName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Total Services:</span>
-                    <span className="font-semibold">{serviceModification.currentServices.length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Pending Requests:</span>
-                    <span className="font-semibold">
-                      {serviceModification.modificationRequests.filter(r => r.status === 'pending').length}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Last Update:</span>
-                    <span className="font-semibold">{serviceModification.lastUpdate}</span>
-                  </div>
-                </div>
-              </motion.div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* New Request Modal */}
-      <AnimatePresence>
-        {showNewRequest && (
+      <div className="pt-10 pb-16">
+        <div className="container mx-auto px-6">
+          {/* Simple Vehicle Modification Inquiry */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-lg shadow-lg p-8 mb-8"
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-white rounded-lg shadow-xl p-8 w-full max-w-2xl"
-            >
-              <h3 className="text-2xl font-bold font-heading text-foreground mb-6">Request Service Modification</h3>
-              
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-semibold text-foreground mb-2">Modification Type</label>
-                  <select
-                    value={newRequest.type}
-                    onChange={(e) => setNewRequest(prev => ({ ...prev, type: e.target.value as any }))}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  >
-                    <option value="add_service">Add Service</option>
-                    <option value="remove_service">Remove Service</option>
-                    <option value="change_service">Change Service</option>
-                    <option value="urgent_repair">Urgent Repair</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-foreground mb-2">Title</label>
-                  <input
-                    type="text"
-                    value={newRequest.title}
-                    onChange={(e) => setNewRequest(prev => ({ ...prev, title: e.target.value }))}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
-                    placeholder="Brief title for your request"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-foreground mb-2">Description</label>
-                  <textarea
-                    value={newRequest.description}
-                    onChange={(e) => setNewRequest(prev => ({ ...prev, description: e.target.value }))}
-                    rows={4}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
-                    placeholder="Detailed description of your modification request"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">Priority</label>
-                    <select
-                      value={newRequest.priority}
-                      onChange={(e) => setNewRequest(prev => ({ ...prev, priority: e.target.value as any }))}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
-                    >
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                      <option value="urgent">Urgent</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">Estimated Cost (LKR)</label>
-                    <input
-                      type="number"
-                      value={newRequest.estimatedCost}
-                      onChange={(e) => setNewRequest(prev => ({ ...prev, estimatedCost: parseInt(e.target.value) || 0 }))}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      placeholder="0"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">Duration (minutes)</label>
-                    <input
-                      type="number"
-                      value={newRequest.estimatedDuration}
-                      onChange={(e) => setNewRequest(prev => ({ ...prev, estimatedDuration: parseInt(e.target.value) || 0 }))}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-4 justify-end mt-8">
-                <button
-                  onClick={() => setShowNewRequest(false)}
-                  className="px-6 py-3 border border-gray-300 text-foreground rounded-lg hover:bg-gray-50 transition-colors"
+            <h2 className="text-2xl md:text-3xl font-bold font-heading text-foreground mb-2">Request a Vehicle Modification</h2>
+            <p className="text-muted-foreground mb-6">Choose one of your registered vehicles and describe the modification you want (e.g., stickering, bulb change).</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+              <div className="md:col-span-1">
+                <label className="block text-sm font-semibold text-foreground mb-2">Vehicle</label>
+                <select
+                  value={selectedVehicleId}
+                  onChange={(e) => setSelectedVehicleId(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
                 >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSubmitRequest}
-                  className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-                >
-                  Submit Request
-                </button>
+                  <option value="" disabled>
+                    {vehicles.length ? 'Select your vehicle' : 'No vehicles found'}
+                  </option>
+                  {vehicles.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {`${v.year} ${v.make} ${v.model} — ${v.numberPlate}`}
+                    </option>
+                  ))}
+                </select>
+                {/* Selected vehicle preview */}
+                {selectedVehicleId && (
+                  (() => {
+                    const v = vehicles.find(x => x.id === selectedVehicleId);
+                    if (!v) return null;
+                    const img = v.photoURL || 'https://via.placeholder.com/400x200?text=No+Photo';
+                    return (
+                      <div className="mt-4 rounded-lg border border-gray-200 overflow-hidden">
+                        <div
+                          className="w-full h-40 bg-center bg-cover"
+                          style={{ backgroundImage: `url('${img}')` }}
+                        />
+                        <div className="p-3">
+                          <p className="text-sm text-gray-500">{v.numberPlate}</p>
+                          <p className="text-sm font-semibold text-[#181111]">{v.year} {v.make} {v.model}</p>
+                        </div>
+                      </div>
+                    );
+                  })()
+                )}
               </div>
-            </motion.div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-foreground mb-2">Topic</label>
+                <input
+                  type="text"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="e.g., Wheels / Body Kit / Paint"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 mb-4"
+                />
+                <label className="block text-sm font-semibold text-foreground mb-2">Your message</label>
+                <textarea
+                  rows={4}
+                  value={inquiry}
+                  onChange={(e) => setInquiry(e.target.value)}
+                  placeholder="Describe your requested modification..."
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 mt-4">
+              <button
+                disabled={submitting || !selectedVehicleId || !subject.trim() || !inquiry.trim()}
+                onClick={async () => {
+                  if (!user || !selectedVehicleId || !subject.trim() || !inquiry.trim()) return;
+                  console.log('Submitting modification request...');
+                  setSubmitting(true);
+                  setSubmitMsg(null);
+                  setSubmitErr(null);
+                  try {
+                    const vehicle = vehicles.find(v => v.id === selectedVehicleId);
+                    console.log('Creating document in Firestore...');
+                    const docRef = await addDoc(collection(db, 'modifications'), {
+                      userId: user.uid,
+                      vehicleId: selectedVehicleId,
+                      vehicleLabel: vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model} — ${vehicle.numberPlate}` : null,
+                      subject: subject.trim(),
+                      message: inquiry.trim(),
+                      status: 'pending',
+                      createdAt: serverTimestamp(),
+                    });
+                    console.log('Document created successfully:', docRef.id);
+                    setSubmitMsg('✓ Your modification request has been submitted successfully! We will review it soon.');
+                    setSelectedVehicleId('');
+                    setSubject('');
+                    setInquiry('');
+                    // Auto-hide success message after 5 seconds
+                    setTimeout(() => setSubmitMsg(null), 5000);
+                  } catch (e: any) {
+                    console.error('Error submitting modification:', e);
+                    setSubmitErr(e?.message || 'Failed to submit request. Please try again.');
+                  } finally {
+                    console.log('Submit complete, resetting state');
+                    setSubmitting(false);
+                  }
+                }}
+                className={`px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors ${submitting ? 'opacity-80 cursor-not-allowed' : ''}`}
+              >
+                {submitting ? 'Submitting…' : 'Submit Request'}
+              </button>
+              {submitMsg && (
+                <div className="px-4 py-3 rounded-lg bg-green-100 text-green-700 text-sm border border-green-300 font-medium">
+                  {submitMsg}
+                </div>
+              )}
+              {submitErr && (
+                <div className="px-4 py-3 rounded-lg bg-red-100 text-red-700 text-sm border border-red-300 font-medium">
+                  {submitErr}
+                </div>
+              )}
+            </div>
           </motion.div>
-        )}
-      </AnimatePresence>
-      
-      <Footer />
+
+          {/* My Modification History */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white rounded-lg shadow-lg p-8"
+          >
+            <h2 className="text-2xl font-bold font-heading text-foreground mb-4">My Modification History</h2>
+            {historyLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+                <p className="text-gray-600 mt-4">Loading your history...</p>
+              </div>
+            ) : myModifications.length === 0 ? (
+              <div className="text-center py-12">
+                <LucideAlertCircle className="mx-auto text-gray-400 mb-4" size={48} />
+                <p className="text-gray-600">No modification requests yet</p>
+                <p className="text-gray-500 text-sm mt-2">Submit your first request above to get started</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {myModifications.map((mod) => (
+                  <motion.div
+                    key={mod.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {mod.subject || 'Vehicle Modification'}
+                          </h3>
+                          {getStatusBadge(mod.status)}
+                        </div>
+                        <p className="text-sm text-gray-600 mb-1">
+                          <span className="font-medium">Vehicle:</span> {mod.vehicleLabel || 'N/A'}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Submitted:</span> {formatDate(mod.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">{mod.message}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        </div>
+      </div>
     </div>
   );
 }

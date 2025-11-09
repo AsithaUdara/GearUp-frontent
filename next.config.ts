@@ -7,7 +7,8 @@ import path from "path";
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname),
   images: {
-    domains: ['i.pravatar.cc'],
+    // Allow optimization of avatars and Cloudinary-hosted assets
+    domains: ['i.pravatar.cc', 'res.cloudinary.com'],
   },
 };
 

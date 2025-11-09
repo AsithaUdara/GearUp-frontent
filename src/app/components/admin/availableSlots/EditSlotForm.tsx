@@ -17,7 +17,11 @@ export default function EditSlotForm({ slot, onSubmit, onCancel }: Props) {
     technician: slot.technician || '',
     notes: slot.notes || '',
     serviceType: slot.serviceType || 'General Service',
-    bay: slot.bay || 'Bay 1'
+    bay: slot.bay || 'Bay 1',
+    // capacity/available are required by SlotInput but not stored on Slot;
+    // derive sensible defaults based on current bookings to satisfy typing
+    capacity: Math.max(5, (slot.bookings?.length ?? 0)),
+    available: Math.max(0, Math.max(5, (slot.bookings?.length ?? 0)) - (slot.bookings?.length ?? 0))
   });
 
   function handleChange(

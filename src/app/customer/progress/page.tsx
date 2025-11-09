@@ -15,7 +15,8 @@ import {
   FileText,
   Camera,
   MessageSquare,
-  RefreshCw
+  RefreshCw,
+  Bell
 } from 'lucide-react';
 import Header from '@/app/components/landing/Header';
 import Footer from '@/app/components/landing/Footer';
@@ -309,7 +310,6 @@ export default function ServiceProgress() {
   const [showRecommendations, setShowRecommendations] = useState(false);
   const [showServiceHistory, setShowServiceHistory] = useState(false);
   const [newMessage, setNewMessage] = useState('');
-<<<<<<< HEAD:src/app/progress/page.tsx
   const [notifications, setNotifications] = useState([
     {
       id: '1',
@@ -330,10 +330,9 @@ export default function ServiceProgress() {
       type: 'info'
     }
   ]);
-=======
   // Add floating chat toggle button at bottom right
   const [chatOpen, setChatOpen] = useState(false);
->>>>>>> origin/development:src/app/customer/progress/page.tsx
+  const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -645,7 +644,6 @@ export default function ServiceProgress() {
                 </div>
               </motion.div>
 
-<<<<<<< HEAD:src/app/progress/page.tsx
               {/* Notifications */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -686,8 +684,6 @@ export default function ServiceProgress() {
                 </div>
               </motion.div>
 
-=======
->>>>>>> origin/development:src/app/customer/progress/page.tsx
               {/* Service Details */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -710,8 +706,6 @@ export default function ServiceProgress() {
                     <span className="text-muted-foreground">Last Update:</span>
                     <span className="font-semibold">{serviceProgress.lastUpdate}</span>
                   </div>
-<<<<<<< HEAD:src/app/progress/page.tsx
-=======
                   <div className="pt-3 border-t border-gray-200">
                     <button
                       onClick={() => router.push('/customer/modification')}
@@ -721,7 +715,6 @@ export default function ServiceProgress() {
                       Request Modifications
                     </button>
                   </div>
->>>>>>> origin/development:src/app/customer/progress/page.tsx
                 </div>
               </motion.div>
 
@@ -801,57 +794,7 @@ export default function ServiceProgress() {
                 ))}
               </div>
             </motion.div>
-
-            {/* Customer Communication */}
-<<<<<<< HEAD:src/app/progress/page.tsx
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
-              className="bg-white rounded-lg shadow-lg p-8"
-            >
-              <div className="flex justify-between items-center mb-6">
-=======
-            {/* The always-visible Messages card is removed as per request. */}
-
-          </div>
-
-          {/* Service History */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.0 }}
-            className="bg-white rounded-lg shadow-lg p-8 mt-8"
-          >
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold font-heading text-foreground">Service History</h3>
-              <button
-                onClick={() => setShowServiceHistory(!showServiceHistory)}
-                className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
-              >
-                <Car className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {/* Show each service history as: service name, date, vehicle model, and vehicle year. */}
-              {serviceProgress.serviceHistory.map((history) => (
-                <div key={history.id} className="p-4 border border-gray-200 rounded-lg">
-                  <div className="flex flex-col md:flex-row md:justify-between md:items-center">
-                    <div>
-                      <h4 className="font-semibold text-foreground">{history.serviceName}</h4>
-                      <p className="text-sm text-muted-foreground">{history.date}</p>
-                    </div>
-                    <div className="mt-2 md:mt-0">
-                      <span className="text-sm text-foreground">{serviceProgress.vehicleModel} {serviceProgress.vehicleYear}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
         </div>
-      </div>
       
       {/* Floating Chat Icon */}
       <button
@@ -875,7 +818,6 @@ export default function ServiceProgress() {
           >
             <div className="bg-white rounded-lg shadow-xl p-6 flex flex-col h-96 border border-gray-200">
               <div className="flex justify-between items-center mb-4">
->>>>>>> origin/development:src/app/customer/progress/page.tsx
                 <h3 className="text-xl font-bold font-heading text-foreground">Messages</h3>
                 <button
                   onClick={() => setChatOpen(false)}
@@ -916,11 +858,14 @@ export default function ServiceProgress() {
                   Send
                 </button>
               </div>
-<<<<<<< HEAD:src/app/progress/page.tsx
-            </motion.div>
-          </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-          {/* Service Recommendations */}
+      {/* Service Recommendations */}
+      <AnimatePresence>
+        {showRecommendations && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -963,8 +908,12 @@ export default function ServiceProgress() {
               ))}
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
 
-          {/* Service History */}
+      {/* Service History */}
+      <AnimatePresence>
+        {showServiceHistory && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1000,12 +949,12 @@ export default function ServiceProgress() {
                   </div>
                 </div>
               ))}
-=======
->>>>>>> origin/development:src/app/customer/progress/page.tsx
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+        </div>
+      </div>
       <Footer />
     </div>
   );

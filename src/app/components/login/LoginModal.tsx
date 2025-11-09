@@ -53,7 +53,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     setError('');
     setSuccessMessage('');
     try {
-      await mockCreateUser(email, password);
+      await createUserWithEmailAndPassword(auth, email, password);
       setSuccessMessage('Account created successfully! Please log in.');
       setIsLoginView(true);
       setPassword(''); // Clear password field for login

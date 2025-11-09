@@ -6,6 +6,8 @@ import Header from '@/app/components/landing/Header';
 import Footer from '@/app/components/landing/Footer';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import { db } from '@/lib/firebase';
+import { addDoc, collection, serverTimestamp, Timestamp } from 'firebase/firestore';
 
 interface TimeSlot {
   id: string;
@@ -152,13 +154,47 @@ export default function AppointmentBooking() {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user || !selectedService || !selectedDate || !selectedTimeSlot) return;
     setIsBooking(true);
-    
-    // Simulate booking process
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setIsBooking(false);
-    setBookingSuccess(true);
+
+    try {
+      // Parse appointment date and time to a Timestamp
+      const [time, ampm] = selectedTimeSlot.split(' ');
+      const [rawH, rawM] = time.split(':');
+      let hour = parseInt(rawH, 10) % 12;
+      if (ampm?.toUpperCase() === 'PM') hour += 12;
+      const minute = parseInt(rawM || '0', 10);
+      const date = new Date(selectedDate + 'T00:00:00');
+      date.setHours(hour, minute, 0, 0);
+      const appointmentAt = Timestamp.fromDate(date);
+
+      const payload = {
+        userId: user.uid,
+        userEmail: user.email || null,
+        customerName: bookingForm.customerName,
+        phone: bookingForm.phone,
+        serviceId: selectedService.id,
+        serviceName: selectedService.name,
+        serviceDuration: selectedService.duration,
+        servicePrice: selectedService.price,
+        appointmentDate: selectedDate, // YYYY-MM-DD
+        timeSlot: selectedTimeSlot, // e.g. 10:00 AM
+        appointmentAt,
+        vehicleModel: bookingForm.vehicleModel,
+        vehicleYear: bookingForm.vehicleYear,
+        specialRequests: bookingForm.specialRequests || '',
+        status: 'scheduled' as const,
+        createdAt: serverTimestamp(),
+      };
+
+      await addDoc(collection(db, 'appointments'), payload);
+      setBookingSuccess(true);
+    } catch (err) {
+      console.error('Failed to book appointment', err);
+      alert('Failed to confirm booking. Please try again.');
+    } finally {
+      setIsBooking(false);
+    }
   };
 
   const handleInputChange = (field: keyof BookingForm, value: string) => {
@@ -226,7 +262,7 @@ export default function AppointmentBooking() {
 
               <div className="flex gap-4 justify-center">
                 <button
-                  onClick={() => router.push('/dashboard')}
+                  onClick={() => router.push('/customer/dashboard')}
                   className="px-8 py-3 bg-primary text-white font-heading font-bold uppercase rounded-md hover:bg-primary/90 transition-colors"
                 >
                   Go to Dashboard
