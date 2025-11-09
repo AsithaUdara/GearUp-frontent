@@ -87,7 +87,9 @@ export default function UsersPage() {
     return users.filter(user => {
       const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                             user.email.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesRole = roleFilter === 'All Roles' || user.role === roleFilter;
+      // Case-insensitive role comparison to handle ADMIN vs Admin, EMPLOYEE vs Employee, etc.
+      const matchesRole = roleFilter === 'All Roles' || 
+                          user.role.toUpperCase() === roleFilter.toUpperCase();
       return matchesSearch && matchesRole;
     });
   }, [users, searchQuery, roleFilter]);
