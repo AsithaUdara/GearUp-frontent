@@ -42,6 +42,7 @@ export default function CustomerHeader() {
   };
 
   return (
+    <>
     <header 
       className={clsx(
         "fixed top-0 z-50 w-full transition-all duration-300",
@@ -135,8 +136,8 @@ export default function CustomerHeader() {
             </AnimatePresence>
           </div>
           
-          <a
-            href="/customer/book-appointment"
+          <Link
+            href="/customer/appointment"
             className={clsx(
               "group relative inline-flex items-center gap-2 overflow-hidden rounded-md bg-primary px-5 py-3 font-heading text-sm font-bold uppercase text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-primary/80 transition-all duration-300 hover:bg-white hover:text-primary",
               shouldHideButtons && "invisible"
@@ -148,8 +149,9 @@ export default function CustomerHeader() {
           </Link>
         </div>
       </div>
+    </header>
 
-      <AnimatePresence>
+    <AnimatePresence>
         {isServicesMenuOpen && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -182,6 +184,6 @@ export default function CustomerHeader() {
           </motion.div>
         )}
       </AnimatePresence>
-    </header>
+    </>
   );
 }
