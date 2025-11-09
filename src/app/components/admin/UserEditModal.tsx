@@ -13,13 +13,14 @@ type Props = {
   onSuccess?: () => void;
 };
 
-const roles: Array<'Employee' | 'Admin' | 'Customer'> = ['Employee', 'Admin', 'Customer'];
+// Only Employee and Admin roles - Customer registers themselves
+const roles: Array<'Employee' | 'Admin'> = ['Employee', 'Admin'];
 
 export default function UserEditModal({ isOpen, onClose, user, onSuccess }: Props) {
-  const { updateUser, createEmployee, loading, error } = useAdminUsers();
+  const { updateUser, updateUserName, createEmployee, loading, error } = useAdminUsers();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'Employee' | 'Admin' | 'Customer'>('Employee');
+  const [role, setRole] = useState<'Employee' | 'Admin'>('Employee');
   const [status, setStatus] = useState<'Active' | 'Deactivated'>('Active');
   const [showOTP, setShowOTP] = useState(false);
   const [otpCode, setOtpCode] = useState('');
@@ -28,8 +29,10 @@ export default function UserEditModal({ isOpen, onClose, user, onSuccess }: Prop
   useEffect(() => {
     if (user) {
       setName(user.name); 
-      setEmail(user.email); 
-      setRole(user.role === 'No Role' ? 'Employee' : user.role as 'Employee' | 'Admin' | 'Customer'); 
+      setEmail(user.email);
+      // For editing, allow Customer but default to Employee if no role
+      const userRole = user.role === 'No Role' ? 'Employee' : user.role;
+      setRole((userRole === 'Customer' ? 'Employee' : userRole) as 'Employee' | 'Admin');
       setStatus(user.status);
     } else {
       setName(''); setEmail(''); setRole('Employee'); setStatus('Active');
@@ -43,15 +46,13 @@ export default function UserEditModal({ isOpen, onClose, user, onSuccess }: Prop
     
     try {
       if (user) {
-        // Update existing user - parse name into first and last name
-        const nameParts = name.trim().split(' ');
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.slice(1).join(' ') || firstName;
-        
+        // Update name using dedicated single-field endpoint (supports single-token names)
+        if (name && name.trim() && name.trim() !== user.name) {
+          await updateUserName(user.id, { name: name.trim() });
+        }
+        // Update email/role/status via existing endpoint
         await updateUser(user.id, { 
           email,
-          firstName,
-          lastName,
           role: role.toUpperCase() as 'ADMIN' | 'EMPLOYEE' | 'CUSTOMER',
           status 
         });
@@ -80,7 +81,8 @@ export default function UserEditModal({ isOpen, onClose, user, onSuccess }: Prop
       }
     } catch (err) {
       console.error('Failed to save user:', err);
-      alert(`Error: ${error || 'Failed to save user'}`);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save user';
+      alert(`Error: ${errorMessage}`);
     }
   };
 

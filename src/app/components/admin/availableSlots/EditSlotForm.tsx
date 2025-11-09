@@ -18,10 +18,8 @@ export default function EditSlotForm({ slot, onSubmit, onCancel }: Props) {
     notes: slot.notes || '',
     serviceType: slot.serviceType || 'General Service',
     bay: slot.bay || 'Bay 1',
-    // capacity/available are required by SlotInput but not stored on Slot;
-    // derive sensible defaults based on current bookings to satisfy typing
-    capacity: Math.max(5, (slot.bookings?.length ?? 0)),
-    available: Math.max(0, Math.max(5, (slot.bookings?.length ?? 0)) - (slot.bookings?.length ?? 0))
+    capacity: 5,
+    available: 5
   });
 
   function handleChange(
@@ -30,7 +28,7 @@ export default function EditSlotForm({ slot, onSubmit, onCancel }: Props) {
     const { name, value } = e.target;
     setForm((prev) => ({
       ...prev,
-      [name]: value
+      [name]: name === 'capacity' || name === 'available' ? Number(value) : value
     }));
   }
 
