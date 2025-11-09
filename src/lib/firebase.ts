@@ -28,22 +28,9 @@ let authInstance: Auth | undefined;
 let dbInstance: Firestore | undefined;
 let storageInstance: FirebaseStorage | undefined;
 
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
-// Use long-polling detection to avoid WebChannel/CORS issues in strict networks (ad-blockers, proxies)
-// Ref: https://firebase.google.com/docs/firestore/manage-cache#web-channel
-const db = initializeFirestore(app, {
-  experimentalAutoDetectLongPolling: true,
-});
-// Enable offline persistence to make reads/writes resilient and instant in UI
-if (typeof window !== 'undefined') {
-  enableIndexedDbPersistence(db).catch((err) => {
-    // Ignore persistence errors (e.g., multiple tabs). Firestore will still work without persistence.
-    console.warn('Firestore persistence not enabled', err?.code || err);
-  });
-}
-const storage = getStorage(app);
+// Firebase initialization moved below after firebaseConfig is defined.
 
+if (typeof window !== 'undefined') {
   // All NEXT_PUBLIC_* keys are safe for the client – Firebase requires them to initialize.
   const firebaseConfig = {
     apiKey: reqPublic(API_KEY, 'NEXT_PUBLIC_FIREBASE_API_KEY'),

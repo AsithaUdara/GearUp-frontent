@@ -145,7 +145,7 @@ export default function CustomerHeader() {
             <span className="absolute inset-0 bg-white/0 transition-colors duration-300 group-hover:bg-white/10" />
             <span className="relative">BOOK NOW</span>
             <MoveRight className="relative h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-          </Link>
+          </a>
         </div>
       </div>
 
