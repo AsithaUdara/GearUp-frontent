@@ -10,7 +10,6 @@ import {
   CalendarClock,
   Clock8,
   GaugeCircle,
-  MessageSquareText,
   LogOut,
   Wrench
 } from "lucide-react";
@@ -20,8 +19,7 @@ const items = [
   { key: "schedule", href: "/employee/schedule", label: "View Work Schedule", icon: CalendarClock, enabled: true },
   { key: "log-hours", href: "/employee/log-hours", label: "Log Hours", icon: Clock8, enabled: true },
   { key: "progress", href: "/employee/service-progress", label: "Service Progress", icon: GaugeCircle, enabled: true },
-  { key: "parts-request", href: "/employee/parts-request", label: "Materials and Parts Request", icon: Wrench, enabled: true },
-  { key: "communication", href: "/employee/communication", label: "Communication", icon: MessageSquareText, enabled: true }
+  { key: "parts-request", href: "/employee/parts-request", label: "Materials and Parts Request", icon: Wrench, enabled: true }
 ];
 
 export default function Sidebar() {
