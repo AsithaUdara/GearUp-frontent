@@ -1,8 +1,6 @@
 // src/lib/vehicles.ts
 'use client';
 
-import { storage } from '@/lib/firebase';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { uploadViaLocalApi } from '@/lib/localUpload';
 import { listVehiclesByUser, type VehicleDTO, createVehicle as apiCreateVehicle, updateVehicleById as apiUpdateVehicleById, deleteVehicleById as apiDeleteVehicleById } from '@/lib/api/vehicles';
 
@@ -38,27 +36,37 @@ function writeCachedVehicles(uid: string, list: VehicleDoc[]) {
 }
 
 export async function addVehicle(uid: string, data: VehicleInput, imageFile?: File): Promise<VehicleDoc & { backgroundUpload?: boolean }> {
-  // Always use backend Vehicle Service as source of truth. Upload image (local or storage) and pass URL to backend.
+  // Upload image to LOCAL storage
   let photoURL: string | undefined;
   if (imageFile) {
-    const useLocal = process.env.NEXT_PUBLIC_LOCAL_UPLOAD === '1';
     const ext = (imageFile.name.split('.').pop() || 'jpg').toLowerCase();
     const safeExt = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext) ? ext : 'jpg';
-    if (useLocal) {
-      photoURL = await uploadViaLocalApi(imageFile, `users/${uid}/vehicles`, `${Date.now().toString()}.${safeExt}`);
-    } else {
-      const objectRef = ref(storage, `users/${uid}/vehicles/${Date.now().toString()}.${safeExt}`);
-      await uploadBytes(objectRef, imageFile, { contentType: imageFile.type || `image/${safeExt}` });
-      photoURL = await getDownloadURL(objectRef);
-    }
+    photoURL = await uploadViaLocalApi(imageFile, `users/${uid}/vehicles`, `${Date.now().toString()}.${safeExt}`);
   }
+  
+  // Save to backend PostgreSQL (userId sent in request body + header)
   const yearNum = Number.isNaN(Number(data.year)) ? data.year : Number(data.year);
-  const created = await apiCreateVehicle({ make: data.make, model: data.model, year: yearNum as any, numberPlate: data.numberPlate, photoURL });
-  return { id: created.id, make: created.make, model: created.model, year: String(created.year as any), numberPlate: created.numberPlate, photoURL: created.photoURL };
+  const created = await apiCreateVehicle({ 
+    make: data.make, 
+    model: data.model, 
+    year: yearNum as any, 
+    numberPlate: data.numberPlate, 
+    photoURL,
+    userId: uid  // Include userId in body per backend fix
+  });
+  
+  return { 
+    id: created.id, 
+    make: created.make, 
+    model: created.model, 
+    year: String(created.year as any), 
+    numberPlate: created.numberPlate, 
+    photoURL: created.photoURL 
+  };
 }
 
 export function subscribeVehicles(uid: string, cb: (vehicles: VehicleDoc[]) => void) {
-  // Always prefer backend list endpoint; emit cached list immediately, then poll.
+  // Poll backend every 8 seconds for updates
   let cancelled = false;
   let timer: any;
   const toDoc = (d: VehicleDTO): VehicleDoc => ({
@@ -93,7 +101,7 @@ export function subscribeVehicles(uid: string, cb: (vehicles: VehicleDoc[]) => v
 }
 
 export async function fetchVehicles(uid: string): Promise<VehicleDoc[]> {
-  // Prefer cached list for instant return; live updates arrive via subscribeVehicles polling
+  // Fetch from backend PostgreSQL
   const cached = readCachedVehicles(uid);
   if (cached) return cached;
   const list = await listVehiclesByUser(uid);
@@ -122,30 +130,16 @@ export async function updateVehicle(
 ) {
   const updateData: Record<string, unknown> = { ...data };
 
-  // Upload new image if provided
+  // Upload new image to LOCAL storage if provided
   if (imageFile) {
-    const useLocal = process.env.NEXT_PUBLIC_LOCAL_UPLOAD === '1';
-    if (useLocal) {
-      const ext = (imageFile.name.split('.').pop() || 'jpg').toLowerCase();
-      const safeExt = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext) ? ext : 'jpg';
-      const filename = `${vehicleId}.${safeExt}`;
-      const url = await uploadViaLocalApi(imageFile, `users/${uid}/vehicles`, filename);
-      updateData.photoURL = url;
-    } else {
-      try {
-        const ext = (imageFile.name.split('.').pop() || 'jpg').toLowerCase();
-        const safeExt = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext) ? ext : 'jpg';
-        const objectRef = ref(storage, `users/${uid}/vehicles/${vehicleId}.${safeExt}`);
-        await uploadBytes(objectRef, imageFile, { contentType: imageFile.type || `image/${safeExt}` });
-        updateData.photoURL = await getDownloadURL(objectRef);
-      } catch (e) {
-        console.error('Vehicle image update failed', e);
-        throw new Error('Failed to upload vehicle image. Please try again.');
-      }
-    }
+    const ext = (imageFile.name.split('.').pop() || 'jpg').toLowerCase();
+    const safeExt = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext) ? ext : 'jpg';
+    const filename = `${vehicleId}.${safeExt}`;
+    const url = await uploadViaLocalApi(imageFile, `users/${uid}/vehicles`, filename);
+    updateData.photoURL = url;
   }
 
-  // Always update via backend service; convert year if numeric-like
+  // Update backend PostgreSQL
   const payload: any = { ...updateData };
   if (payload.year !== undefined) {
     payload.year = Number.isNaN(Number(payload.year)) ? payload.year : Number(payload.year);

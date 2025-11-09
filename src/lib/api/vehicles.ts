@@ -20,6 +20,7 @@ export type VehiclePayload = {
   year: number | string;
   numberPlate: string;
   photoURL?: string;
+  userId?: string;  // Backend now accepts userId in request body
 };
 
 export type VehicleDTO = VehiclePayload & {

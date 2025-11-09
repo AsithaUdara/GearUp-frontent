@@ -1,115 +1,76 @@
-/**
- * Modifications API Client
- * 
- * Fetches modification request data from backend service (replaces Firestore)
- */
-
 'use client';
 
-import { api } from '../apiClient';
+import { apiFetchJson, getGatewayBase } from './client';
 
-export type ModificationStatus = 'PENDING' | 'APPROVED' | 'IN_PROGRESS' | 'COMPLETED' | 'REJECTED';
+function base(): string | undefined {
+  // Route through Next.js proxy by default
+  if (process.env.NEXT_PUBLIC_USE_DEV_PROXY !== '0') {
+    return '/api/proxy/modifications';
+  }
+  const gw = getGatewayBase();
+  if (gw) return `${gw.replace(/\/$/, '')}/api/modifications`;
+  // Direct to modification service (port 8092)
+  const direct = (process.env.NEXT_PUBLIC_API_BASE_MODIFICATION as string | undefined)?.trim() || 'http://localhost:8092';
+  return `${direct.replace(/\/$/, '')}/api/modifications`;
+}
 
-export type Modification = {
+export type ModificationPayload = {
+  userId?: string;
+  vehicleId: string;
+  vehicleLabel?: string;
+  subject: string;
+  message: string;
+};
+
+export type ModificationDTO = {
   id: string;
   userId: string;
   vehicleId: string;
   vehicleLabel?: string;
-  subject?: string;
+  subject: string;
   message: string;
-  status: ModificationStatus;
-  rejectionReason?: string;
-  approvedBy?: string;
-  approvedAt?: string;
-  rejectedBy?: string;
-  rejectedAt?: string;
+  status: 'pending' | 'approved' | 'in_progress' | 'completed' | 'rejected';
   createdAt: string;
   updatedAt: string;
 };
 
-export type CreateModificationDto = {
-  vehicleId: string;
-  subject?: string;
-  message: string;
-};
-
-export type UpdateModificationDto = {
-  status?: ModificationStatus;
-  rejectionReason?: string;
-};
-
-/**
- * Get all modifications for current user
- */
-export async function getUserModifications(userId: string): Promise<Modification[]> {
-  return api.get<Modification[]>(`/api/modifications/user/${userId}`);
+export async function listModificationsByUser(uid: string): Promise<ModificationDTO[]> {
+  const b = base();
+  if (!b) throw new Error('API base URL not configured');
+  const url = `${b}/user/${encodeURIComponent(uid)}`;
+  return apiFetchJson<ModificationDTO[]>(url);
 }
 
-/**
- * Get ongoing modifications (pending, approved, in_progress)
- */
-export async function getOngoingModifications(userId: string): Promise<Modification[]> {
-  return api.get<Modification[]>(`/api/modifications/user/${userId}/ongoing`);
+export async function createModification(payload: ModificationPayload): Promise<ModificationDTO> {
+  const b = base();
+  if (!b) throw new Error('API base URL not configured');
+  const url = b;
+  return apiFetchJson<ModificationDTO>(url, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
-/**
- * Get modification by ID
- */
-export async function getModification(modificationId: string): Promise<Modification> {
-  return api.get<Modification>(`/api/modifications/${modificationId}`);
+export async function getModificationById(id: string): Promise<ModificationDTO> {
+  const b = base();
+  if (!b) throw new Error('API base URL not configured');
+  const url = `${b}/${encodeURIComponent(id)}`;
+  return apiFetchJson<ModificationDTO>(url);
 }
 
-/**
- * Create new modification request
- */
-export async function createModification(data: CreateModificationDto): Promise<Modification> {
-  return api.post<Modification>('/api/modifications', data);
+export async function updateModificationStatus(id: string, status: string): Promise<ModificationDTO> {
+  const b = base();
+  if (!b) throw new Error('API base URL not configured');
+  const url = `${b}/${encodeURIComponent(id)}/status?status=${encodeURIComponent(status)}`;
+  return apiFetchJson<ModificationDTO>(url, {
+    method: 'PATCH',
+  });
 }
 
-/**
- * Update modification status (admin only typically)
- */
-export async function updateModification(
-  modificationId: string,
-  data: UpdateModificationDto
-): Promise<Modification> {
-  return api.patch<Modification>(`/api/modifications/${modificationId}`, data);
+export async function deleteModificationById(id: string): Promise<void> {
+  const b = base();
+  if (!b) throw new Error('API base URL not configured');
+  const url = `${b}/${encodeURIComponent(id)}`;
+  await apiFetchJson(url, { method: 'DELETE' });
 }
 
-/**
- * Approve modification (admin)
- */
-export async function approveModification(modificationId: string): Promise<Modification> {
-  return api.patch<Modification>(`/api/modifications/${modificationId}/approve`, {});
-}
-
-/**
- * Reject modification (admin)
- */
-export async function rejectModification(
-  modificationId: string,
-  reason: string
-): Promise<Modification> {
-  return api.patch<Modification>(`/api/modifications/${modificationId}/reject`, { reason });
-}
-
-/**
- * Mark modification in progress (admin)
- */
-export async function markInProgress(modificationId: string): Promise<Modification> {
-  return api.patch<Modification>(`/api/modifications/${modificationId}/in-progress`, {});
-}
-
-/**
- * Complete modification (admin)
- */
-export async function completeModification(modificationId: string): Promise<Modification> {
-  return api.patch<Modification>(`/api/modifications/${modificationId}/complete`, {});
-}
-
-/**
- * Delete modification
- */
-export async function deleteModification(modificationId: string): Promise<void> {
-  return api.delete(`/api/modifications/${modificationId}`);
-}

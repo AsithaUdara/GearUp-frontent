@@ -1,23 +1,13 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { db } from '@/lib/firebase';
-import { addDoc, collection, serverTimestamp, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { subscribeVehicles, type VehicleDoc } from '@/lib/vehicles';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { LucideCheck, LucideX, LucideClock, LucideWrench, LucideAlertCircle } from 'lucide-react';
+import { LucideCheck, LucideX, LucideClock, LucideWrench, LucideAlertCircle, LucideTrash2 } from 'lucide-react';
+import { createModification, listModificationsByUser, deleteModificationById, type ModificationDTO } from '@/lib/api/modifications';
 
-type ModificationDoc = {
-  id: string;
-  userId: string;
-  vehicleId: string;
-  vehicleLabel?: string | null;
-  subject?: string | null;
-  message: string;
-  status: "pending" | "approved" | "in_progress" | "completed" | "rejected";
-  createdAt?: { seconds: number; nanoseconds: number } | null;
-};
+type ModificationDoc = ModificationDTO;
 
 export default function ServiceModification() {
   const { user, loading } = useAuth();
@@ -33,6 +23,9 @@ export default function ServiceModification() {
   const [submitErr, setSubmitErr] = useState<string | null>(null);
   const [myModifications, setMyModifications] = useState<ModificationDoc[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -46,30 +39,31 @@ export default function ServiceModification() {
     return () => unsub && unsub();
   }, [user]);
 
-  // Fetch user's modification history from Firestore (temporary until backend ready)
+  // Fetch user's modification history from backend
   useEffect(() => {
     if (!user) {
       setHistoryLoading(false);
       return;
     }
-    const q = query(
-      collection(db, 'modifications'),
-      where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc')
-    );
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        const list: ModificationDoc[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+    
+    const fetchModifications = async () => {
+      try {
+        console.log('🔵 Fetching modifications for user:', user.uid);
+        const list = await listModificationsByUser(user.uid);
+        console.log('✅ Fetched modifications:', list);
         setMyModifications(list);
         setHistoryLoading(false);
-      },
-      (err) => {
-        console.error('modifications history error', err);
+      } catch (err: any) {
+        console.error('❌ Modifications fetch error:', err);
+        setMyModifications([]); // Clear on error
         setHistoryLoading(false);
       }
-    );
-    return () => unsub();
+    };
+    
+    fetchModifications();
+    // Poll every 5 seconds for updates
+    const interval = setInterval(fetchModifications, 5000);
+    return () => clearInterval(interval);
   }, [user]);
 
   const getStatusBadge = (status: ModificationDoc['status']) => {
@@ -89,10 +83,33 @@ export default function ServiceModification() {
     }
   };
 
-  const formatDate = (timestamp?: { seconds: number; nanoseconds: number } | null) => {
-    if (!timestamp || typeof timestamp.seconds !== 'number') return 'N/A';
-    const date = new Date(timestamp.seconds * 1000);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  const formatDate = (timestamp?: string) => {
+    if (!timestamp) return 'N/A';
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch {
+      return 'N/A';
+    }
+  };
+
+  const handleDeleteModification = async (modId: string) => {
+    setDeletingId(modId);
+    setDeleteConfirmId(null);
+    try {
+      await deleteModificationById(modId);
+      // Refresh the list
+      const list = await listModificationsByUser(user!.uid);
+      setMyModifications(list);
+      setSubmitMsg('✓ Modification request deleted successfully');
+      setTimeout(() => setSubmitMsg(null), 3000);
+    } catch (error: any) {
+      console.error('Error deleting modification:', error);
+      setSubmitErr(error?.message || 'Failed to delete request. Please try again.');
+      setTimeout(() => setSubmitErr(null), 5000);
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   // (Removed old mock handlers and status helpers)
@@ -203,53 +220,80 @@ export default function ServiceModification() {
             </div>
             <div className="flex flex-col gap-3 mt-4">
               <button
-                disabled={submitting || !selectedVehicleId || !subject.trim() || !inquiry.trim()}
-                onClick={async () => {
-                  if (!user || !selectedVehicleId || !subject.trim() || !inquiry.trim()) return;
-                  console.log('Submitting modification request...');
+                disabled={isProcessing || !selectedVehicleId || !subject.trim() || !inquiry.trim()}
+                onClick={() => {
+                  if (!user || !selectedVehicleId || !subject.trim() || !inquiry.trim() || isProcessing) return;
+                  
+                  console.log('🔵 Button clicked - starting submission');
+                  setIsProcessing(true);
                   setSubmitting(true);
                   setSubmitMsg(null);
                   setSubmitErr(null);
-                  try {
-                    const vehicle = vehicles.find(v => v.id === selectedVehicleId);
-                    console.log('Creating document in Firestore...');
-                    const docRef = await addDoc(collection(db, 'modifications'), {
-                      userId: user.uid,
-                      vehicleId: selectedVehicleId,
-                      vehicleLabel: vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model} — ${vehicle.numberPlate}` : null,
-                      subject: subject.trim(),
-                      message: inquiry.trim(),
-                      status: 'pending',
-                      createdAt: serverTimestamp(),
-                    });
-                    console.log('Document created successfully:', docRef.id);
-                    setSubmitMsg('✓ Your modification request has been submitted successfully! We will review it soon.');
+                  
+                  const vehicle = vehicles.find(v => v.id === selectedVehicleId);
+                  console.log('🔵 Sending to backend...');
+                  
+                  createModification({
+                    userId: user.uid,
+                    vehicleId: selectedVehicleId,
+                    vehicleLabel: vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model} — ${vehicle.numberPlate}` : undefined,
+                    subject: subject.trim(),
+                    message: inquiry.trim(),
+                  })
+                  .then(async (response) => {
+                    console.log('✅ Modification created:', response.id);
+                    // Refresh the list
+                    const list = await listModificationsByUser(user.uid);
+                    setMyModifications(list);
+                    // Success! Clear everything
                     setSelectedVehicleId('');
                     setSubject('');
                     setInquiry('');
-                    // Auto-hide success message after 5 seconds
-                    setTimeout(() => setSubmitMsg(null), 5000);
-                  } catch (e: any) {
-                    console.error('Error submitting modification:', e);
+                    setSubmitMsg('✓ Your modification request has been submitted successfully! We will review it soon.');
+                    setTimeout(() => setSubmitMsg(null), 8000);
+                    console.log('✅ Success message set, form cleared');
+                  })
+                  .catch((e: any) => {
+                    console.error('❌ Error submitting modification:', e);
                     setSubmitErr(e?.message || 'Failed to submit request. Please try again.');
-                  } finally {
-                    console.log('Submit complete, resetting state');
+                    setTimeout(() => setSubmitErr(null), 8000);
+                  })
+                  .finally(() => {
+                    console.log('🔵 Finally block - resetting states');
                     setSubmitting(false);
-                  }
+                    setIsProcessing(false);
+                    console.log('✅ States reset - submitting and isProcessing set to false');
+                  });
                 }}
-                className={`px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors ${submitting ? 'opacity-80 cursor-not-allowed' : ''}`}
+                className={`px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors ${
+                  (isProcessing || !selectedVehicleId || !subject.trim() || !inquiry.trim()) ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               >
                 {submitting ? 'Submitting…' : 'Submit Request'}
               </button>
               {submitMsg && (
-                <div className="px-4 py-3 rounded-lg bg-green-100 text-green-700 text-sm border border-green-300 font-medium">
-                  {submitMsg}
-                </div>
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="px-4 py-4 rounded-lg bg-green-50 text-green-800 text-sm border-2 border-green-400 font-medium shadow-lg"
+                >
+                  <div className="flex items-center gap-2">
+                    <LucideCheck size={20} className="text-green-600" />
+                    <span>{submitMsg}</span>
+                  </div>
+                </motion.div>
               )}
               {submitErr && (
-                <div className="px-4 py-3 rounded-lg bg-red-100 text-red-700 text-sm border border-red-300 font-medium">
-                  {submitErr}
-                </div>
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="px-4 py-4 rounded-lg bg-red-50 text-red-800 text-sm border-2 border-red-400 font-medium shadow-lg"
+                >
+                  <div className="flex items-center gap-2">
+                    <LucideX size={20} className="text-red-600" />
+                    <span>{submitErr}</span>
+                  </div>
+                </motion.div>
               )}
             </div>
           </motion.div>
@@ -297,6 +341,21 @@ export default function ServiceModification() {
                           <span className="font-medium">Submitted:</span> {formatDate(mod.createdAt)}
                         </p>
                       </div>
+                      {/* Delete button - only show for pending requests */}
+                      {mod.status === 'pending' && (
+                        <button
+                          onClick={() => setDeleteConfirmId(mod.id)}
+                          disabled={deletingId === mod.id}
+                          className="ml-4 p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Delete request"
+                        >
+                          {deletingId === mod.id ? (
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-600"></div>
+                          ) : (
+                            <LucideTrash2 size={20} />
+                          )}
+                        </button>
+                      )}
                     </div>
                     <div className="bg-gray-50 rounded-lg p-4">
                       <p className="text-sm text-gray-700 whitespace-pre-wrap">{mod.message}</p>
@@ -308,6 +367,42 @@ export default function ServiceModification() {
           </motion.div>
         </div>
       </div>
+
+      {/* Custom Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 rounded-full bg-red-100">
+                <LucideTrash2 className="text-red-600" size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">Delete Modification Request</h3>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this modification request? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="flex-1 px-4 py-3 rounded-lg border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteModification(deleteConfirmId)}
+                disabled={deletingId === deleteConfirmId}
+                className="flex-1 px-4 py-3 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deletingId === deleteConfirmId ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

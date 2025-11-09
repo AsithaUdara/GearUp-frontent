@@ -311,28 +311,45 @@ export default function CustomerDashboard() {
               )}
             </div>
 
-            {/* Modification Requests (summary) */}
+            {/* Modification Requests (scrollable list) */}
             <div className="rounded-lg bg-white shadow-sm p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
               <h3 className="text-[#181111] text-lg font-bold mb-4">Modification Requests</h3>
               {modLoading ? (
                 <div className="text-sm text-gray-500">Loading...</div>
               ) : modError ? (
                 <div className="text-sm text-red-600">{modError}</div>
-              ) : latestModification ? (
+              ) : mods.length > 0 ? (
                 <div className="space-y-3">
-                  {latestModification.vehicleLabel && (
-                    <div className="text-sm text-gray-700">{latestModification.vehicleLabel}</div>
-                  )}
-                  {latestModification.subject && (
-                    <div className="text-sm font-semibold text-gray-800">Topic: {latestModification.subject}</div>
-                  )}
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 text-sm">
-                    <LucideWrench size={16} className="text-gray-700" />
-                    <span className="text-gray-700 capitalize">{latestModification.status.replace('_', ' ')}</span>
+                  {/* Scrollable list of modifications */}
+                  <div className="max-h-[300px] overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+                    {mods
+                      .sort((a, b) => {
+                        const aMs = a.createdAt && typeof a.createdAt.seconds === "number" 
+                          ? a.createdAt.seconds * 1000 
+                          : 0;
+                        const bMs = b.createdAt && typeof b.createdAt.seconds === "number" 
+                          ? b.createdAt.seconds * 1000 
+                          : 0;
+                        return bMs - aMs; // Most recent first
+                      })
+                      .map((mod) => (
+                        <div key={mod.id} className="p-3 rounded-lg border border-gray-200 hover:border-primary/30 transition-colors">
+                          {mod.vehicleLabel && (
+                            <div className="text-xs text-gray-600 mb-1">{mod.vehicleLabel}</div>
+                          )}
+                          {mod.subject && (
+                            <div className="text-sm font-semibold text-gray-800 mb-2">Topic: {mod.subject}</div>
+                          )}
+                          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 text-xs">
+                            <LucideWrench size={14} className="text-gray-700" />
+                            <span className="text-gray-700 capitalize">{mod.status.replace('_', ' ')}</span>
+                          </div>
+                        </div>
+                      ))}
                   </div>
                   <Link 
                     href="/customer/modification"
-                    className="block w-full text-center rounded-lg bg-primary/10 px-4 py-3 text-primary font-semibold hover:bg-primary/20 transition-colors"
+                    className="block w-full text-center rounded-lg bg-primary/10 px-4 py-3 text-primary font-semibold hover:bg-primary/20 transition-colors mt-3"
                   >
                     Manage Modifications
                   </Link>
@@ -342,123 +359,6 @@ export default function CustomerDashboard() {
                   <div className="flex items-center gap-2 text-gray-600">
                     <LucideWrench size={18} />
                     <span className="text-sm">No modification requests yet</span>
-                  </div>
-                  <Link 
-                    href="/customer/modification"
-                    className="block w-full text-center rounded-lg bg-primary/10 px-4 py-3 text-primary font-semibold hover:bg-primary/20 transition-colors"
-                  >
-                    Request Modification
-                  </Link>
-                </div>
-              )}
-            </div>
-
-            {/* Current Modification Status (3 steps) */}
-            <div className="rounded-lg bg-white shadow-sm p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
-              <h3 className="text-[#181111] text-lg font-bold mb-4">Current Modification Status</h3>
-              {modLoading ? (
-                <div className="text-sm text-gray-500">Loading...</div>
-              ) : modError ? (
-                <div className="text-sm text-red-600">{modError}</div>
-              ) : ongoingModification ? (
-                <div className="space-y-4">
-                  {ongoingModification.vehicleLabel && (
-                    <div className="text-sm text-gray-700">{ongoingModification.vehicleLabel}</div>
-                  )}
-                  {(() => {
-                    const s = ongoingModification.status;
-                    const isPending = s === "pending";
-                    const isRejected = s === "rejected";
-                    const isApproved = s === "approved";
-                    const isInProgress = s === "in_progress";
-                    const isCompleted = s === "completed";
-                    
-                    // Two paths: Rejection path OR Approval path
-                    if (isRejected) {
-                      // PATH 1: Pending → Rejected
-                      return (
-                        <div className="space-y-4">
-                          {/* Step 1: Pending (completed) */}
-                          <div className="flex items-start gap-3">
-                            <div className="mt-1 p-1 rounded-full bg-green-100">
-                              <LucideCheck className="text-green-600" size={16} />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-sm text-gray-700">Pending request</p>
-                            </div>
-                          </div>
-                          
-                          {/* Step 2: Rejected (active) */}
-                          <div className="flex items-start gap-3">
-                            <div className="mt-1 p-1 rounded-full bg-red-100">
-                              <LucideX className="text-red-600" size={16} />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-sm font-semibold text-red-700">Request Rejected</p>
-                              <p className="text-xs text-red-600 mt-1">Your modification request was not approved</p>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-                    
-                    // PATH 2: Pending → Approved → In Progress → Completed
-                    return (
-                      <div className="space-y-4">
-                        {/* Step 1: Pending */}
-                        <div className="flex items-start gap-3">
-                          <div className={`mt-1 p-1 rounded-full ${isPending ? 'bg-blue-100' : 'bg-green-100'}`}>
-                            {isPending ? <LucideClock className="text-blue-600" size={16} /> : <LucideCheck className="text-green-600" size={16} />}
-                          </div>
-                          <div className="flex-1">
-                            <p className={`text-sm ${isPending ? 'font-semibold text-gray-700' : 'text-gray-700'}`}>Pending request</p>
-                          </div>
-                        </div>
-                        
-                        {/* Step 2: Approved */}
-                        <div className="flex items-start gap-3">
-                          <div className={`mt-1 p-1 rounded-full ${isApproved ? 'bg-blue-100' : (isInProgress || isCompleted) ? 'bg-green-100' : 'bg-gray-200'}`}>
-                            {(isInProgress || isCompleted) ? <LucideCheck className="text-green-600" size={16} /> : isApproved ? <LucideCheck className="text-blue-600" size={16} /> : <LucideCheck className="text-gray-400" size={16} />}
-                          </div>
-                          <div className="flex-1">
-                            <p className={`text-sm ${isApproved ? 'font-semibold text-gray-700' : (isInProgress || isCompleted) ? 'text-gray-700' : 'text-gray-400'}`}>Approved</p>
-                          </div>
-                        </div>
-                        
-                        {/* Step 3: In Progress */}
-                        <div className="flex items-start gap-3">
-                          <div className={`mt-1 p-1 rounded-full ${isInProgress ? 'bg-blue-100' : isCompleted ? 'bg-green-100' : 'bg-gray-200'}`}>
-                            {isCompleted ? <LucideCheck className="text-green-600" size={16} /> : isInProgress ? <LucideWrench className="text-blue-600" size={16} /> : <LucideWrench className="text-gray-400" size={16} />}
-                          </div>
-                          <div className="flex-1">
-                            <p className={`text-sm ${isInProgress ? 'font-semibold text-gray-700' : isCompleted ? 'text-gray-700' : 'text-gray-400'}`}>In Progress</p>
-                          </div>
-                        </div>
-                        
-                        {/* Step 4: Completed */}
-                        <div className="flex items-start gap-3">
-                          <div className={`mt-1 p-1 rounded-full ${isCompleted ? 'bg-green-100' : 'bg-gray-200'}`}>
-                            {isCompleted ? <LucideCheck className="text-green-600" size={16} /> : <LucideCheck className="text-gray-400" size={16} />}
-                          </div>
-                          <div className="flex-1">
-                            <p className={`text-sm ${isCompleted ? 'font-semibold text-gray-700' : 'text-gray-400'}`}>Completed</p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                  <Link
-                    href="/customer/modification"
-                    className="block w-full text-center rounded-lg bg-primary/10 px-4 py-3 text-primary font-semibold hover:bg-primary/20 transition-colors"
-                  >
-                    View / Request Modification
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <LucideWrench size={18} />
-                    <span className="text-sm">No modification in progress</span>
                   </div>
                   <Link 
                     href="/customer/modification"
