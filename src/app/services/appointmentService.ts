@@ -351,6 +351,6 @@ export function hasEmployeeConflict(
     b.timeSlot?.slotDate === date &&
     b.status !== 'CANCELLED' &&
     // Check time overlap
-    !(b.timeSlot?.endTime! <= startTime || b.timeSlot?.startTime! >= endTime)
+  !(b.timeSlot?.endTime && b.timeSlot?.endTime <= startTime || b.timeSlot?.startTime && b.timeSlot?.startTime >= endTime)
   );
 }

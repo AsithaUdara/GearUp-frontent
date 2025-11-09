@@ -1,20 +1,18 @@
 /* app/globals.css */
 @import "tailwindcss";
 
-@theme {
-  /* PROJECT APEX: THE DEFINITIVE PALETTE */
+/* PROJECT APEX: THE DEFINITIVE PALETTE */
+:root {
   --color-background: #F8F8F8; /* A clean, very light gray */
   --color-foreground: #1A1A1A;
   --color-muted-foreground: #666666;
   --color-primary: #D2232A;
   --color-primary-foreground: #FFFFFF;
   --color-border: #E5E5E5;
-  
   /* GLASSMORPHISM & AURA PALETTE */
   --color-glass-bg: rgba(255, 255, 255, 0.6);
   --color-glass-border: rgba(255, 255, 255, 0.8);
   --color-glow: rgba(210, 35, 42, 0.5);
-
   --font-body: var(--font-body);
   --font-heading: var(--font-heading);
 }

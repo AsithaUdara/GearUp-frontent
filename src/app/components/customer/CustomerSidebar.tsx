@@ -29,7 +29,6 @@ const navItems = [
   { icon: LucideWrench, label: "Service Modification", href: "/customer/service-modification" },
   { icon: LucideCreditCard, label: "Payment", href: "/customer/payment" },
   { icon: LucideSettings, label: "Settings", href: "/customer/settings" },
-  { icon: LucideBot, label: "AI Chatbot", href: "/customer/chatbot" },
 ];
 
 export default function CustomerSidebar() {
