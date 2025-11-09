@@ -11,6 +11,7 @@ export default function VehicleRegistration() {
   const [year, setYear] = useState("");
   const [numberPlate, setNumberPlate] = useState("");
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -22,8 +23,15 @@ export default function VehicleRegistration() {
     if (!f) return;
     const isImage = f.type.startsWith("image/");
     const maxBytes = 5 * 1024 * 1024;
-    if (!isImage) return alert("Please select an image file.");
-    if (f.size > maxBytes) return alert("Image too large. Max 5MB.");
+    if (!isImage) {
+      setError("Please select an image file (PNG, JPG, etc.).");
+      return;
+    }
+    if (f.size > maxBytes) {
+      setError("Image is too large. Max 5MB.");
+      return;
+    }
+    setError(null);
     setFile(f);
     setPreview(URL.createObjectURL(f));
   };
@@ -33,14 +41,23 @@ export default function VehicleRegistration() {
     if (!user) return router.push('/');
     try {
       setSaving(true);
-      await addVehicle(user.uid, { make, model, year, numberPlate }, file || undefined);
+      setError(null);
+      const op = addVehicle(user.uid, { make, model, year, numberPlate }, file || undefined);
+      const timeoutMs = 12000;
+      const okP = op.then(() => 'ok' as const).catch(() => 'error' as const);
+      const toP = new Promise<'timeout'>((res) => setTimeout(() => res('timeout'), timeoutMs));
+      const race = await Promise.race([okP, toP] as const);
+      if (race === 'error') {
+        throw new Error('Failed to add vehicle. Please check your connection or permissions.');
+      }
       setSuccess(true);
-      // Optionally redirect back to My Vehicles after a delay
+      setSaving(false);
+      // If it timed out, let it finish in background, then the list will appear when synced
+      // Navigate back either way for a consistent UX
       setTimeout(() => router.push('/customer/vehicles'), 800);
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Failed to register vehicle');
-    } finally {
+      setError(err?.message || 'Failed to register vehicle. Please try again.');
       setSaving(false);
     }
   };
@@ -105,6 +122,11 @@ export default function VehicleRegistration() {
                   {success && (
                     <div className="mx-4 my-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
                       <p>Your {year} {make} {model} has been successfully added to your profile.</p>
+                    </div>
+                  )}
+                  {error && (
+                    <div className="mx-4 my-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                      <p>{error}</p>
                     </div>
                   )}
                 </form>

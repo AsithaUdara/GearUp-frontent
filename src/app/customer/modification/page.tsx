@@ -1,4 +1,4 @@
-'use client';
+"use client";
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -31,113 +31,15 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { getModificationServices, createModificationRequest, ModificationService as BackendModificationService } from '@/services/modificationService';
 
-interface ModificationRequest {
+type ModificationDoc = {
   id: string;
-  serviceId: string;
-  type: 'add_service' | 'remove_service' | 'change_service' | 'urgent_repair';
-  title: string;
-  description: string;
-  
-  estimatedCost: number;
-  estimatedDuration: number;
-  status: 'pending' | 'approved' | 'rejected' | 'in_progress' | 'completed';
-  requestedBy: string;
-  requestedAt: string;
-  approvedBy?: string;
-  approvedAt?: string;
-  rejectionReason?: string;
-  technician?: string;
-  notes?: string;
-  attachments?: string[];
-}
-
-interface ServiceModification {
-  id: string;
-  serviceName: string;
-  vehicleModel: string;
-  vehicleYear: string;
-  customerName: string;
-  phone: string;
-  email: string;
-  appointmentDate: string;
-  appointmentTime: string;
-  currentStatus: 'scheduled' | 'in-progress' | 'completed' | 'delayed';
-  originalServices: string[];
-  currentServices: string[];
-  totalCost: number;
-  estimatedCompletion: string;
-  technician: {
-    name: string;
-    phone: string;
-    photo: string;
-  };
-  location: {
-    name: string;
-    address: string;
-    phone: string;
-  };
-  modificationRequests: ModificationRequest[];
-  lastUpdate: string;
-}
-
-const mockServiceModification: ServiceModification = {
-  id: 'SRV-2024-001',
-  serviceName: 'Full Service',
-  vehicleModel: 'Toyota Camry',
-  vehicleYear: '2020',
-  customerName: 'John Doe',
-  phone: '+94 77 123 4567',
-  email: 'john.doe@email.com',
-  appointmentDate: '2024-01-15',
-  appointmentTime: '10:00 AM',
-  currentStatus: 'in-progress',
-  originalServices: ['Oil Change', 'Brake Inspection', 'Engine Check'],
-  currentServices: ['Oil Change', 'Brake Inspection', 'Engine Check', 'Brake Pad Replacement'],
-  totalCost: 53000,
-  estimatedCompletion: '3:00 PM',
-  technician: {
-    name: 'Mike Johnson',
-    phone: '+94 77 987 6543',
-    photo: '/team-workshop.jpg'
-  },
-  location: {
-    name: 'GearUp Service Center - Colombo',
-    address: '123 Galle Road, Colombo 03',
-    phone: '+94 11 234 5678'
-  },
-  modificationRequests: [
-    {
-      id: 'MOD-001',
-      serviceId: 'SRV-2024-001',
-      type: 'add_service',
-      title: 'Brake Pad Replacement',
-      description: 'Customer requested brake pad replacement after inspection revealed 20% wear',
-      
-      estimatedCost: 8500,
-      estimatedDuration: 45,
-      status: 'approved',
-      requestedBy: 'John Doe',
-      requestedAt: '2024-01-15 10:30 AM',
-      approvedBy: 'Mike Johnson',
-      approvedAt: '2024-01-15 10:35 AM',
-      technician: 'Sarah Wilson',
-      notes: 'Approved for safety reasons. Customer informed of additional cost.'
-    },
-    {
-      id: 'MOD-002',
-      serviceId: 'SRV-2024-001',
-      type: 'add_service',
-      title: 'Air Filter Replacement',
-      description: 'Air filter is dirty and affecting engine performance',
-      
-      estimatedCost: 2500,
-      estimatedDuration: 15,
-      status: 'pending',
-      requestedBy: 'John Doe',
-      requestedAt: '2024-01-15 11:00 AM'
-    }
-  ],
-  lastUpdate: '2024-01-15 11:00 AM'
+  userId: string;
+  vehicleId: string;
+  vehicleLabel?: string | null;
+  subject?: string | null;
+  message: string;
+  status: "pending" | "approved" | "in_progress" | "completed" | "rejected";
+  createdAt?: { seconds: number; nanoseconds: number } | null;
 };
 
 export default function ServiceModification() {
@@ -292,48 +194,56 @@ export default function ServiceModification() {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  // Fetch user's modification history from Firestore (temporary until backend ready)
+  useEffect(() => {
+    if (!user) {
+      setHistoryLoading(false);
+      return;
+    }
+    const q = query(
+      collection(db, 'modifications'),
+      where('userId', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const list: ModificationDoc[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+        setMyModifications(list);
+        setHistoryLoading(false);
+      },
+      (err) => {
+        console.error('modifications history error', err);
+        setHistoryLoading(false);
+      }
+    );
+    return () => unsub();
+  }, [user]);
+
+  const getStatusBadge = (status: ModificationDoc['status']) => {
     switch (status) {
+      case 'pending':
+        return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs font-medium"><LucideClock size={14} />Pending</span>;
       case 'approved':
-        return 'text-green-600 bg-green-100';
-      case 'rejected':
-        return 'text-red-600 bg-red-100';
+        return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium"><LucideCheck size={14} />Approved</span>;
       case 'in_progress':
-        return 'text-blue-600 bg-blue-100';
+        return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-medium"><LucideWrench size={14} />In Progress</span>;
       case 'completed':
-        return 'text-green-600 bg-green-100';
+        return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium"><LucideCheck size={14} />Completed</span>;
+      case 'rejected':
+        return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-medium"><LucideX size={14} />Rejected</span>;
       default:
-        return 'text-yellow-600 bg-yellow-100';
+        return <span className="text-gray-500 text-xs">{status}</span>;
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return <CheckCircle className="h-5 w-5" />;
-      case 'rejected':
-        return <XCircle className="h-5 w-5" />;
-      case 'in_progress':
-        return <RefreshCw className="h-5 w-5 animate-spin" />;
-      case 'completed':
-        return <CheckSquare className="h-5 w-5" />;
-      default:
-        return <Clock className="h-5 w-5" />;
-    }
+  const formatDate = (timestamp?: { seconds: number; nanoseconds: number } | null) => {
+    if (!timestamp || typeof timestamp.seconds !== 'number') return 'N/A';
+    const date = new Date(timestamp.seconds * 1000);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'urgent':
-        return 'text-red-600 bg-red-100';
-      case 'high':
-        return 'text-orange-600 bg-orange-100';
-      case 'medium':
-        return 'text-yellow-600 bg-yellow-100';
-      default:
-        return 'text-green-600 bg-green-100';
-    }
-  };
+  // (Removed old mock handlers and status helpers)
 
   if (loading) {
     return (
@@ -452,9 +362,7 @@ export default function ServiceModification() {
         </div>
       </div>
 
-      {/* New Request Modal */}
-      <AnimatePresence>
-        {showNewRequest && (
+          {/* My Modification History */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -584,7 +492,38 @@ export default function ServiceModification() {
                   {submittingRequest ? 'Submitting...' : 'Submit Request'}
                 </button>
               </div>
-            </motion.div>
+            ) : (
+              <div className="space-y-4">
+                {myModifications.map((mod) => (
+                  <motion.div
+                    key={mod.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {mod.subject || 'Vehicle Modification'}
+                          </h3>
+                          {getStatusBadge(mod.status)}
+                        </div>
+                        <p className="text-sm text-gray-600 mb-1">
+                          <span className="font-medium">Vehicle:</span> {mod.vehicleLabel || 'N/A'}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Submitted:</span> {formatDate(mod.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">{mod.message}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
