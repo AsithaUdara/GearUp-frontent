@@ -14,6 +14,7 @@ const roleStyles = {
     Admin: "border-primary text-primary",
     Employee: "border-blue-500 text-blue-600",
     Customer: "border-gray-300 text-muted-foreground",
+    "No Role": "border-red-300 text-red-600", // Add styling for No Role
 };
 
 // Accept users as a prop for filtering

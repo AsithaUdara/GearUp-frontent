@@ -1,31 +1,21 @@
 "use client";
 import { useSyncExternalStore, useState } from "react";
-import { subscribe, getAppointments, updateAppointment } from "@/lib/appointmentsStore";
+import { subscribe, getAppointments } from "@/lib/appointmentsStore";
 import { useRouter } from "next/navigation";
+import AppointmentDetailsModal from "@/app/components/employee/schedule/AppointmentDetailsModal";
 
 export default function UpcomingAppointmentsCard({ max = 3 }: { max?: number }) {
   const router = useRouter();
   // include getServerSnapshot (third arg) so server-rendered pages have a stable snapshot
   const appointments = useSyncExternalStore(subscribe, getAppointments, getAppointments) ?? [];
-  const [loadingIds, setLoadingIds] = useState<string[]>([]);
+  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const upcoming = appointments.filter((a: any) => !a.past).slice(0, max);
 
   const handleView = (a: any) => {
-    router.push(`/employee/schedule?date=${a.date}&appt=${a.id}`);
-  };
-
-  const handleConfirm = async (a: any) => {
-    setLoadingIds((s) => [...s, a.id]);
-    try {
-      updateAppointment({ id: a.id, status: "Confirmed" });
-    } finally {
-      setLoadingIds((s) => s.filter((id) => id !== a.id));
-    }
-  };
-
-  const handleReschedule = (a: any) => {
-    router.push(`/employee/schedule?reschedule=${a.id}&date=${a.date}`);
+    setSelectedAppointment(a);
+    setModalOpen(true);
   };
 
   return (
@@ -46,14 +36,31 @@ export default function UpcomingAppointmentsCard({ max = 3 }: { max?: number }) 
                 <div className="text-xs text-gray-500">{a.date} • {a.status}</div>
               </div>
               <div className="flex flex-col items-end gap-2">
-                <button onClick={() => handleView(a)} className="text-xs bg-white border border-gray-200 px-2 py-1 rounded hover:bg-gray-50">View</button>
-                <button onClick={() => handleConfirm(a)} disabled={loadingIds.includes(a.id)} className="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-green-700">Confirm</button>
-                <button onClick={() => handleReschedule(a)} className="text-xs text-gray-600 hover:underline">Reschedule</button>
+                <button onClick={() => handleView(a)} className="text-xs bg-red-600 text-white px-3 py-1.5 rounded hover:bg-red-700">View</button>
               </div>
             </div>
           </li>
         ))}
       </ul>
+
+      {selectedAppointment && (
+        <AppointmentDetailsModal
+          open={modalOpen}
+          details={{
+            id: selectedAppointment.id,
+            customerName: selectedAppointment.customer,
+            vehicle: { make: selectedAppointment.vehicle },
+            services: [selectedAppointment.service],
+            date: selectedAppointment.date,
+            time: selectedAppointment.time,
+            assignee: "You",
+            status: selectedAppointment.status,
+          }}
+          onClose={() => setModalOpen(false)}
+          allowActions={false}
+          showScheduleLink={true}
+        />
+      )}
     </div>
   );
 }

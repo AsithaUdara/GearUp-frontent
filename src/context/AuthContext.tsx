@@ -1,8 +1,8 @@
 // src/context/AuthContext.tsx
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { onAuthStateChanged, reload, type User } from 'firebase/auth';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { onAuthStateChanged, User, reload } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
 interface AuthContextType {
@@ -18,17 +18,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
+    // Subscribe to Firebase auth state changes
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      console.log('Auth state changed:', firebaseUser?.email || 'No user');
+      setUser(firebaseUser);
       setLoading(false);
     });
+    
     return () => unsubscribe();
   }, []);
 
   const refreshUser = async () => {
     if (!auth.currentUser) return;
     await reload(auth.currentUser);
-    // After reload, onAuthStateChanged won't fire automatically; manually set current user
+    // After reload, onAuthStateChanged will fire automatically
     setUser(auth.currentUser);
   };
 

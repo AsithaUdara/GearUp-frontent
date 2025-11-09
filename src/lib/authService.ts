@@ -1,0 +1,189 @@
+// src/lib/authService.ts
+import { auth } from './firebase';
+import { signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+
+// Backend response structures
+interface RoleResponse {
+  id: number;
+  name: 'ADMIN' | 'EMPLOYEE' | 'CUSTOMER';
+}
+
+interface BackendUserResponse {
+  id: number;
+  firebaseUid: string;
+  email: string;
+  displayName?: string;
+  phoneNumber?: string;
+  photoUrl?: string;
+  accountStatus: string;
+  roles: RoleResponse[];
+  createdAt?: string;
+  lastLoginAt?: string;
+}
+
+interface BackendApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+  timestamp: string;
+}
+
+export interface UserProfile {
+  id: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: 'ADMIN' | 'EMPLOYEE' | 'CUSTOMER';
+  accountStatus: string;
+  phoneNumber?: string;
+}
+
+export interface LoginResponse {
+  user: UserProfile;
+  token: string;
+  dashboardPath: string;
+}
+
+/**
+ * Login user with email and password
+ * Returns user profile and appropriate dashboard path based on role
+ */
+export async function loginUser(email: string, password: string): Promise<LoginResponse> {
+  try {
+    // Step 1: Authenticate with Firebase
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const idToken = await userCredential.user.getIdToken();
+
+    // Step 2: Get user profile from backend
+    console.log('Fetching user profile from:', `${API_BASE_URL}/api/v1/users/profile`);
+    console.log('Using token:', idToken.substring(0, 20) + '...');
+    
+    const response = await fetch(`${API_BASE_URL}/api/v1/users/profile`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${idToken}`,
+        'Content-Type': 'application/json'
+      },
+      mode: 'cors'
+    });
+
+    console.log('Response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Backend error:', errorText);
+      throw new Error(`Failed to fetch user profile: ${response.status} - ${errorText}`);
+    }
+
+    // Parse the backend ApiResponse wrapper
+    const apiResponse: BackendApiResponse<BackendUserResponse> = await response.json();
+    
+    // DEBUG: Log the actual response structure
+    console.log('Full API response:', apiResponse);
+    console.log('Backend user data:', apiResponse.data);
+    console.log('User roles:', apiResponse.data.roles);
+
+    if (!apiResponse.success || !apiResponse.data) {
+      throw new Error('Invalid response from backend');
+    }
+
+    const backendUser = apiResponse.data;
+    
+    // Extract the primary role (first role in the array)
+    const primaryRole = backendUser.roles && backendUser.roles.length > 0 
+      ? backendUser.roles[0].name 
+      : 'CUSTOMER';
+    
+    console.log('Primary role extracted:', primaryRole);
+    
+    // Map backend response to frontend UserProfile
+    const userProfile: UserProfile = {
+      id: backendUser.id,
+      email: backendUser.email,
+      firstName: backendUser.displayName?.split(' ')[0] || '',
+      lastName: backendUser.displayName?.split(' ').slice(1).join(' ') || '',
+      role: primaryRole,
+      accountStatus: backendUser.accountStatus,
+      phoneNumber: backendUser.phoneNumber
+    };
+
+    console.log('Mapped user profile:', userProfile);
+
+    // Step 3: Determine dashboard path based on role
+    let dashboardPath = '/customer/dashboard';
+    
+    switch (userProfile.role) {
+      case 'ADMIN':
+        dashboardPath = '/admin/dashboard';
+        break;
+      case 'EMPLOYEE':
+        dashboardPath = '/employee/dashboard';
+        break;
+      case 'CUSTOMER':
+        dashboardPath = '/customer/dashboard';
+        break;
+      default:
+        console.warn('Unknown role, defaulting to customer dashboard:', userProfile.role);
+        dashboardPath = '/customer/dashboard';
+    }
+    
+    console.log('Redirecting to:', dashboardPath);
+    console.log('Role-based routing:', userProfile.role, '->', dashboardPath);
+
+    return {
+      user: userProfile,
+      token: idToken,
+      dashboardPath
+    };
+  } catch (error) {
+    console.error('Login error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      error: error,
+      apiUrl: API_BASE_URL
+    });
+    
+    if (error instanceof Error) {
+      // Check if it's a network error
+      if (error.message.includes('fetch')) {
+        throw new Error(`Cannot connect to backend server at ${API_BASE_URL}. Please ensure the backend is running.`);
+      }
+      throw error;
+    }
+    throw new Error('Login failed. Please check your credentials.');
+  }
+}
+
+/**
+ * Sign out current user
+ */
+export async function signOut(): Promise<void> {
+  try {
+    await firebaseSignOut(auth);
+  } catch (error) {
+    console.error('Sign out error:', error);
+    throw new Error('Failed to sign out');
+  }
+}
+
+/**
+ * Get current Firebase ID token
+ */
+export async function getCurrentToken(): Promise<string | null> {
+  try {
+    const user = auth.currentUser;
+    if (!user) return null;
+    return await user.getIdToken();
+  } catch (error) {
+    console.error('Get token error:', error);
+    return null;
+  }
+}
+
+/**
+ * Check if user is authenticated
+ */
+export function isAuthenticated(): boolean {
+  return auth.currentUser !== null;
+}
