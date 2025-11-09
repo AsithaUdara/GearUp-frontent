@@ -7,6 +7,8 @@ type Props = { onEditTemplate: (template: ServiceTemplateDto) => void };
 export default function ServicesTable({ onEditTemplate }: Props) {
   const { items, listTemplates, deleteTemplate } = useServiceTemplates();
 
+  // Initial load and refresh when component mounts; dependency array intentionally left
+  // to only include listTemplates (stable via hook) so it runs once.
   useEffect(() => { listTemplates().catch(() => {}); }, [listTemplates]);
 
   return (
@@ -27,7 +29,7 @@ export default function ServicesTable({ onEditTemplate }: Props) {
               <tr key={template.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-medium text-foreground">{template.name}</td>
                 <td className="px-4 py-3 text-muted-foreground max-w-sm truncate">{template.description}</td>
-                <td className="px-4 py-3">{Number(template.price).toLocaleString()}</td>
+                <td className="px-4 py-3">{Number(template.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td className="px-4 py-3">{template.durationMinutes}</td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-3">

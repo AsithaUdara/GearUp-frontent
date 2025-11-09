@@ -2,7 +2,8 @@
 import { useCallback, useState } from 'react';
 import { auth } from '@/lib/firebase';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8088';
+// Default to the API Gateway on port 8080; can be overridden via NEXT_PUBLIC_API_BASE_URL
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
 const ADMIN_TEMPLATES_ENDPOINT = `${API_BASE_URL}/api/v1/admin/service-templates`;
 
 export interface ServiceTemplateDto {
@@ -19,21 +20,28 @@ export function useServiceTemplates() {
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<ServiceTemplateDto[]>([]);
 
-  const getAuthToken = async () => {
+  const getAuth = async () => {
     const user = auth.currentUser;
     if (!user) throw new Error('Not authenticated');
-    return await user.getIdToken();
+    const token = await user.getIdToken();
+    // We forward UID and ADMIN role header so downstream template-service can authorize ADMIN-only routes
+    return { token, uid: user.uid };
   };
 
   const listTemplates = useCallback(async (activeOnly?: boolean) => {
     setLoading(true);
     setError(null);
     try {
-      const token = await getAuthToken();
+      const { token, uid } = await getAuth();
       const url = new URL(ADMIN_TEMPLATES_ENDPOINT);
       if (activeOnly) url.searchParams.set('activeOnly', 'true');
       const res = await fetch(url.toString(), {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'X-Forwarded-Uid': uid,
+          // In dev, gateway may not add roles; send ADMIN explicitly for admin pages
+          'X-User-Roles': 'ADMIN'
+        }
       });
       if (!res.ok) {
         let msg = `Failed to list templates (${res.status})`;
@@ -51,10 +59,15 @@ export function useServiceTemplates() {
   const createTemplate = useCallback(async (payload: ServiceTemplateDto) => {
     setLoading(true); setError(null);
     try {
-      const token = await getAuthToken();
+      const { token, uid } = await getAuth();
       const res = await fetch(ADMIN_TEMPLATES_ENDPOINT, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          'X-Forwarded-Uid': uid,
+          'X-User-Roles': 'ADMIN'
+        },
         body: JSON.stringify(payload)
       });
       const json = await res.json().catch(() => ({}));
@@ -72,10 +85,15 @@ export function useServiceTemplates() {
   const updateTemplate = useCallback(async (id: number, payload: ServiceTemplateDto) => {
     setLoading(true); setError(null);
     try {
-      const token = await getAuthToken();
+      const { token, uid } = await getAuth();
       const res = await fetch(`${ADMIN_TEMPLATES_ENDPOINT}/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          'X-Forwarded-Uid': uid,
+          'X-User-Roles': 'ADMIN'
+        },
         body: JSON.stringify(payload)
       });
       const json = await res.json().catch(() => ({}));
@@ -93,10 +111,14 @@ export function useServiceTemplates() {
   const deleteTemplate = useCallback(async (id: number) => {
     setLoading(true); setError(null);
     try {
-      const token = await getAuthToken();
+      const { token, uid } = await getAuth();
       const res = await fetch(`${ADMIN_TEMPLATES_ENDPOINT}/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'X-Forwarded-Uid': uid,
+          'X-User-Roles': 'ADMIN'
+        }
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {

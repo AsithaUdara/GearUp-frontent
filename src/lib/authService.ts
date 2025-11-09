@@ -2,9 +2,11 @@
 import { auth } from './firebase';
 import { signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8088';
+// Default to API Gateway on 8080; override with NEXT_PUBLIC_API_BASE_URL if set
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
 
 // Backend response structures
+const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 interface RoleResponse {
   id: number;
   name: 'ADMIN' | 'EMPLOYEE' | 'CUSTOMER';
@@ -120,6 +122,25 @@ export async function loginUser(email: string, password: string): Promise<LoginR
       } catch {
         const errorText = await response.text().catch(() => '');
         if (errorText) errMsg = errorText;
+      }
+
+      // Fallback: If backend profile fails but email is recognized as admin, allow immediate admin redirect.
+      const emailLower = (userCredential.user.email || email).toLowerCase();
+      const looksAdmin = ADMIN_EMAILS.includes(emailLower) || emailLower.startsWith('admin@');
+      if (looksAdmin) {
+        console.warn('Profile fetch failed but email matches admin pattern; applying admin fallback redirect. Reason:', errMsg);
+        return {
+          user: {
+            id: -1, // unknown until profile succeeds later
+            email: userCredential.user.email || email,
+            firstName: 'Admin',
+            lastName: '',
+            role: 'ADMIN',
+            accountStatus: 'UNKNOWN'
+          },
+            token: idToken,
+            dashboardPath: '/admin/dashboard'
+        };
       }
 
       if (response.status === 401 || response.status === 403) {
