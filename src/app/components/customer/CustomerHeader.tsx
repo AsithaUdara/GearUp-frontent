@@ -135,7 +135,7 @@ export default function CustomerHeader() {
             </AnimatePresence>
           </div>
           
-          <a
+          <Link
             href="/customer/book-appointment"
             className={clsx(
               "group relative inline-flex items-center gap-2 overflow-hidden rounded-md bg-primary px-5 py-3 font-heading text-sm font-bold uppercase text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-primary/80 transition-all duration-300 hover:bg-white hover:text-primary",
