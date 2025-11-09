@@ -14,25 +14,24 @@ function reqPublic(v: string | undefined, name: string): string {
   return v;
 }
 
-// Guard initialization to the browser only to avoid SSR-time crashes when
-// developers haven't populated .env.local yet. Client components will still
-// fail fast if variables are missing when they actually run in the browser.
-const isBrowser = typeof window !== 'undefined';
+// Statically reference each env var so Next can inline them in the client build.
+const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+const AUTH_DOMAIN = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+const STORAGE_BUCKET = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+const MESSAGING_SENDER_ID = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
+const APP_ID = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
+const MEASUREMENT_ID = process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID; // optional
 
 let app: FirebaseApp | undefined;
 let authInstance: Auth | undefined;
 let dbInstance: Firestore | undefined;
 let storageInstance: FirebaseStorage | undefined;
 
-if (isBrowser) {
-  // Statically reference each env var so Next can inline them in the client build.
-  const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  const AUTH_DOMAIN = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
-  const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  const STORAGE_BUCKET = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-  const MESSAGING_SENDER_ID = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
-  const APP_ID = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
-  const MEASUREMENT_ID = process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID; // optional
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
 
   // All NEXT_PUBLIC_* keys are safe for the client – Firebase requires them to initialize.
   const firebaseConfig = {

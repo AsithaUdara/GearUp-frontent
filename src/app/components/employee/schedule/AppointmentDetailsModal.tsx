@@ -1,5 +1,6 @@
 "use client";
 import { Pencil, X, XCircle } from "lucide-react";
+import Link from "next/link";
 
 type AppointmentDetails = {
   id: string;
@@ -22,9 +23,10 @@ type Props = {
   onConfirm?: () => void;
   onRequestReschedule?: () => void;
   allowActions?: boolean;
+  showScheduleLink?: boolean;
 };
 
-export default function AppointmentDetailsModal({ open, details, onClose, onConfirm, onRequestReschedule, allowActions = true }: Props) {
+export default function AppointmentDetailsModal({ open, details, onClose, onConfirm, onRequestReschedule, allowActions = true, showScheduleLink = false }: Props) {
   if (!open) return null;
   const s = details;
   return (
@@ -33,6 +35,11 @@ export default function AppointmentDetailsModal({ open, details, onClose, onConf
         <div className="flex items-center justify-between border-b px-6 py-4">
           <h2 className="font-heading text-lg font-semibold">Appointment Details</h2>
           <div className="flex items-center gap-2">
+            {showScheduleLink && (
+              <Link href="/employee/schedule" className="inline-flex items-center gap-2 rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700">
+                View My Schedule
+              </Link>
+            )}
             {allowActions && (
               <>
                 <button onClick={() => onConfirm?.()} className="inline-flex items-center gap-2 rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700">

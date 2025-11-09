@@ -9,9 +9,6 @@ import AppointmentManagementCard from "@/app/components/employee/dashboard/Appoi
 // --- FIX: The WorkHoursSummaryCompactCard is no longer imported ---
 import TimeLoggingCard from "@/app/components/employee/dashboard/TimeLoggingCard";
 import StatsCards from "@/app/components/employee/dashboard/StatsCards";
-import ServiceProgressCard from "@/app/components/employee/dashboard/ServiceProgressCard";
-import NotificationsCard from "@/app/components/employee/dashboard/NotificationsCard";
-import AttendanceQuickAccess from "@/app/components/employee/dashboard/AttendanceQuickAccess";
 import UpcomingAppointmentsCard from "@/app/components/employee/dashboard/UpcomingAppointmentsCard";
 import QuickCommunicationCard from "@/app/components/employee/dashboard/QuickCommunicationCard";
 import MaterialRequestsCard from "@/app/components/employee/dashboard/MaterialRequestsCard";
@@ -36,18 +33,9 @@ export default function EmployeeOverviewPage() {
     <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div className="lg:col-span-2 space-y-6">
   <StatsCards />
-        {/* Swap: show Time Logging above Service Progress for a tighter flow */}
-  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
-          <div className="md:col-span-2">
-            <TimeLoggingCard task={selectedTask} />
-          </div>
-          <div className="md:col-span-1">
-            <AttendanceQuickAccess />
-          </div>
-        </div>
+        {/* Time Logging Card - full width */}
+        <TimeLoggingCard task={selectedTask} />
 
-        <ServiceProgressCard />
-        
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <AssignedTasksList 
             tasks={tasks} 
@@ -64,7 +52,6 @@ export default function EmployeeOverviewPage() {
         {/* Quick communication and material requests were here but should span full page - moved to bottom */}
       </div>
       <div className="lg:col-span-1 space-y-6">
-        <NotificationsCard />
   <SmallCalendar />
   <ScheduleCard />
       </div>
