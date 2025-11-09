@@ -24,16 +24,21 @@ const SectionHeader = ({ title, subtitle }: { title: string; subtitle: string })
 export default function LogHoursPage() {
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    
-    // --- MODIFICATION: The `isClockedIn` state and its handler functions have been removed ---
 
+    // Handle task selection - only allow selecting non-completed tasks
+    const handleTaskSelect = (task: Task) => {
+        if (task.status !== "Completed") {
+            setSelectedTask(task);
+        }
+    };
+    
     const filteredTasks = useMemo(() => {
-      if (!searchQuery) return mockTasks;
-      return mockTasks.filter(task => 
-        task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        task.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        task.vehicle.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+        if (!searchQuery) return mockTasks;
+        return mockTasks.filter(task => 
+            task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            task.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            task.vehicle.toLowerCase().includes(searchQuery.toLowerCase())
+        );
     }, [searchQuery]);
 
     return (
@@ -67,7 +72,7 @@ export default function LogHoursPage() {
                 <div className="mt-4">
                   <AssignedTasksList 
                       tasks={filteredTasks}
-                      onTaskSelect={setSelectedTask} 
+                      onTaskSelect={handleTaskSelect} 
                       selectedTaskId={selectedTask ? selectedTask.id : null}
                   />
                 </div>

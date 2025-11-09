@@ -20,20 +20,30 @@ type TaskListProps = {
 
 const statusStyles: Record<Task["status"], string> = {
   "In Progress": "text-amber-600",
-  "Completed": "text-emerald-600",
-  "Pending": "text-gray-500",
+  "Completed": "text-gray-500",
+  "Pending": "text-blue-600",
+};
+
+const statusBackgrounds: Record<Task["status"], string> = {
+  "In Progress": "hover:bg-gray-50",
+  "Completed": "bg-gray-100",
+  "Pending": "hover:bg-gray-50",
 };
 
 export default function AssignedTasksList({ tasks, onTaskSelect, selectedTaskId }: TaskListProps) {
-  const router = useRouter(); // --- MODIFICATION: Initialize the router ---
+  // Sort tasks: Completed tasks go to the bottom, others sorted by status (Pending, In Progress)
+  const sortedTasks = [...tasks].sort((a, b) => {
+    if (a.status === "Completed" && b.status !== "Completed") return 1;
+    if (a.status !== "Completed" && b.status === "Completed") return -1;
+    if (a.status === "In Progress" && b.status === "Pending") return -1;
+    if (a.status === "Pending" && b.status === "In Progress") return 1;
+    return 0;
+  });
 
-  // --- MODIFICATION: Create a handler for the button click ---
-  const handleViewDetails = (e: React.MouseEvent, taskId: string) => {
-    // This stops the click from also triggering the onTaskSelect of the parent li
-    e.stopPropagation(); 
-    
-    console.log(`Navigating to details for task ${taskId}`);
-    router.push(`/employee/tasks/${taskId}`);
+  const handleTaskClick = (task: Task) => {
+    if (task.status !== "Completed") {
+      onTaskSelect(task);
+    }
   };
 
   return (
@@ -43,28 +53,30 @@ export default function AssignedTasksList({ tasks, onTaskSelect, selectedTaskId 
         <p className="text-gray-500 text-sm p-4 text-center">No tasks match your search.</p>
       ) : (
         <ul className="space-y-4">
-          {tasks.map((task) => (
+          {sortedTasks.map((task) => (
             <li 
               key={task.id}
-              onClick={() => onTaskSelect(task)}
+              onClick={() => handleTaskClick(task)}
               className={cn(
-                "p-3 border rounded-lg flex justify-between items-center transition cursor-pointer hover:bg-gray-50",
+                "p-3 border rounded-lg flex justify-between items-center transition",
+                task.status !== "Completed" ? "cursor-pointer" : "cursor-not-allowed",
+                statusBackgrounds[task.status],
                 selectedTaskId === task.id ? "bg-red-50 border-red-300" : "border-gray-200"
               )}
             >
               <div>
-                <p className="text-sm font-semibold">{task.title}</p>
+                <p className={cn(
+                  "text-sm font-semibold",
+                  task.status === "Completed" && "text-gray-500"
+                )}>{task.title}</p>
                 <p className="text-xs text-gray-500">{task.customer} - {task.vehicle}</p>
               </div>
-              <div className="flex items-center space-x-4">
-                <span className={cn("text-xs font-semibold", statusStyles[task.status])}>{task.status}</span>
-                {/* --- MODIFICATION: Attach the onClick handler to the button --- */}
-                <button 
-                  onClick={(e) => handleViewDetails(e, task.id)}
-                  className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700"
-                >
-                  View Details
-                </button>
+              <div className="flex items-center">
+                <span className={cn(
+                  "text-xs font-semibold px-2 py-1 rounded-full",
+                  statusStyles[task.status],
+                  task.status === "Completed" ? "bg-gray-100" : "bg-gray-50"
+                )}>{task.status}</span>
               </div>
             </li>
           ))}
