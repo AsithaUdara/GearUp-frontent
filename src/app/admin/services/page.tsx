@@ -6,24 +6,19 @@ import ServicesToolbar from '@/app/components/admin/ServicesToolbar';
 import ServicesTable from '@/app/components/admin/ServicesTable';
 import ServiceEditModal from '@/app/components/admin/ServiceEditModal';
 
-export type ServiceTemplate = {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  duration: number; // in minutes
-};
+// Use the shared DTO shape instead of redefining a mismatching type.
+import type { ServiceTemplateDto } from '@/hooks/useServiceTemplates';
 
 export default function ServicesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<ServiceTemplate | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<ServiceTemplateDto | null>(null);
 
   const handleNewTemplate = () => {
     setEditingTemplate(null);
     setIsModalOpen(true);
   };
 
-  const handleEditTemplate = (template: ServiceTemplate) => {
+  const handleEditTemplate = (template: ServiceTemplateDto) => {
     setEditingTemplate(template);
     setIsModalOpen(true);
   };

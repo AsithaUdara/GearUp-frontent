@@ -6,8 +6,7 @@ import Header from '@/app/components/landing/Header';
 import Footer from '@/app/components/landing/Footer';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { db } from '@/lib/firebase';
-import { addDoc, collection, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { getAvailableTimeSlotsForCustomer, getAllServices, createBooking, CreateBookingRequest, ServiceDTO, TimeSlotDTO } from '@/app/services/appointmentService';
 
 interface TimeSlot {
   id: string;
@@ -81,20 +80,7 @@ const services: Service[] = [
   }
 ];
 
-const timeSlots: TimeSlot[] = [
-  { id: '1', time: '08:00 AM', available: true, serviceType: 'Morning' },
-  { id: '2', time: '09:00 AM', available: true, serviceType: 'Morning' },
-  { id: '3', time: '10:00 AM', available: false, serviceType: 'Morning' },
-  { id: '4', time: '11:00 AM', available: true, serviceType: 'Morning' },
-  { id: '5', time: '12:00 PM', available: true, serviceType: 'Afternoon' },
-  { id: '6', time: '01:00 PM', available: true, serviceType: 'Afternoon' },
-  { id: '7', time: '02:00 PM', available: false, serviceType: 'Afternoon' },
-  { id: '8', time: '03:00 PM', available: true, serviceType: 'Afternoon' },
-  { id: '9', time: '04:00 PM', available: true, serviceType: 'Afternoon' },
-  { id: '10', time: '05:00 PM', available: true, serviceType: 'Evening' },
-  { id: '11', time: '06:00 PM', available: false, serviceType: 'Evening' },
-  { id: '12', time: '07:00 PM', available: true, serviceType: 'Evening' }
-];
+// Removed mock timeSlots - will be fetched from API based on selected service and date
 
 export default function AppointmentBooking() {
   const { user, loading } = useAuth();
@@ -103,6 +89,9 @@ export default function AppointmentBooking() {
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState('');
+  const [selectedTimeSlotId, setSelectedTimeSlotId] = useState<number | null>(null);
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlotDTO[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
   const [bookingForm, setBookingForm] = useState<BookingForm>({
     service: '',
     date: '',
@@ -119,7 +108,7 @@ export default function AppointmentBooking() {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/');
+      router.push('/customer/appointment');
     }
   }, [user, loading, router]);
 
@@ -134,6 +123,26 @@ export default function AppointmentBooking() {
     return dates;
   };
 
+  // Fetch available time slots when service and date are selected
+  useEffect(() => {
+    const fetchTimeSlots = async () => {
+      if (selectedService && selectedDate) {
+        setLoadingSlots(true);
+        try {
+          const slots = await getAvailableTimeSlotsForCustomer(selectedDate, Number(selectedService.id));
+          setAvailableTimeSlots(slots);
+        } catch (error) {
+          console.error('Error fetching time slots:', error);
+          setAvailableTimeSlots([]);
+        } finally {
+          setLoadingSlots(false);
+        }
+      }
+    };
+
+    fetchTimeSlots();
+  }, [selectedService, selectedDate]);
+
   const handleServiceSelect = (service: Service) => {
     setSelectedService(service);
     setBookingForm(prev => ({ ...prev, service: service.id }));
@@ -146,53 +155,44 @@ export default function AppointmentBooking() {
     setCurrentStep(3);
   };
 
-  const handleTimeSlotSelect = (timeSlot: string) => {
-    setSelectedTimeSlot(timeSlot);
-    setBookingForm(prev => ({ ...prev, timeSlot }));
+  const handleTimeSlotSelect = (timeSlotId: number, timeString: string) => {
+    setSelectedTimeSlot(timeString);
+    setSelectedTimeSlotId(timeSlotId);
+    setBookingForm(prev => ({ ...prev, timeSlot: timeString }));
     setCurrentStep(4);
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !selectedService || !selectedDate || !selectedTimeSlot) return;
     setIsBooking(true);
-
+    
     try {
-      // Parse appointment date and time to a Timestamp
-      const [time, ampm] = selectedTimeSlot.split(' ');
-      const [rawH, rawM] = time.split(':');
-      let hour = parseInt(rawH, 10) % 12;
-      if (ampm?.toUpperCase() === 'PM') hour += 12;
-      const minute = parseInt(rawM || '0', 10);
-      const date = new Date(selectedDate + 'T00:00:00');
-      date.setHours(hour, minute, 0, 0);
-      const appointmentAt = Timestamp.fromDate(date);
+      // Validate required fields
+      if (!selectedService || !selectedTimeSlotId || !bookingForm.customerName || !bookingForm.phone) {
+        alert('Please fill in all required fields');
+        setIsBooking(false);
+        return;
+      }
 
-      const payload = {
-        userId: user.uid,
-        userEmail: user.email || null,
-        customerName: bookingForm.customerName,
-        phone: bookingForm.phone,
-        serviceId: selectedService.id,
-        serviceName: selectedService.name,
-        serviceDuration: selectedService.duration,
-        servicePrice: selectedService.price,
-        appointmentDate: selectedDate, // YYYY-MM-DD
-        timeSlot: selectedTimeSlot, // e.g. 10:00 AM
-        appointmentAt,
-        vehicleModel: bookingForm.vehicleModel,
-        vehicleYear: bookingForm.vehicleYear,
-        specialRequests: bookingForm.specialRequests || '',
-        status: 'scheduled' as const,
-        createdAt: serverTimestamp(),
+      // Create booking request
+      const bookingRequest: CreateBookingRequest = {
+        serviceId: Number(selectedService.id),
+        timeSlotId: selectedTimeSlotId,
+        userId: user?.uid || `guest_${Date.now()}`,
+        customerName: bookingForm.customerName.trim(),
+        customerEmail: bookingForm.email.trim() || undefined,
+        customerPhone: bookingForm.phone.trim(),
+        notes: bookingForm.specialRequests.trim() || undefined,
       };
 
-      await addDoc(collection(db, 'appointments'), payload);
+      // Submit booking to API
+      await createBooking(bookingRequest);
+      
+      setIsBooking(false);
       setBookingSuccess(true);
-    } catch (err) {
-      console.error('Failed to book appointment', err);
-      alert('Failed to confirm booking. Please try again.');
-    } finally {
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      alert('Failed to create booking. The time slot may no longer be available. Please try again.');
       setIsBooking(false);
     }
   };
@@ -201,17 +201,17 @@ export default function AppointmentBooking() {
     setBookingForm(prev => ({ ...prev, [field]: value }));
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="flex items-center justify-center h-screen">
+  //       <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+  //     </div>
+  //   );
+  // }
 
-  if (!user) {
-    return null;
-  }
+  // if (!user) {
+  //   return null;
+  // }
 
   if (bookingSuccess) {
     return (
@@ -425,27 +425,55 @@ export default function AppointmentBooking() {
                   <h2 className="text-2xl font-bold font-heading text-foreground mb-6 text-center">
                     Choose Your Time Slot
                   </h2>
-                  <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    {timeSlots.map((slot) => (
+                  
+                  {loadingSlots ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                      <p className="text-muted-foreground">Loading available time slots...</p>
+                    </div>
+                  ) : availableTimeSlots.length === 0 ? (
+                    <div className="text-center py-8 bg-muted/20 rounded-lg">
+                      <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground font-medium">No available time slots for this date</p>
+                      <p className="text-sm text-muted-foreground mt-2">Please select a different date</p>
                       <button
-                        key={slot.id}
-                        onClick={() => slot.available && handleTimeSlotSelect(slot.time)}
-                        disabled={!slot.available}
-                        className={`p-4 rounded-lg border transition-all ${
-                          slot.available
-                            ? 'border-border hover:border-primary hover:bg-primary/5 cursor-pointer'
-                            : 'border-muted-foreground bg-muted-foreground/10 cursor-not-allowed opacity-50'
-                        }`}
+                        onClick={() => setCurrentStep(2)}
+                        className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
                       >
-                        <div className="text-center">
-                          <div className="text-sm font-semibold">{slot.time}</div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {slot.available ? 'Available' : 'Booked'}
-                          </div>
-                        </div>
+                        Choose Another Date
                       </button>
-                    ))}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                      {availableTimeSlots.map((slot) => {
+                        const formatTime = (time: string) => {
+                          const [hours, minutes] = time.split(':');
+                          const h = parseInt(hours);
+                          const ampm = h >= 12 ? 'PM' : 'AM';
+                          const hour12 = h % 12 || 12;
+                          return `${hour12}:${minutes} ${ampm}`;
+                        };
+
+                        return (
+                          <button
+                            key={slot.id}
+                            onClick={() => handleTimeSlotSelect(slot.id, `${formatTime(slot.startTime)} - ${formatTime(slot.endTime)}`)}
+                            className="p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 cursor-pointer transition-all"
+                          >
+                            <div className="text-center">
+                              <div className="text-sm font-semibold">{formatTime(slot.startTime)}</div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {formatTime(slot.endTime)}
+                              </div>
+                              <div className="text-xs text-green-600 mt-1 font-medium">
+                                Available
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </motion.div>
               )}
 
