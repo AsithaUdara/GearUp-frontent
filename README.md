@@ -46,7 +46,8 @@ All variables prefixed with `NEXT_PUBLIC_` are exposed to the browser (required 
 | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Messaging sender ID |
 | `NEXT_PUBLIC_FIREBASE_APP_ID` | Web app ID |
 | `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` | (Optional) Analytics measurement ID |
-| `NEXT_PUBLIC_API_BASE_URL` | Base URL of backend (no trailing slash) |
+| `NEXT_PUBLIC_GATEWAY_BASE` | Base URL of unified API Gateway (port 8080) |
+| `NEXT_PUBLIC_API_BASE_URL` | (Legacy) Base URL of backend – fallback if gateway not set |
 | `NEXT_PUBLIC_LOG_LEVEL` | Optional logging verbosity (e.g. `debug`, `info`) |
 
 Validation: `src/lib/firebase.ts` throws early if any required Firebase variable is missing—failing fast during build.
@@ -77,6 +78,7 @@ npm run build
 - Persist display name (via `updateProfile`) after signup.
 - Error boundary & toast notifications.
 - API abstraction layer for backend calls.
+- Consolidate any remaining direct service calls behind the gateway.
 
 ### 🆘 Troubleshooting
 | Issue | Fix |
@@ -84,6 +86,7 @@ npm run build
 | 401 on secure endpoint | Confirm backend validates Firebase ID token and CORS allows `Authorization` header |
 | Missing env error at build | Ensure `.env.local` matches `.env.example` |
 | Infinite loading state | Inspect network tab for blocked Firebase calls (ad blockers, network issues) |
+| Next.js inferred workspace root warning | We've pinned `outputFileTracingRoot` in `next.config.ts`. If you still see the warning, remove stray lockfiles in parent dirs (e.g., a `package-lock.json` in `C:\Users\<you>`) or run `npm run dev` from the project folder. |
 
 ---
 Maintained with senior-level practices: clear env separation, early validation, least coupling, and explicit documentation.

@@ -4,11 +4,12 @@
 import { useState } from 'react'; 
 import AssignedTasksList, { Task } from "@/app/components/employee/dashboard/AssignedTasksList"; 
 import ScheduleCard from "@/app/components/employee/dashboard/ScheduleCard";
+import SmallCalendar from "@/app/components/employee/dashboard/SmallCalendar";
 import AppointmentManagementCard from "@/app/components/employee/dashboard/AppointmentManagementCard";
 // --- FIX: The WorkHoursSummaryCompactCard is no longer imported ---
 import TimeLoggingCard from "@/app/components/employee/dashboard/TimeLoggingCard";
 import StatsCards from "@/app/components/employee/dashboard/StatsCards";
-import QuickActionsBar from "@/app/components/employee/dashboard/QuickActionsBar";
+import UpcomingAppointmentsCard from "@/app/components/employee/dashboard/UpcomingAppointmentsCard";
 
 const mockTasks: Task[] = [
   { id: "1", title: "Oil Change - Toyota Camry", customer: "John Doe", vehicle: "V-XYZ123", status: "In Progress" },
@@ -29,25 +30,28 @@ export default function EmployeeOverviewPage() {
   return (
     <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div className="lg:col-span-2 space-y-6">
-        <StatsCards />
-        <QuickActionsBar />
-        
-        {/* --- FIX: The grid and the WorkHoursSummaryCompactCard have been removed --- */}
-        {/* The TimeLoggingCard can now sit directly in the layout */}
-        <TimeLoggingCard 
-          task={selectedTask} 
-          // The `isClockedIn` prop is correctly removed
-        />
-        
-        <AssignedTasksList 
-          tasks={tasks} 
-          onTaskSelect={handleTaskSelect} 
-          selectedTaskId={selectedTask ? selectedTask.id : null} 
-        />
+  <StatsCards />
+        {/* Time Logging Card - full width */}
+        <TimeLoggingCard task={selectedTask} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <AssignedTasksList 
+            tasks={tasks} 
+            onTaskSelect={handleTaskSelect} 
+            selectedTaskId={selectedTask ? selectedTask.id : null} 
+          />
+          {/* Upcoming appointments quick access (reusable) */}
+          <div>
+            {/* keep same padding/visual rhythm as AssignedTasks */}
+            <UpcomingAppointmentsCard />
+          </div>
+  </div>
+
+        {/* Quick communication and material requests were here but should span full page - moved to bottom */}
       </div>
       <div className="lg:col-span-1 space-y-6">
-        <ScheduleCard />
-        <AppointmentManagementCard />
+  <SmallCalendar />
+  <ScheduleCard />
       </div>
     </section>
   );

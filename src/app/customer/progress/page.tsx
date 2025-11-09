@@ -12,9 +12,11 @@ import {
   MapPin,
   Calendar,
   Timer,
+  FileText,
   Camera,
   MessageSquare,
-  RefreshCw
+  RefreshCw,
+  Bell
 } from 'lucide-react';
 import Header from '@/app/components/landing/Header';
 import Footer from '@/app/components/landing/Footer';
@@ -39,14 +41,12 @@ interface ServiceStep {
 
 interface ServiceDocument {
   id: string;
-  type: 'part' | 'labor' | 'additional';
+  type: 'photo' | 'document' | 'note';
   name: string;
-  quantity: number;
-  unitPrice: number;
-  description: string;
-  status: 'pending' | 'approved' | 'rejected';
-  addedBy: string;
-  addedAt: string;
+  url: string;
+  uploadedBy: string;
+  uploadedAt: string;
+  description?: string;
 }
 
 interface ServiceMessage {
@@ -58,6 +58,25 @@ interface ServiceMessage {
   isRead: boolean;
 }
 
+interface PaymentInfo {
+  status: 'pending' | 'paid' | 'failed' | 'refunded';
+  amount: number;
+  currency: string;
+  paymentMethod: string;
+  transactionId: string;
+  paidAt?: string;
+  receiptUrl?: string;
+}
+
+interface ServiceRecommendation {
+  id: string;
+  title: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high';
+  estimatedCost: number;
+  estimatedDuration: number;
+  basedOnHistory: boolean;
+}
 
 interface ServiceProgress {
   id: string;
@@ -87,6 +106,8 @@ interface ServiceProgress {
   lastUpdate: string;
   documents: ServiceDocument[];
   messages: ServiceMessage[];
+  payment: PaymentInfo;
+  recommendations: ServiceRecommendation[];
   serviceHistory: {
     id: string;
     serviceName: string;
@@ -182,47 +203,21 @@ const mockServiceProgress: ServiceProgress = {
   documents: [
     {
       id: '1',
-      type: 'part',
-      name: 'Oil Filter',
-      quantity: 1,
-      unitPrice: 2500,
-      description: 'Premium oil filter replacement',
-      status: 'approved',
-      addedBy: 'Mike Johnson',
-      addedAt: '2024-01-15 10:05 AM'
+      type: 'photo',
+      name: 'Before Service - Engine Bay',
+      url: '/service-photos/engine-before.jpg',
+      uploadedBy: 'Mike Johnson',
+      uploadedAt: '2024-01-15 10:05 AM',
+      description: 'Engine bay condition before service'
     },
     {
       id: '2',
-      type: 'part',
-      name: 'Engine Oil (4L)',
-      quantity: 1,
-      unitPrice: 12500,
-      description: 'Synthetic engine oil',
-      status: 'approved',
-      addedBy: 'Mike Johnson',
-      addedAt: '2024-01-15 10:05 AM'
-    },
-    {
-      id: '3',
-      type: 'labor',
-      name: 'Oil Change Service',
-      quantity: 1,
-      unitPrice: 5000,
-      description: 'Labor charge for oil change service',
-      status: 'approved',
-      addedBy: 'Mike Johnson',
-      addedAt: '2024-01-15 10:05 AM'
-    },
-    {
-      id: '4',
-      type: 'additional',
-      name: 'Brake Pad Set',
-      quantity: 1,
-      unitPrice: 8500,
-      description: 'Front brake pad replacement (recommended)',
-      status: 'pending',
-      addedBy: 'Sarah Wilson',
-      addedAt: '2024-01-15 10:35 AM'
+      type: 'document',
+      name: 'Service Checklist',
+      url: '/documents/service-checklist.pdf',
+      uploadedBy: 'Mike Johnson',
+      uploadedAt: '2024-01-15 10:12 AM',
+      description: 'Completed service checklist'
     }
   ],
   messages: [
@@ -249,6 +244,35 @@ const mockServiceProgress: ServiceProgress = {
       timestamp: '2024-01-15 10:40 AM',
       senderName: 'Sarah Wilson',
       isRead: false
+    }
+  ],
+  payment: {
+    status: 'paid',
+    amount: 45000,
+    currency: 'LKR',
+    paymentMethod: 'Credit Card',
+    transactionId: 'TXN-2024-001',
+    paidAt: '2024-01-15 09:45 AM',
+    receiptUrl: '/receipts/SRV-2024-001.pdf'
+  },
+  recommendations: [
+    {
+      id: '1',
+      title: 'Brake Pad Replacement',
+      description: 'Your brake pads are at 20% wear. We recommend replacement for safety.',
+      priority: 'high',
+      estimatedCost: 8500,
+      estimatedDuration: 30,
+      basedOnHistory: true
+    },
+    {
+      id: '2',
+      title: 'Air Filter Replacement',
+      description: 'Air filter is dirty and affecting engine performance.',
+      priority: 'medium',
+      estimatedCost: 2500,
+      estimatedDuration: 15,
+      basedOnHistory: false
     }
   ],
   serviceHistory: [
@@ -282,6 +306,8 @@ export default function ServiceProgress() {
   const [serviceProgress, setServiceProgress] = useState<ServiceProgress>(mockServiceProgress);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showMessages, setShowMessages] = useState(false);
+  const [showDocuments, setShowDocuments] = useState(false);
+  const [showRecommendations, setShowRecommendations] = useState(false);
   const [showServiceHistory, setShowServiceHistory] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   // Add floating chat toggle button at bottom right
@@ -631,12 +657,82 @@ export default function ServiceProgress() {
                 </div>
               </motion.div>
 
-
+              {/* Payment Status */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="bg-white rounded-lg shadow-lg p-6"
+              >
+                <h3 className="text-lg font-bold font-heading text-foreground mb-4">Payment Status</h3>
+                
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Status:</span>
+                    <span className={`font-semibold ${
+                      serviceProgress.payment.status === 'paid' ? 'text-green-600' : 
+                      serviceProgress.payment.status === 'pending' ? 'text-yellow-600' : 'text-red-600'
+                    }`}>
+                      {serviceProgress.payment.status.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Amount:</span>
+                    <span className="font-semibold">{serviceProgress.payment.currency} {serviceProgress.payment.amount.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Method:</span>
+                    <span className="font-semibold">{serviceProgress.payment.paymentMethod}</span>
+                  </div>
+                  {serviceProgress.payment.receiptUrl && (
+                    <button className="w-full mt-3 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                      Download Receipt
+                    </button>
+                  )}
+                </div>
+              </motion.div>
             </div>
           </div>
 
           {/* Additional Features Section */}
-          <div className="grid grid-cols-1 gap-8 mt-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+            {/* Service Documentation */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
+              className="bg-white rounded-lg shadow-lg p-8"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold font-heading text-foreground">Service Documentation</h3>
+                <button
+                  onClick={() => setShowDocuments(!showDocuments)}
+                  className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                >
+                  <FileText className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {serviceProgress.documents.map((doc) => (
+                  <div key={doc.id} className="p-4 border border-gray-200 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-primary/10 rounded-lg">
+                        {doc.type === 'photo' ? <Camera className="h-5 w-5 text-primary" /> : <FileText className="h-5 w-5 text-primary" />}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-foreground">{doc.name}</h4>
+                        <p className="text-sm text-muted-foreground">{doc.description}</p>
+                        <p className="text-xs text-muted-foreground">Uploaded by {doc.uploadedBy} at {doc.uploadedAt}</p>
+                      </div>
+                      <button className="px-3 py-1 bg-primary text-white text-sm rounded hover:bg-primary/90 transition-colors">
+                        View
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
 
             {/* Customer Communication */}
             {/* The always-visible Messages card is removed as per request. */}
@@ -678,7 +774,6 @@ export default function ServiceProgress() {
             </div>
           </motion.div>
         </div>
-      </div>
       
       {/* Floating Chat Icon */}
       <button
@@ -712,7 +807,7 @@ export default function ServiceProgress() {
                 </button>
               </div>
 
-              <div className="flex-1 space-y-4 overflow-y-auto mb-4">
+              <div className="space-y-4 max-h-80 overflow-y-auto">
                 {serviceProgress.messages.map((message) => (
                   <div key={message.id} className={`p-4 rounded-lg ${
                     message.sender === 'customer' ? 'bg-blue-50 ml-8' : 
@@ -730,7 +825,7 @@ export default function ServiceProgress() {
                 ))}
               </div>
 
-              <div className="mt-auto flex gap-2">
+              <div className="mt-4 flex gap-2">
                 <input
                   type="text"
                   value={newMessage}
@@ -746,6 +841,8 @@ export default function ServiceProgress() {
           </motion.div>
         )}
       </AnimatePresence>
+        </div>
+      </div>
       <Footer />
     </div>
   );
