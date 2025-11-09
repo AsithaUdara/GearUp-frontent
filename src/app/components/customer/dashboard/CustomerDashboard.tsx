@@ -323,6 +323,7 @@ export default function CustomerDashboard() {
                   {/* Scrollable list of modifications */}
                   <div className="max-h-[300px] overflow-y-auto space-y-3 pr-2 custom-scrollbar">
                     {mods
+                      .filter((mod) => mod.status === "pending")
                       .sort((a, b) => {
                         const aMs = a.createdAt && typeof a.createdAt.seconds === "number" 
                           ? a.createdAt.seconds * 1000 
@@ -340,9 +341,9 @@ export default function CustomerDashboard() {
                           {mod.subject && (
                             <div className="text-sm font-semibold text-gray-800 mb-2">Topic: {mod.subject}</div>
                           )}
-                          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 text-xs">
-                            <LucideWrench size={14} className="text-gray-700" />
-                            <span className="text-gray-700 capitalize">{mod.status.replace('_', ' ')}</span>
+                          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-100 text-xs">
+                            <LucideWrench size={14} className="text-yellow-700" />
+                            <span className="text-yellow-700 capitalize">Pending</span>
                           </div>
                         </div>
                       ))}

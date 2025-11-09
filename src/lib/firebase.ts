@@ -28,40 +28,26 @@ let authInstance: Auth | undefined;
 let dbInstance: Firestore | undefined;
 let storageInstance: FirebaseStorage | undefined;
 
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
-// Use long-polling detection to avoid WebChannel/CORS issues in strict networks (ad-blockers, proxies)
-// Ref: https://firebase.google.com/docs/firestore/manage-cache#web-channel
-const db = initializeFirestore(app, {
-  experimentalAutoDetectLongPolling: true,
-});
-// Enable offline persistence to make reads/writes resilient and instant in UI
+
+// All NEXT_PUBLIC_* keys are safe for the client – Firebase requires them to initialize.
+const firebaseConfig = {
+  apiKey: reqPublic(API_KEY, 'NEXT_PUBLIC_FIREBASE_API_KEY'),
+  authDomain: reqPublic(AUTH_DOMAIN, 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN'),
+  projectId: reqPublic(PROJECT_ID, 'NEXT_PUBLIC_FIREBASE_PROJECT_ID'),
+  storageBucket: reqPublic(STORAGE_BUCKET, 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET'),
+  messagingSenderId: reqPublic(MESSAGING_SENDER_ID, 'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'),
+  appId: reqPublic(APP_ID, 'NEXT_PUBLIC_FIREBASE_APP_ID'),
+  // measurementId may be optional (Analytics). Only set if present.
+  ...(MEASUREMENT_ID && { measurementId: MEASUREMENT_ID })
+} as const;
+
+app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+authInstance = getAuth(app);
+dbInstance = getFirestore(app);
+storageInstance = getStorage(app);
+
+// Enable Firebase auth persistence to keep user logged in across page refreshes
 if (typeof window !== 'undefined') {
-  enableIndexedDbPersistence(db).catch((err) => {
-    // Ignore persistence errors (e.g., multiple tabs). Firestore will still work without persistence.
-    console.warn('Firestore persistence not enabled', err?.code || err);
-  });
-}
-const storage = getStorage(app);
-
-  // All NEXT_PUBLIC_* keys are safe for the client – Firebase requires them to initialize.
-  const firebaseConfig = {
-    apiKey: reqPublic(API_KEY, 'NEXT_PUBLIC_FIREBASE_API_KEY'),
-    authDomain: reqPublic(AUTH_DOMAIN, 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN'),
-    projectId: reqPublic(PROJECT_ID, 'NEXT_PUBLIC_FIREBASE_PROJECT_ID'),
-    storageBucket: reqPublic(STORAGE_BUCKET, 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET'),
-    messagingSenderId: reqPublic(MESSAGING_SENDER_ID, 'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'),
-    appId: reqPublic(APP_ID, 'NEXT_PUBLIC_FIREBASE_APP_ID'),
-    // measurementId may be optional (Analytics). Only set if present.
-    ...(MEASUREMENT_ID && { measurementId: MEASUREMENT_ID })
-  } as const;
-
-  app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-  authInstance = getAuth(app);
-  dbInstance = getFirestore(app);
-  storageInstance = getStorage(app);
-  
-  // Enable Firebase auth persistence to keep user logged in across page refreshes
   setPersistence(authInstance, browserLocalPersistence).catch((error) => {
     console.error('Failed to set Firebase persistence:', error);
   });

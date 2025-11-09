@@ -36,27 +36,7 @@ export default function MyVehicles() {
   }, [user]);
   return (
     <>
-      <div className="relative w-full overflow-hidden bg-black">
-        <div className="relative w-full h-[400px] md:h-[500px]">
-          <img 
-            src="https://res.cloudinary.com/dgyqfax25/image/upload/v1762481473/ChatGPT_Image_Nov_7_2025_07_40_38_AM_x3hray.png"
-            alt="My Vehicles Hero"
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent flex items-center">
-            <div className="container mx-auto px-8">
-              <div className="max-w-2xl">
-                <h1 className="text-white text-4xl md:text-5xl lg:text-6xl font-black leading-tight tracking-tight mb-4">
-                  My Vehicles
-                </h1>
-                <p className="text-white/90 text-lg md:text-xl font-normal leading-relaxed">
-                  Manage your registered vehicles and keep everything up to date.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+
           <div className="p-8">
             {/* Actions */}
             <div className="flex justify-end mb-8">

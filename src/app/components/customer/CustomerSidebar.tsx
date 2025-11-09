@@ -13,6 +13,7 @@ import {
   LucideLogOut,
   LucideCreditCard,
   LucideWrench,
+  LucideBrush,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { auth, db } from "@/lib/firebase";
@@ -24,7 +25,8 @@ const navItems = [
   { icon: LucideCalendar, label: "Book Appointment", href: "/customer/appointment" },
   { icon: LucideHistory, label: "Service History", href: "/customer/progress" },
   { icon: LucideCar, label: "My Vehicles", href: "/customer/vehicles" },
-  { icon: LucideWrench, label: "Request Modification", href: "/customer/modification" },
+  { icon: LucideBrush, label: "Visual Modification", href: "/customer/modification" },
+  { icon: LucideWrench, label: "Service Modification", href: "/customer/service-modification" },
   { icon: LucideCreditCard, label: "Payment", href: "/customer/payment" },
   { icon: LucideSettings, label: "Settings", href: "/customer/settings" },
   { icon: LucideBot, label: "AI Chatbot", href: "/customer/chatbot" },

@@ -840,10 +840,10 @@ export default function ServiceProgress() {
             </div>
           </motion.div>
         )}
+
       </AnimatePresence>
-        </div>
-      </div>
-      <Footer />
     </div>
-  );
+    <Footer />
+  </div>
+);
 }
