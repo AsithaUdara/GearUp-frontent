@@ -1,8 +1,11 @@
-"use client";
+'use client';
 
-import { usePathname } from "next/navigation";
-import Image from "next/image";
-import { Bell, Search } from "lucide-react";
+import { usePathname } from 'next/navigation';
+import Image from 'next/image';
+import dynamic from 'next/dynamic';
+
+const Search = dynamic(() => import('lucide-react').then(mod => mod.Search), { ssr: false });
+const Bell = dynamic(() => import('lucide-react').then(mod => mod.Bell), { ssr: false });
 
 export default function Header() {
   const pathname = usePathname();
