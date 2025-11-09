@@ -15,7 +15,8 @@ import {
   FileText,
   Camera,
   MessageSquare,
-  RefreshCw
+  RefreshCw,
+  Bell
 } from 'lucide-react';
 import Header from '@/app/components/landing/Header';
 import Footer from '@/app/components/landing/Footer';
@@ -773,7 +774,6 @@ export default function ServiceProgress() {
             </div>
           </motion.div>
         </div>
-      </div>
       
       {/* Floating Chat Icon */}
       <button
@@ -841,6 +841,8 @@ export default function ServiceProgress() {
           </motion.div>
         )}
       </AnimatePresence>
+        </div>
+      </div>
       <Footer />
     </div>
   );
