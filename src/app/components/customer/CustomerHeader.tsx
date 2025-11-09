@@ -7,7 +7,7 @@ import { serviceCategories } from '@/lib/servicesData';
 import Image from 'next/image';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
 export default function CustomerHeader() {
@@ -15,7 +15,13 @@ export default function CustomerHeader() {
   const [isServicesMenuOpen, setServicesMenuOpen] = useState(false);
   const [isUserMenuOpen, setUserMenuOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
   const { user } = useAuth();
+  
+  // Check if we're on the appointment or modification page
+  const isAppointmentPage = pathname === '/customer/appointment';
+  const isModificationPage = pathname === '/customer/modification';
+  const shouldHideButtons = isAppointmentPage || isModificationPage;
   
   const navLinks = ["HOME", "ABOUT US", "PACKAGES", "NEWS", "CONTACT"];
 
@@ -92,7 +98,7 @@ export default function CustomerHeader() {
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
-          <div className="relative" onMouseEnter={() => setUserMenuOpen(true)}>
+          <div className={clsx("relative", shouldHideButtons && "invisible")} onMouseEnter={() => !shouldHideButtons && setUserMenuOpen(true)}>
             <button className="group relative inline-flex items-center gap-2 rounded-md border border-border px-5 py-3 font-heading text-sm font-bold uppercase text-foreground shadow-sm transition-colors duration-300 hover:border-primary hover:bg-primary/5">
               <User className="h-4 w-4" />
               <span>{user?.displayName || user?.email?.split('@')[0] || 'User'}</span>
@@ -100,7 +106,7 @@ export default function CustomerHeader() {
             </button>
             
             <AnimatePresence>
-              {isUserMenuOpen && (
+              {isUserMenuOpen && !shouldHideButtons && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -130,7 +136,10 @@ export default function CustomerHeader() {
           
           <a
             href="/customer/book-appointment"
-            className="group relative inline-flex items-center gap-2 overflow-hidden rounded-md bg-primary px-5 py-3 font-heading text-sm font-bold uppercase text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-primary/80 transition-all duration-300 hover:bg-white hover:text-primary"
+            className={clsx(
+              "group relative inline-flex items-center gap-2 overflow-hidden rounded-md bg-primary px-5 py-3 font-heading text-sm font-bold uppercase text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-primary/80 transition-all duration-300 hover:bg-white hover:text-primary",
+              shouldHideButtons && "invisible"
+            )}
           >
             <span className="absolute inset-0 bg-white/0 transition-colors duration-300 group-hover:bg-white/10" />
             <span className="relative">BOOK NOW</span>
