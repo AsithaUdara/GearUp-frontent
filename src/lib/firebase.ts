@@ -1,7 +1,7 @@
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { getFirestore, type Firestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, enableIndexedDbPersistence, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
 // IMPORTANT: For client bundles, Next.js only inlines env vars when referenced statically
@@ -23,54 +23,41 @@ const MESSAGING_SENDER_ID = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
 const APP_ID = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
 const MEASUREMENT_ID = process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID; // optional
 
-let app: FirebaseApp | undefined;
-let authInstance: Auth | undefined;
-let dbInstance: Firestore | undefined;
-let storageInstance: FirebaseStorage | undefined;
+// All NEXT_PUBLIC_* keys are safe for the client – Firebase requires them to initialize.
+const firebaseConfig = {
+  apiKey: reqPublic(API_KEY, 'NEXT_PUBLIC_FIREBASE_API_KEY'),
+  authDomain: reqPublic(AUTH_DOMAIN, 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN'),
+  projectId: reqPublic(PROJECT_ID, 'NEXT_PUBLIC_FIREBASE_PROJECT_ID'),
+  storageBucket: reqPublic(STORAGE_BUCKET, 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET'),
+  messagingSenderId: reqPublic(MESSAGING_SENDER_ID, 'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'),
+  appId: reqPublic(APP_ID, 'NEXT_PUBLIC_FIREBASE_APP_ID'),
+  // measurementId may be optional (Analytics). Only set if present.
+  ...(MEASUREMENT_ID && { measurementId: MEASUREMENT_ID })
+} as const;
 
+// Initialize Firebase app
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
-// Use long-polling detection to avoid WebChannel/CORS issues in strict networks (ad-blockers, proxies)
-// Ref: https://firebase.google.com/docs/firestore/manage-cache#web-channel
-const db = initializeFirestore(app, {
+const authInstance = getAuth(app);
+const dbInstance = initializeFirestore(app, {
   experimentalAutoDetectLongPolling: true,
 });
-// Enable offline persistence to make reads/writes resilient and instant in UI
+
+// Enable offline persistence if in browser environment
 if (typeof window !== 'undefined') {
-  enableIndexedDbPersistence(db).catch((err) => {
+  enableIndexedDbPersistence(dbInstance).catch((err) => {
     // Ignore persistence errors (e.g., multiple tabs). Firestore will still work without persistence.
     console.warn('Firestore persistence not enabled', err?.code || err);
   });
 }
-const storage = getStorage(app);
 
-  // All NEXT_PUBLIC_* keys are safe for the client – Firebase requires them to initialize.
-  const firebaseConfig = {
-    apiKey: reqPublic(API_KEY, 'NEXT_PUBLIC_FIREBASE_API_KEY'),
-    authDomain: reqPublic(AUTH_DOMAIN, 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN'),
-    projectId: reqPublic(PROJECT_ID, 'NEXT_PUBLIC_FIREBASE_PROJECT_ID'),
-    storageBucket: reqPublic(STORAGE_BUCKET, 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET'),
-    messagingSenderId: reqPublic(MESSAGING_SENDER_ID, 'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'),
-    appId: reqPublic(APP_ID, 'NEXT_PUBLIC_FIREBASE_APP_ID'),
-    // measurementId may be optional (Analytics). Only set if present.
-    ...(MEASUREMENT_ID && { measurementId: MEASUREMENT_ID })
-  } as const;
+const storageInstance = getStorage(app);
 
-  app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-  authInstance = getAuth(app);
-  dbInstance = getFirestore(app);
-  storageInstance = getStorage(app);
-  
-  // Enable Firebase auth persistence to keep user logged in across page refreshes
-  setPersistence(authInstance, browserLocalPersistence).catch((error) => {
-    console.error('Failed to set Firebase persistence:', error);
-  });
-}
+// Enable Firebase auth persistence to keep user logged in across page refreshes
+setPersistence(authInstance, browserLocalPersistence).catch((error) => {
+  console.error('Failed to set Firebase persistence:', error);
+});
 
-// For TypeScript consumers that import { auth } in client components, keep the
-// type as Auth while avoiding SSR initialization. This assertion is safe
-// because all usages are in 'use client' boundaries.
-export { app };
-export const auth = authInstance as unknown as ReturnType<typeof getAuth>;
-export const db = dbInstance as unknown as Firestore;
-export const storage = storageInstance as unknown as FirebaseStorage;
+// Export Firebase instances for client components
+export const auth = authInstance;
+export const db = dbInstance;
+export const storage = storageInstance as FirebaseStorage;
