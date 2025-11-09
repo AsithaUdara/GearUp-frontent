@@ -46,33 +46,44 @@ export default function RecentActivity() {
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-heading text-lg font-semibold">Recent Activity</h3>
-        <button className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900">
-          View details <ArrowUpRight className="h-4 w-4" />
+    <div className="rounded-xl border-2 border-gray-100 bg-white p-6 shadow-sm hover:shadow-md transition-shadow duration-200">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h3 className="text-xl font-bold text-gray-900">Recent Activity</h3>
+          <p className="text-sm text-gray-500 mt-1">Latest system events and notifications</p>
+        </div>
+        <button className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors">
+          View All
+          <ArrowUpRight className="h-4 w-4" />
         </button>
       </div>
-      <div className="overflow-hidden rounded-lg border border-gray-100">
-        <table className="min-w-full divide-y divide-gray-100">
-          <thead className="bg-gray-50">
+      <div className="overflow-hidden rounded-lg border-2 border-gray-100">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
             <tr>
-              <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">When</th>
-              <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Event</th>
-              <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Time</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Event Description</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-gray-200 bg-white">
             {activities.map((activity, index) => {
               const b = badge(activity.status);
               const Icon = b.icon;
               return (
-                <tr key={activity.id || index} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 text-sm text-gray-600">{activity.timeAgo}</td>
-                  <td className="px-4 py-2 text-sm text-gray-900">{activity.event}</td>
-                  <td className="px-4 py-2 text-sm">
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${b.cls}`}>
-                      <Icon className="h-3.5 w-3.5" />
+                <tr key={activity.id || index} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      <Clock3 className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm font-medium text-gray-600">{activity.timeAgo}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm text-gray-900">{activity.event}</span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${b.cls}`}>
+                      <Icon className="h-4 w-4" />
                       {b.label}
                     </span>
                   </td>

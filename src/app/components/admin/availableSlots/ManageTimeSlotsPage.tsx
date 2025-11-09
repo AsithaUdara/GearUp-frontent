@@ -95,21 +95,12 @@ export default function ManageTimeSlotsPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Legacy mock data (kept for compatibility)
-  const [slots, setSlots] = useState<Slot[]>(() => {
-    const base = new Date();
-    return [0,1,2,4,6].map(i => {
-      const d = new Date(base); d.setDate(d.getDate()+i);
-      return { id: rid(), date: ymd(d), startTime: "10:00", endTime:"11:00", serviceType: (i%2? 'Oil Change':'General Service') as ServiceType, bay: `Bay ${1 + (i%3)}`, technician: i%2? 'Alex' : 'Jordan', bookings: [] } as Slot;
-    });
-  });
-  const [blocks, setBlocks] = useState<string[]>(() => {
-    const d = new Date(); d.setDate(d.getDate()+3); return [ ymd(d) ];
-  });
-  const [bookings, setBookings] = useState<Array<{ id: string; date: string; time: string; title: string }>>([
-    { id: rid(), date: ymd(new Date()), time: "10:00", title: "John Doe — Oil Change" },
-    { id: rid(), date: ymd(new Date(new Date().setDate(new Date().getDate()+1))), time: "14:00", title: "Jane Smith — Tire Rotation" }
-  ]);
+  // Blocked dates state
+  const [blocks, setBlocks] = useState<string[]>([]);
+
+  // Legacy states - no longer using mock data
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [bookings, setBookings] = useState<Array<{ id: string; date: string; time: string; title: string }>>([]);
 
   function addSlot(input: SlotInput) {
     const id = rid();
@@ -259,164 +250,154 @@ export default function ManageTimeSlotsPage() {
   const todayKey = ymd(new Date());
 
   return (
-    <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-8 flex flex-col min-h-screen">
+    <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-8 flex flex-col min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Appointment & Slot Management</h1>
-          <p className="text-sm text-gray-600 mt-1">Prevent booking conflicts • Block dates & time slots • Add new appointments manually</p>
+      <div className="bg-white rounded-2xl p-8 mb-8 shadow-lg border-2 border-gray-200">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="p-3 bg-red-100 rounded-xl">
+            <CalendarDays className="h-7 w-7 text-red-600" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Appointment & Slot Management</h1>
+            <p className="text-gray-600 mt-1">Manage appointments, block dates, and prevent scheduling conflicts</p>
+          </div>
+        </div>
+        
+        {/* Quick Stats Bar */}
+        <div className="grid grid-cols-3 gap-4 mt-6">
+          <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-4 border-2 border-red-200">
+            <div className="flex items-center gap-2 text-red-700 text-sm font-medium mb-1">
+              <CalendarDays className="h-4 w-4" />
+              Total Appointments
+            </div>
+            <div className="text-2xl font-bold text-red-600">{apiBookings.length}</div>
+          </div>
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border-2 border-blue-200">
+            <div className="flex items-center gap-2 text-blue-700 text-sm font-medium mb-1">
+              <Clock className="h-4 w-4" />
+              Blocked Dates
+            </div>
+            <div className="text-2xl font-bold text-blue-600">{blocks.length}</div>
+          </div>
+          <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-4 border-2 border-emerald-200">
+            <div className="text-emerald-700 text-sm font-medium mb-1">Active Services</div>
+            <div className="text-2xl font-bold text-emerald-600">{apiServices.length}</div>
+          </div>
         </div>
       </div>
 
       {/* Top controls row: search + actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <input 
-            placeholder="Search appointments by customer..." 
-            className="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={() => setShowBlockRange(true)} 
-            className="rounded-lg border border-red-300 bg-white text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50 transition-colors inline-flex items-center gap-2"
-          >
-            <Ban className="h-4 w-4" />
-            Block Date/Slot
-          </button>
-          <button 
-            onClick={() => setShowBooking(true)} 
-            className="rounded-lg bg-red-600 text-white px-4 py-2 text-sm font-medium hover:bg-red-700 transition-colors inline-flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            New Appointment
-          </button>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <input 
+              placeholder="Search appointments by customer name..." 
+              className="w-full rounded-xl border-2 border-gray-200 pl-12 pr-4 py-3 text-sm shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all hover:border-gray-300"
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setShowBlockRange(true)} 
+              className="rounded-xl border-2 border-red-200 bg-white text-red-600 px-5 py-3 text-sm font-semibold hover:bg-red-50 hover:border-red-300 transition-all inline-flex items-center gap-2 shadow-sm"
+            >
+              <Ban className="h-4 w-4" />
+              Block Date Range
+            </button>
+            <button 
+              onClick={() => setShowBooking(true)} 
+              className="rounded-xl bg-gradient-to-r from-red-600 to-red-700 text-white px-5 py-3 text-sm font-semibold hover:from-red-700 hover:to-red-800 transition-all inline-flex items-center gap-2 shadow-md hover:shadow-lg"
+            >
+              <Plus className="h-4 w-4" />
+              New Appointment
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Month navigation */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <button
-            aria-label="Previous month"
-            className="rounded-lg border border-gray-300 bg-white p-2 hover:bg-gray-50 transition-colors"
-            onClick={() => setCurrent(prev => new Date(prev.getFullYear(), prev.getMonth()-1, 1))}
-          >
-            <ChevronLeft className="h-4 w-4"/>
-          </button>
-          <div className="text-sm font-semibold min-w-[160px] text-center">{monthLabel}</div>
-          <button
-            aria-label="Next month"
-            className="rounded-lg border border-gray-300 bg-white p-2 hover:bg-gray-50 transition-colors"
-            onClick={() => setCurrent(prev => new Date(prev.getFullYear(), prev.getMonth()+1, 1))}
-          >
-            <ChevronRight className="h-4 w-4"/>
-          </button>
-          <button
-            className="ml-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium hover:bg-gray-50 transition-colors"
-            onClick={() => { const d = new Date(); setCurrent(d); setSelectedDate(ymd(d)); }}
-          >
-            Today
-          </button>
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-600 font-medium">Selected date:</label>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => { const iso = e.target.value; setSelectedDate(iso); const d = fromYmd(iso); setCurrent(new Date(d.getFullYear(), d.getMonth(), 1)); }}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
-          />
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              aria-label="Previous month"
+              className="rounded-xl border-2 border-gray-200 bg-white p-2.5 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
+              onClick={() => setCurrent(prev => new Date(prev.getFullYear(), prev.getMonth()-1, 1))}
+            >
+              <ChevronLeft className="h-5 w-5 text-gray-700"/>
+            </button>
+            <div className="text-xl font-bold text-gray-900 min-w-[200px] text-center">{monthLabel}</div>
+            <button
+              aria-label="Next month"
+              className="rounded-xl border-2 border-gray-200 bg-white p-2.5 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
+              onClick={() => setCurrent(prev => new Date(prev.getFullYear(), prev.getMonth()+1, 1))}
+            >
+              <ChevronRight className="h-5 w-5 text-gray-700"/>
+            </button>
+            <button
+              className="ml-2 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2.5 text-sm font-semibold hover:from-blue-600 hover:to-blue-700 transition-all shadow-sm"
+              onClick={() => { const d = new Date(); setCurrent(d); setSelectedDate(ymd(d)); }}
+            >
+              Today
+            </button>
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-700">Jump to date:</label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => { const iso = e.target.value; setSelectedDate(iso); const d = fromYmd(iso); setCurrent(new Date(d.getFullYear(), d.getMonth(), 1)); }}
+              className="rounded-xl border-2 border-gray-200 px-4 py-2.5 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all hover:border-gray-300 shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
       {/* Toolbar - Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 bg-gray-50 rounded-lg p-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Quick Actions:</span>
-          <button 
-            onClick={() => blockDate(selectedDate)} 
-            className="inline-flex items-center gap-1.5 rounded-lg border border-red-600 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
-          >
-            <Ban className="h-3.5 w-3.5"/> Block Selected Date
-          </button>
-          <button 
-            onClick={() => unblockDate(selectedDate)} 
-            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-600 bg-white px-3 py-1.5 text-xs font-medium text-emerald-600 hover:bg-emerald-50 transition-colors"
-          >
-            <CheckCircle2 className="h-3.5 w-3.5"/> Unblock Selected
-          </button>
-        </div>
-        <div className="flex flex-wrap items-center gap-3 text-xs font-medium">
-          <span className="text-gray-600">Legend:</span>
-          <div className="inline-flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-black"/> Booked
-          </div>
-          <div className="inline-flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500"/> Available
-          </div>
-          <div className="inline-flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-red-600"/> Blocked
-          </div>
-        </div>
-      </div>
-
-      {/* Filters row for service center context */}
-      <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-          <Search className="h-4 w-4 text-gray-500" />
-          Filter Appointments & Slots
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Service Type</label>
-            <select
-              className="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              value={filters.serviceType}
-              onChange={(e) => setFilters((f) => ({ ...f, serviceType: e.target.value as any }))}
+      <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl shadow-sm border border-gray-200 p-5 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm font-bold text-gray-800 uppercase tracking-wide">Quick Actions:</span>
+            <button 
+              onClick={() => blockDate(selectedDate)} 
+              className="inline-flex items-center gap-2 rounded-xl bg-white border-2 border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 hover:border-red-300 transition-all shadow-sm"
             >
-              <option value="all">All Services</option>
-              {(['General Service','Oil Change','Diagnostics','Tire Rotation','Brake Service'] as ServiceType[]).map(t => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Bay</label>
-            <select
-              className="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              value={filters.bay}
-              onChange={(e) => setFilters((f) => ({ ...f, bay: e.target.value as any }))}
+              <Ban className="h-4 w-4"/> Block Selected Date
+            </button>
+            <button 
+              onClick={() => unblockDate(selectedDate)} 
+              className="inline-flex items-center gap-2 rounded-xl bg-white border-2 border-emerald-200 px-4 py-2.5 text-sm font-semibold text-emerald-600 hover:bg-emerald-50 hover:border-emerald-300 transition-all shadow-sm"
             >
-              <option value="all">All Bays</option>
-              {['Bay 1','Bay 2','Bay 3'].map(b => (<option key={b} value={b}>{b}</option>))}
-            </select>
+              <CheckCircle2 className="h-4 w-4"/> Unblock Selected
+            </button>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Technician</label>
-            <input
-              className="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              placeholder="Filter by technician..."
-              value={filters.technician}
-              onChange={(e) => setFilters((f) => ({ ...f, technician: e.target.value }))}
-            />
+          <div className="flex flex-wrap items-center gap-4 text-sm font-medium">
+            <span className="text-gray-700">Legend:</span>
+            <div className="inline-flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full bg-black shadow-sm"/> Booked
+            </div>
+            <div className="inline-flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full bg-emerald-500 shadow-sm"/> Available
+            </div>
+            <div className="inline-flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full bg-red-600 shadow-sm"/> Blocked
+            </div>
           </div>
         </div>
       </div>
 
       {/* Calendar with availability panel */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
-        <div className="xl:col-span-2 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+        <div className="xl:col-span-2 rounded-2xl border-2 border-gray-200 bg-white shadow-lg overflow-hidden">
           {/* Calendar grid */}
-          <div className="grid grid-cols-7 gap-px bg-gray-200 text-xs font-semibold text-gray-700">
+          <div className="grid grid-cols-7 gap-px bg-gradient-to-r from-gray-100 to-gray-200 text-sm font-bold text-gray-800">
             {"Sun Mon Tue Wed Thu Fri Sat".split(" ").map(d => (
-              <div key={d} className="bg-gray-50 px-3 py-2 text-center">{d}</div>
+              <div key={d} className="bg-white px-4 py-3 text-center border-b-2 border-gray-200">{d}</div>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-px bg-gray-200">
+          <div className="grid grid-cols-7 gap-1 bg-gray-100 p-1 rounded-xl">
             {grid.map((day, idx) => {
-              if (day === 0) return <div key={idx} className="bg-gray-50 min-h-[100px]"/>;
+              if (day === 0) return <div key={idx} className="bg-gray-50 min-h-[110px] rounded-lg"/>;
               const key = ymd(new Date(current.getFullYear(), current.getMonth(), day));
               const evts = eventsByDay.get(key) ?? [];
               const isSelected = key === selectedDate;
@@ -426,35 +407,36 @@ export default function ManageTimeSlotsPage() {
                   key={idx}
                   onClick={() => setSelectedDate(key)}
                   aria-selected={isSelected}
-                  className={`group bg-white p-2 min-h-[100px] text-left cursor-pointer transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-inset ${
-                    isToday ? 'ring-2 ring-red-600 ring-inset' : ''
+                  className={`group bg-white p-3 min-h-[110px] text-left cursor-pointer transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-red-500 rounded-lg shadow-sm hover:shadow-md ${
+                    isToday ? 'ring-2 ring-blue-500 ring-inset' : ''
                   } ${
-                    isSelected ? 'bg-red-50' : 'hover:bg-red-50'
+                    isSelected ? 'bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-500' : 'hover:bg-gray-50 border-2 border-transparent'
                   }`}
                 >
-                  <div className="text-xs font-medium text-gray-500 mb-1 flex items-center justify-between">
-                    <span className={`${isToday ? 'text-red-600 font-bold' : ''} ${isSelected ? 'text-red-700' : 'group-hover:text-red-600'}`}>
+                  <div className="text-sm font-bold text-gray-700 mb-2 flex items-center justify-between">
+                    <span className={`${isToday ? 'text-blue-600 bg-blue-100 rounded-full px-2 py-0.5' : ''} ${isSelected ? 'text-red-700' : 'group-hover:text-red-600'}`}>
                       {day}
                     </span>
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     {evts.some(x => x.type === 'blocked') && (
-                      <div className="inline-flex items-center rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-[10px] font-medium">
+                      <div className="inline-flex items-center rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white px-2.5 py-1 text-[10px] font-semibold shadow-sm">
+                        <Ban className="h-2.5 w-2.5 mr-1" />
                         Blocked
                       </div>
                     )}
                     {(() => {
                       const bookings = evts.filter(x => x.type === 'booking') as Array<{ id: string; type: 'booking'; label: string; time: string }>;
                       return (
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-1.5">
                           {bookings.slice(0, 2).map(b => (
-                            <div key={b.id} className="rounded-md bg-neutral-100 text-black px-2 py-1 text-[10px] border border-black/10">
-                              <div className="font-semibold">{b.time}</div>
-                              <div className="truncate">{b.label}</div>
+                            <div key={b.id} className="rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 text-gray-900 px-2 py-1.5 text-[10px] border border-gray-300 shadow-sm hover:shadow transition-shadow">
+                              <div className="font-bold text-gray-700">{b.time}</div>
+                              <div className="truncate text-gray-600">{b.label}</div>
                             </div>
                           ))}
                           {bookings.length > 2 && (
-                            <div className="text-[10px] text-gray-500 px-1">+{bookings.length - 2} more</div>
+                            <div className="text-[10px] font-semibold text-gray-600 px-1.5 py-0.5 bg-gray-100 rounded-md">+{bookings.length - 2} more</div>
                           )}
                         </div>
                       );
@@ -467,15 +449,22 @@ export default function ManageTimeSlotsPage() {
         </div>
 
         {/* Manage slots side panel */}
-        <div ref={availRef} className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-          <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
-            <h3 className="text-base font-semibold text-gray-900">
-              Slots & Appointments
-              <div className="text-xs font-normal text-gray-500 mt-0.5">{selectedDate}</div>
-            </h3>
-            <p className="text-xs text-gray-600 mt-1">Check conflicts • Add slots • Block times</p>
+        <div ref={availRef} className="rounded-2xl border-2 border-gray-200 bg-white shadow-lg overflow-hidden">
+          <div className="border-b-2 border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-red-100 rounded-lg">
+                <CalendarDays className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">
+                  Slots & Appointments
+                </h3>
+                <div className="text-sm font-medium text-gray-600">{new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</div>
+              </div>
+            </div>
+            <p className="text-xs text-gray-600 ml-12">Check conflicts • Add slots • Block times</p>
           </div>
-          <div className="p-4">
+          <div className="p-6">
             <SlotsForDate
               date={selectedDate}
               slots={slots}
@@ -498,16 +487,21 @@ export default function ManageTimeSlotsPage() {
 
       {/* Add Slot Modal */}
       {showAdd && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog">
-          <div className="w-full max-w-lg rounded-xl border border-gray-200 bg-white shadow-xl">
-            <div className="flex items-center justify-between px-4 py-3 border-b">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" role="dialog">
+          <div className="w-full max-w-lg rounded-2xl border-2 border-gray-200 bg-white shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b-2 border-gray-200 bg-gradient-to-r from-red-50 to-red-100">
               <div>
-                <h3 className="text-base font-semibold">Add Time Slot</h3>
-                <p className="text-xs text-gray-600 mt-0.5">Create availability for customer bookings</p>
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <Plus className="h-5 w-5 text-red-600" />
+                  Add Time Slot
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">Create availability for customer bookings</p>
               </div>
-              <button className="rounded-md px-2 py-1 text-sm hover:bg-gray-50" onClick={() => setShowAdd(false)}>Close</button>
+              <button className="rounded-xl p-2 text-gray-600 hover:bg-white hover:text-red-600 transition-all" onClick={() => setShowAdd(false)}>
+                <X className="h-5 w-5" />
+              </button>
             </div>
-            <div className="p-4">
+            <div className="p-6">
               <AddSlotForm onSubmit={addSlot} initial={addInitial} />
             </div>
           </div>
@@ -516,16 +510,21 @@ export default function ManageTimeSlotsPage() {
 
       {/* Edit Slot Modal */}
       {showEdit && editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog">
-          <div className="w-full max-w-lg rounded-xl border border-gray-200 bg-white shadow-xl">
-            <div className="flex items-center justify-between px-4 py-3 border-b">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" role="dialog">
+          <div className="w-full max-w-lg rounded-2xl border-2 border-gray-200 bg-white shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b-2 border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100">
               <div>
-                <h3 className="text-base font-semibold">Edit Time Slot</h3>
-                <p className="text-xs text-gray-600 mt-0.5">Modify slot details or availability</p>
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <Pencil className="h-5 w-5 text-blue-600" />
+                  Edit Time Slot
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">Modify slot details or availability</p>
               </div>
-              <button className="rounded-md px-2 py-1 text-sm hover:bg-gray-50" onClick={() => { setShowEdit(false); setEditing(null); }}>Close</button>
+              <button className="rounded-xl p-2 text-gray-600 hover:bg-white hover:text-blue-600 transition-all" onClick={() => { setShowEdit(false); setEditing(null); }}>
+                <X className="h-5 w-5" />
+              </button>
             </div>
-            <div className="p-4">
+            <div className="p-6">
               <EditSlotForm slot={editing} onSubmit={updateSlot} onCancel={() => { setShowEdit(false); setEditing(null); }} />
             </div>
           </div>
@@ -580,42 +579,47 @@ function SlotsForDate({
   // Get real bookings for this date from API
   const dateBookings = apiBookings.filter(b => b.timeSlot?.slotDate === date);
   
-  const items = slots
-    .filter(s => s.date === date)
-    .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  // Detect double bookings - same time slot with multiple bookings
+  const timeSlotMap = new Map<number, BookingDTO[]>();
+  dateBookings.forEach(booking => {
+    const slotId = booking.timeSlotId;
+    if (!timeSlotMap.has(slotId)) {
+      timeSlotMap.set(slotId, []);
+    }
+    timeSlotMap.get(slotId)!.push(booking);
+  });
 
-  // Prioritize showing API bookings if they exist
-  if (dateBookings.length > 0) {
-    // Detect double bookings - same time slot with multiple bookings
-    const timeSlotMap = new Map<number, BookingDTO[]>();
-    dateBookings.forEach(booking => {
-      const slotId = booking.timeSlotId;
-      if (!timeSlotMap.has(slotId)) {
-        timeSlotMap.set(slotId, []);
-      }
-      timeSlotMap.get(slotId)!.push(booking);
-    });
+  // Find conflicts
+  const conflicts = Array.from(timeSlotMap.entries())
+    .filter(([_, bookings]) => bookings.length > 1)
+    .map(([slotId, bookings]) => ({ slotId, bookings }));
 
-    // Find conflicts
-    const conflicts = Array.from(timeSlotMap.entries())
-      .filter(([_, bookings]) => bookings.length > 1)
-      .map(([slotId, bookings]) => ({ slotId, bookings }));
-
+  // Show "no appointments" message if no bookings exist
+  if (dateBookings.length === 0) {
     return (
-      <div className="space-y-3">
-        {conflicts.length > 0 && (
-          <div className="text-center py-2 mb-3 bg-red-50 rounded-lg border border-red-300">
-            <p className="text-xs font-bold text-red-900">⚠️ {conflicts.length} DOUBLE BOOKING CONFLICT{conflicts.length !== 1 ? 'S' : ''} DETECTED!</p>
-            <p className="text-xs text-red-700 mt-1">Same time slot has multiple bookings - please resolve immediately</p>
-          </div>
-        )}
-        <div className="text-center py-2 mb-3 bg-emerald-50 rounded-lg border border-emerald-200">
-          <p className="text-xs font-medium text-emerald-900">✓ Showing {dateBookings.length} appointment{dateBookings.length !== 1 ? 's' : ''} from database</p>
+      <div className="text-center py-8">
+        <CalendarDays className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+        <p className="text-sm font-medium text-gray-900">No appointments for this date</p>
+        <p className="text-xs text-gray-500 mt-1">Customers can book time slots if they are available</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {conflicts.length > 0 && (
+        <div className="text-center py-2 mb-3 bg-red-50 rounded-lg border border-red-300">
+          <p className="text-xs font-bold text-red-900">⚠️ {conflicts.length} DOUBLE BOOKING CONFLICT{conflicts.length !== 1 ? 'S' : ''} DETECTED!</p>
+          <p className="text-xs text-red-700 mt-1">Same time slot has multiple bookings - please resolve immediately</p>
         </div>
+      )}
+      <div className="text-center py-2 mb-3 bg-emerald-50 rounded-lg border border-emerald-200">
+        <p className="text-xs font-medium text-emerald-900">✓ Showing {dateBookings.length} appointment{dateBookings.length !== 1 ? 's' : ''} from database</p>
+      </div>
         {dateBookings
           .sort((a, b) => (a.timeSlot?.startTime || '').localeCompare(b.timeSlot?.startTime || ''))
           .map(booking => {
-            const employeeName = apiEmployees.find(e => e.id === booking.assignedEmployeeId)?.name || 'Not assigned';
+            const employeeName = booking.assignedEmployeeName || 'Not assigned';
             const statusBgColor = 
               booking.status === 'CONFIRMED' ? 'bg-emerald-100 text-emerald-700' : 
               booking.status === 'PENDING' ? 'bg-amber-100 text-amber-700' : 
@@ -665,78 +669,6 @@ function SlotsForDate({
       </div>
     );
   }
-
-  if (items.length === 0) {
-    return (
-      <div className="text-center py-8">
-        <CalendarDays className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-        <p className="text-sm font-medium text-gray-900">No slots for this date</p>
-        <p className="text-xs text-gray-500 mt-1">Add slots to enable customer bookings and prevent conflicts</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      {items.map(s => {
-        const bookedCount = s.bookings?.length || 0;
-        const hasConflict = !isTechAvailable(s.technician, s.date, s.startTime);
-        
-        return (
-          <div key={s.id} className={`rounded-lg border p-3 hover:shadow-md transition-shadow ${hasConflict ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}>
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="text-sm font-semibold text-gray-900">{s.startTime}–{s.endTime}</span>
-                  <span className="inline-flex items-center rounded-full bg-blue-100 text-blue-700 px-2 py-0.5 text-xs font-medium">
-                    {s.serviceType || 'Service'}
-                  </span>
-                  {bookedCount > 0 && (
-                    <span className="inline-flex items-center rounded-full bg-gray-100 text-gray-700 px-2 py-0.5 text-xs font-medium">
-                      {bookedCount} {bookedCount === 1 ? 'booking' : 'bookings'}
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs text-gray-600">
-                  <span className="font-medium">{s.bay || 'Bay'}</span>
-                  {s.technician && <span> • {s.technician}</span>}
-                </div>
-                {hasConflict && (
-                  <div className="mt-1 inline-flex items-center rounded-full bg-amber-200 text-amber-900 px-2 py-0.5 text-xs font-semibold">
-                    ⚠ Technician unavailable - Potential conflict
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <button 
-                  className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-medium hover:bg-gray-50 transition-colors" 
-                  onClick={() => onEdit(s)}
-                  title="Edit slot"
-                >
-                  <Pencil className="h-3 w-3 mr-1"/> Edit
-                </button>
-                <button 
-                  className="inline-flex items-center rounded-lg border border-red-300 text-red-600 bg-white px-2 py-1 text-xs font-medium hover:bg-red-50 transition-colors" 
-                  onClick={() => onDelete(s.id)}
-                  title="Delete or block slot"
-                >
-                  <Trash2 className="h-3 w-3 mr-1"/> Remove
-                </button>
-                <button 
-                  className="inline-flex items-center rounded-lg border border-emerald-300 text-emerald-600 bg-white px-2 py-1 text-xs font-medium hover:bg-emerald-50 transition-colors" 
-                  onClick={() => { (window as any).__openBookingModal?.(s); }}
-                  title="Add manual booking"
-                >
-                  <Plus className="h-3 w-3 mr-1"/> Book
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 // Modal component to block a date range
 function BlockRangeModal({ defaultStart, defaultEnd, onSubmit, onClose }: { defaultStart: string; defaultEnd: string; onSubmit: (start: string, end: string) => void; onClose: () => void; }) {
@@ -975,7 +907,7 @@ function UpcomingAppointments({
                   <td className="px-4 py-3 text-sm text-gray-700">{booking.serviceName}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">
                     <span className={booking.assignedEmployeeId ? '' : 'text-amber-600 font-medium'}>
-                      {getEmployeeName(booking.assignedEmployeeId)}
+                      {booking.assignedEmployeeName || 'Not assigned'}
                     </span>
                   </td>
                   <td className="px-4 py-3">

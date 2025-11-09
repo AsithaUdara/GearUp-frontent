@@ -1,25 +1,32 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, MapPin, User, Phone, Car, CheckCircle, AlertCircle, Loader2, ArrowLeft, Check, Mail, MessageSquare } from 'lucide-react';
-
+import { Calendar, Clock, MapPin, User, Phone, Car, CheckCircle, AlertCircle } from 'lucide-react';
+import Header from '@/app/components/landing/Header';
+import Footer from '@/app/components/landing/Footer';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { 
-  getServices, 
-  getAvailableTimeSlots, 
-  createAppointment, 
-  checkBackendHealth,
-  type Service,
-  type TimeSlot,
-  type AppointmentData
-} from '@/services/appointmentService';
+import { getAvailableTimeSlotsForCustomer, getAllServices, createBooking, CreateBookingRequest, ServiceDTO, TimeSlotDTO } from '@/app/services/appointmentService';
 
-// Updated interfaces to match backend Service entity
+interface TimeSlot {
+  id: string;
+  time: string;
+  available: boolean;
+  serviceType: string;
+}
+
+interface Service {
+  id: string;
+  name: string;
+  duration: number;
+  price: number;
+  description: string;
+}
+
 interface BookingForm {
-  serviceId: number;        // Changed from service string to serviceId number
+  service: string;
   date: string;
-  startTime: string;        // Changed from timeSlot to startTime
+  timeSlot: string;
   customerName: string;
   phone: string;
   email: string;
@@ -28,17 +35,67 @@ interface BookingForm {
   specialRequests: string;
 }
 
+const services: Service[] = [
+  {
+    id: '1',
+    name: 'Oil Change & Filter',
+    duration: 30,
+    price: 15000,
+    description: 'Complete oil change with premium filter replacement'
+  },
+  {
+    id: '2',
+    name: 'Full Service',
+    duration: 120,
+    price: 45000,
+    description: 'Comprehensive vehicle inspection and maintenance'
+  },
+  {
+    id: '3',
+    name: 'Brake Service',
+    duration: 90,
+    price: 35000,
+    description: 'Brake pad replacement and brake fluid check'
+  },
+  {
+    id: '4',
+    name: 'Engine Diagnostic',
+    duration: 60,
+    price: 25000,
+    description: 'Complete engine health check and diagnostics'
+  },
+  {
+    id: '5',
+    name: 'Tire Service',
+    duration: 45,
+    price: 20000,
+    description: 'Tire rotation, balancing, and alignment check'
+  },
+  {
+    id: '6',
+    name: 'AC Service',
+    duration: 75,
+    price: 30000,
+    description: 'Air conditioning system cleaning and gas refill'
+  }
+];
+
+// Removed mock timeSlots - will be fetched from API based on selected service and date
+
 export default function AppointmentBooking() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedDate, setSelectedDate] = useState('');
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(null);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState('');
+  const [selectedTimeSlotId, setSelectedTimeSlotId] = useState<number | null>(null);
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlotDTO[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
   const [bookingForm, setBookingForm] = useState<BookingForm>({
-    serviceId: 0,
+    service: '',
     date: '',
-    startTime: '',
+    timeSlot: '',
     customerName: user?.displayName || '',
     phone: '',
     email: user?.email || '',
@@ -48,100 +105,12 @@ export default function AppointmentBooking() {
   });
   const [isBooking, setIsBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
-  const [createdBooking, setCreatedBooking] = useState<any>(null);
-  
-  // Backend data states
-  const [services, setServices] = useState<Service[]>([]);
-  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [backendConnected, setBackendConnected] = useState(false);
 
-  // Update form when user changes
   useEffect(() => {
-    if (user) {
-      setBookingForm(prev => ({
-        ...prev,
-        customerName: user.displayName || prev.customerName,
-        email: user.email || prev.email
-      }));
+    if (!loading && !user) {
+      router.push('/customer/appointment');
     }
-  }, [user]);
-
-  
-   useEffect(() => {
-     if (!authLoading && !user) {
-       router.push('/customer/appointment');
-     }
-  }, [user, authLoading, router]);
-
-  // Check backend connection and load initial data
-  useEffect(() => {
-    const initializeData = async () => {
-      // Allow loading services without authentication for testing
-       if (!user) return;
-      
-      setLoading(true);
-      setError(null);
-
-      try {
-        // Check backend health
-        const healthCheck = await checkBackendHealth();
-        setBackendConnected(healthCheck);
-
-        if (!healthCheck) {
-          setError('Unable to connect to the appointment service. Please try again later.');
-          return;
-        }
-
-        // Load services
-        const servicesResponse = await getServices();
-        if (servicesResponse.success && servicesResponse.data) {
-          setServices(servicesResponse.data);
-        } else {
-          setError(servicesResponse.error || 'Failed to load services');
-        }
-      } catch (error) {
-        console.error('Error initializing data:', error);
-        setError('An unexpected error occurred while loading data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initializeData();
-  }, [user]);
-
-  // Load time slots when date is selected
-  useEffect(() => {
-    const loadTimeSlots = async () => {
-      if (selectedDate && selectedService && backendConnected) {
-        try {
-          const timeSlotsResponse = await getAvailableTimeSlots(selectedDate, selectedService.id);
-          if (timeSlotsResponse.success && timeSlotsResponse.data) {
-            // Use backend time slots directly
-            setTimeSlots(timeSlotsResponse.data);
-          } else {
-            setError(timeSlotsResponse.error || 'Failed to load time slots');
-            setTimeSlots([]);
-          }
-        } catch (error) {
-          console.error('Error loading time slots:', error);
-          setError('Failed to load available time slots');
-          setTimeSlots([]);
-        }
-      }
-    };
-
-    loadTimeSlots();
-  }, [selectedDate, selectedService, backendConnected]);
-
-  const getTimeSlotCategory = (startTime: string): string => {
-    const hour = parseInt(startTime.split(':')[0]);
-    if (hour < 12) return 'Morning';
-    if (hour < 17) return 'Afternoon';
-    return 'Evening';
-  };
+  }, [user, loading, router]);
 
   const getAvailableDates = () => {
     const dates = [];
@@ -154,63 +123,76 @@ export default function AppointmentBooking() {
     return dates;
   };
 
+  // Fetch available time slots when service and date are selected
+  useEffect(() => {
+    const fetchTimeSlots = async () => {
+      if (selectedService && selectedDate) {
+        setLoadingSlots(true);
+        try {
+          const slots = await getAvailableTimeSlotsForCustomer(selectedDate, Number(selectedService.id));
+          setAvailableTimeSlots(slots);
+        } catch (error) {
+          console.error('Error fetching time slots:', error);
+          setAvailableTimeSlots([]);
+        } finally {
+          setLoadingSlots(false);
+        }
+      }
+    };
+
+    fetchTimeSlots();
+  }, [selectedService, selectedDate]);
+
   const handleServiceSelect = (service: Service) => {
     setSelectedService(service);
-    setBookingForm(prev => ({ ...prev, serviceId: service.id }));
-    setSelectedDate(''); // Reset date when service changes
-    setSelectedTimeSlot(null); // Reset time slot when service changes
-    setTimeSlots([]); // Clear time slots
+    setBookingForm(prev => ({ ...prev, service: service.id }));
     setCurrentStep(2);
   };
 
   const handleDateSelect = (date: string) => {
     setSelectedDate(date);
     setBookingForm(prev => ({ ...prev, date }));
-    setSelectedTimeSlot(null); // Reset time slot when date changes
     setCurrentStep(3);
   };
 
-  const handleTimeSlotSelect = (timeSlot: TimeSlot) => {
-    setSelectedTimeSlot(timeSlot);
-    setBookingForm(prev => ({ ...prev, startTime: timeSlot.startTime }));
+  const handleTimeSlotSelect = (timeSlotId: number, timeString: string) => {
+    setSelectedTimeSlot(timeString);
+    setSelectedTimeSlotId(timeSlotId);
+    setBookingForm(prev => ({ ...prev, timeSlot: timeString }));
     setCurrentStep(4);
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // For testing, allow submission even without user authentication
-    if (!selectedService || !selectedTimeSlot) {
-      setError('Missing required information');
-      return;
-    }
-
     setIsBooking(true);
-    setError(null);
     
     try {
-      const appointmentData: AppointmentData = {
-        serviceId: selectedService.id,
-        timeSlotId: selectedTimeSlot.id,
-        userId: user?.uid || 'test-user-001',
-        customerName: bookingForm.customerName || 'Test User',
-        customerEmail: bookingForm.email || 'test@example.com',
-        customerPhone: bookingForm.phone,
-        notes: bookingForm.specialRequests || undefined
+      // Validate required fields
+      if (!selectedService || !selectedTimeSlotId || !bookingForm.customerName || !bookingForm.phone) {
+        alert('Please fill in all required fields');
+        setIsBooking(false);
+        return;
+      }
+
+      // Create booking request
+      const bookingRequest: CreateBookingRequest = {
+        serviceId: Number(selectedService.id),
+        timeSlotId: selectedTimeSlotId,
+        userId: user?.uid || `guest_${Date.now()}`,
+        customerName: bookingForm.customerName.trim(),
+        customerEmail: bookingForm.email.trim() || undefined,
+        customerPhone: bookingForm.phone.trim(),
+        notes: bookingForm.specialRequests.trim() || undefined,
       };
 
-      const response = await createAppointment(appointmentData);
+      // Submit booking to API
+      await createBooking(bookingRequest);
       
-      if (response.success && response.data) {
-        setCreatedBooking(response.data);
-        setBookingSuccess(true);
-      } else {
-        setError(response.error || 'Failed to create appointment');
-      }
+      setIsBooking(false);
+      setBookingSuccess(true);
     } catch (error) {
-      console.error('Error creating appointment:', error);
-      setError('An unexpected error occurred. Please try again.');
-    } finally {
+      console.error('Error creating booking:', error);
+      alert('Failed to create booking. The time slot may no longer be available. Please try again.');
       setIsBooking(false);
     }
   };
@@ -219,74 +201,22 @@ export default function AppointmentBooking() {
     setBookingForm(prev => ({ ...prev, [field]: value }));
   };
 
-  const resetBooking = () => {
-    setCurrentStep(1);
-    setSelectedService(null);
-    setSelectedDate('');
-    setSelectedTimeSlot(null);
-    setBookingForm({
-      serviceId: 0,
-      date: '',
-      startTime: '',
-      customerName: user?.displayName || '',
-      phone: '',
-      email: user?.email || '',
-      vehicleModel: '',
-      vehicleYear: '',
-      specialRequests: ''
-    });
-    setBookingSuccess(false);
-    setCreatedBooking(null);
-    setError(null);
-  };
+  // if (loading) {
+  //   return (
+  //     <div className="flex items-center justify-center h-screen">
+  //       <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+  //     </div>
+  //   );
+  // }
 
-  
-   if (loading) {
-     return (
-       <div className="flex items-center justify-center h-screen">
-         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-       </div>
-     );
-   }
-
-   if (!user) {
-     return null;
-   }
-
-  // Show error state if backend is not connected
-  if (!backendConnected && !loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="pt-24 pb-16">
-          <div className="container mx-auto px-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="max-w-2xl mx-auto text-center"
-            >
-              <AlertCircle className="h-24 w-24 text-red-500 mx-auto mb-6" />
-              <h1 className="text-4xl font-bold font-heading text-foreground mb-4">
-                Service Temporarily Unavailable
-              </h1>
-              <p className="text-lg text-muted-foreground mb-8">
-                {error || 'We are unable to connect to our appointment service. Please try again later.'}
-              </p>
-              <button
-                onClick={() => window.location.reload()}
-                className="px-8 py-3 bg-primary text-white font-heading font-bold uppercase rounded-md hover:bg-primary/90 transition-colors"
-              >
-                Try Again
-              </button>
-            </motion.div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // if (!user) {
+  //   return null;
+  // }
 
   if (bookingSuccess) {
     return (
       <div className="min-h-screen bg-background">
+        <Header onLoginClick={() => {}} showDefaultActions={false} preserveActionSpace={true} />
         <div className="pt-24 pb-16">
           <div className="container mx-auto px-6">
             <motion.div
@@ -317,11 +247,15 @@ export default function AppointmentBooking() {
                   </div>
                   <div className="flex justify-between">
                     <span className="font-semibold">Time:</span>
-                    <span>{selectedTimeSlot?.startTime} - {selectedTimeSlot?.endTime}</span>
+                    <span>{selectedTimeSlot}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="font-semibold">Duration:</span>
-                    <span>{selectedService?.durationMinutes} minutes</span>
+                    <span>{selectedService?.duration} minutes</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-semibold">Price:</span>
+                    <span className="text-primary font-bold">LKR {selectedService?.price.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -339,7 +273,7 @@ export default function AppointmentBooking() {
                     setCurrentStep(1);
                     setSelectedService(null);
                     setSelectedDate('');
-                    setSelectedTimeSlot(null);
+                    setSelectedTimeSlot('');
                   }}
                   className="px-8 py-3 border border-primary text-primary font-heading font-bold uppercase rounded-md hover:bg-primary/5 transition-colors"
                 >
@@ -349,24 +283,14 @@ export default function AppointmentBooking() {
             </motion.div>
           </div>
         </div>
+        <Footer />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative mx-6 mt-24" role="alert">
-          <span className="block sm:inline">{error}</span>
-          <button
-            onClick={() => setError(null)}
-            className="absolute top-0 bottom-0 right-0 px-4 py-3"
-          >
-            <span className="sr-only">Dismiss</span>
-            ×
-          </button>
-        </div>
-      )}
+      <Header onLoginClick={() => {}} showDefaultActions={false} preserveActionSpace={true} />
       
       <div className="pt-24 pb-16">
         <div className="container mx-auto px-6">
@@ -438,15 +362,18 @@ export default function AppointmentBooking() {
                         <h3 className="text-xl font-bold font-heading text-foreground mb-2">
                           {service.name}
                         </h3>
-                      <p className="text-muted-foreground text-sm mb-4">
-                        {service.description}
-                      </p>
-                      <div className="flex justify-end items-center">
-                        <span className="text-sm text-muted-foreground">
-                          {service.durationMinutes} min
-                        </span>
+                        <p className="text-muted-foreground text-sm mb-4">
+                          {service.description}
+                        </p>
+                        <div className="flex justify-between items-center">
+                          <span className="text-2xl font-bold text-primary">
+                            LKR {service.price.toLocaleString()}
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {service.duration} min
+                          </span>
+                        </div>
                       </div>
-                    </div>
                     </motion.div>
                   ))}
                 </motion.div>
@@ -498,27 +425,55 @@ export default function AppointmentBooking() {
                   <h2 className="text-2xl font-bold font-heading text-foreground mb-6 text-center">
                     Choose Your Time Slot
                   </h2>
-                  <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    {timeSlots.map((slot) => (
+                  
+                  {loadingSlots ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                      <p className="text-muted-foreground">Loading available time slots...</p>
+                    </div>
+                  ) : availableTimeSlots.length === 0 ? (
+                    <div className="text-center py-8 bg-muted/20 rounded-lg">
+                      <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground font-medium">No available time slots for this date</p>
+                      <p className="text-sm text-muted-foreground mt-2">Please select a different date</p>
                       <button
-                        key={slot.id}
-                        onClick={() => slot.isAvailable && handleTimeSlotSelect(slot)}
-                        disabled={!slot.isAvailable}
-                        className={`p-4 rounded-lg border transition-all ${
-                          slot.isAvailable
-                            ? 'border-border hover:border-primary hover:bg-primary/5 cursor-pointer'
-                            : 'border-muted-foreground bg-muted-foreground/10 cursor-not-allowed opacity-50'
-                        }`}
+                        onClick={() => setCurrentStep(2)}
+                        className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
                       >
-                        <div className="text-center">
-                          <div className="text-sm font-semibold">{slot.startTime}</div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {slot.isAvailable ? 'Available' : 'Booked'}
-                          </div>
-                        </div>
+                        Choose Another Date
                       </button>
-                    ))}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                      {availableTimeSlots.map((slot) => {
+                        const formatTime = (time: string) => {
+                          const [hours, minutes] = time.split(':');
+                          const h = parseInt(hours);
+                          const ampm = h >= 12 ? 'PM' : 'AM';
+                          const hour12 = h % 12 || 12;
+                          return `${hour12}:${minutes} ${ampm}`;
+                        };
+
+                        return (
+                          <button
+                            key={slot.id}
+                            onClick={() => handleTimeSlotSelect(slot.id, `${formatTime(slot.startTime)} - ${formatTime(slot.endTime)}`)}
+                            className="p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 cursor-pointer transition-all"
+                          >
+                            <div className="text-center">
+                              <div className="text-sm font-semibold">{formatTime(slot.startTime)}</div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {formatTime(slot.endTime)}
+                              </div>
+                              <div className="text-xs text-green-600 mt-1 font-medium">
+                                Available
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </motion.div>
               )}
 
@@ -630,11 +585,15 @@ export default function AppointmentBooking() {
                         </div>
                         <div className="flex justify-between">
                           <span>Time:</span>
-                          <span className="font-semibold">{selectedTimeSlot?.startTime}</span>
+                          <span className="font-semibold">{selectedTimeSlot}</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Estimated Duration:</span>
-                          <span className="font-semibold">{selectedService?.durationMinutes} minutes</span>
+                          <span className="font-semibold">{selectedService?.duration} minutes</span>
+                        </div>
+                        <div className="flex justify-between text-lg font-bold text-primary">
+                          <span>Total:</span>
+                          <span>LKR {selectedService?.price.toLocaleString()}</span>
                         </div>
                       </div>
                     </div>
@@ -662,6 +621,8 @@ export default function AppointmentBooking() {
           </div>
         </div>
       </div>
+      
+      <Footer />
     </div>
   );
 }
