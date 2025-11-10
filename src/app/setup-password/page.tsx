@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Lock, Mail, KeyRound, CheckCircle, AlertCircle } from 'lucide-react';
 import { auth } from '@/lib/firebase';
@@ -11,7 +11,6 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8
 
 export default function SetupPasswordPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [password, setPassword] = useState('');
@@ -22,13 +21,18 @@ export default function SetupPasswordPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  // Pre-fill email from URL if available
+  // Pre-fill email from URL if available (use plain URLSearchParams to avoid
+  // useSearchParams server/client mismatch during prerender)
   useEffect(() => {
-    const emailParam = searchParams.get('email');
-    if (emailParam) {
-      setEmail(emailParam);
+    try {
+      const emailParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('email') : null;
+      if (emailParam) {
+        setEmail(emailParam);
+      }
+    } catch (err) {
+      // ignore
     }
-  }, [searchParams]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

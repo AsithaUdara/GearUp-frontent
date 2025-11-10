@@ -4,7 +4,7 @@ import { subscribe as subscribeAppts, getAppointments, updateAppointment } from 
 import Link from "next/link";
 
 export default function AppointmentManagementCard() {
-  const appointments = useSyncExternalStore(subscribeAppts, getAppointments);
+  const appointments = useSyncExternalStore(subscribeAppts, getAppointments, getAppointments);
   // show only the next upcoming appointment (non-past), sorted by date then time
   const sorted = [...appointments].sort((a, b) => {
     if (a.date === b.date) return (a.time || "").localeCompare(b.time || "");
