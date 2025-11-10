@@ -1,6 +1,6 @@
 "use client";
-import { useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { subscribe, getAppointments } from "@/lib/appointmentsStore";
+import { useMemo, useRef, useState, useSyncExternalStore, useEffect } from "react";
+import { subscribe, getAppointments, Appointment as StoreAppointment } from "@/lib/appointmentsStore";
 import { useRouter } from "next/navigation";
 
 type Appointment = { id: string; date: string };
@@ -15,17 +15,46 @@ function monthName(m: number) {
   return ["January","February","March","April","May","June","July","August","September","October","November","December"][m];
 }
 
+// Server snapshot function cached outside component to avoid infinite loop
+const getServerSnapshot = () => [];
+
 export default function SmallCalendar({ appointments = [], unavailableDates = [], onDayClick }: Props) {
   const today = new Date();
   const [current, setCurrent] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [popupPos, setPopupPos] = useState<{ left: number; top: number } | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const popupRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
 
+  // Close popup when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (popupRef.current && !popupRef.current.contains(event.target as Node) &&
+          containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setSelectedDate(null);
+        setPopupPos(null);
+      }
+    }
+
+    if (selectedDate) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [selectedDate]);
+
   // subscribe to shared appointments store and merge with any passed-in appointments
+
+  const storeAppointments = useSyncExternalStore(
+    subscribe, 
+    getAppointments,
+    getServerSnapshot
+  );
+  const mergedAppointments: Array<Appointment | StoreAppointment> = (appointments && appointments.length > 0) ? [...appointments, ...storeAppointments] : storeAppointments;
+
   const storeAppointments = useSyncExternalStore(subscribe, getAppointments, getAppointments as any);
   const mergedAppointments = (appointments && appointments.length > 0) ? appointments.concat(storeAppointments as any) : (storeAppointments as any);
+
 
   const days = useMemo(() => {
     const year = current.getFullYear();
@@ -44,12 +73,12 @@ export default function SmallCalendar({ appointments = [], unavailableDates = []
   }, [current]);
 
   const apptMap = useMemo(() => {
-    const m: Record<string, typeof storeAppointments[0][]> = {};
+    const m: Record<string, Array<Appointment | StoreAppointment>> = {};
     for (const a of mergedAppointments) {
       if (!a || !('date' in a)) continue;
-      const d = (a as any).date as string;
+      const d = a.date;
       m[d] = m[d] ?? [];
-      m[d].push(a as any);
+      m[d].push(a);
     }
     return m;
   }, [mergedAppointments]);
@@ -61,12 +90,15 @@ export default function SmallCalendar({ appointments = [], unavailableDates = []
     if (!dateStr) return;
     setSelectedDate(dateStr);
     if (onDayClick) onDayClick(dateStr);
-    // position popup relative to clicked cell (inside container)
+    // Position popup below the clicked cell, within the calendar card
     if (ev && containerRef.current) {
       const containerRect = containerRef.current.getBoundingClientRect();
       const targetRect = (ev.currentTarget as HTMLButtonElement).getBoundingClientRect();
+      
+      // Calculate position below the clicked cell
       const left = targetRect.left - containerRect.left;
-      const top = targetRect.top - containerRect.top + targetRect.height + 8; // below cell
+      const top = targetRect.bottom - containerRect.top + 8; // 8px gap below cell
+      
       setPopupPos({ left, top });
     } else {
       setPopupPos(null);
@@ -74,7 +106,7 @@ export default function SmallCalendar({ appointments = [], unavailableDates = []
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 relative">
+    <div className="rounded-lg border border-gray-200 bg-white p-4 relative overflow-visible">
       <div className="flex items-center justify-between mb-2">
         <div className="text-sm font-medium">{monthName(current.getMonth())} {current.getFullYear()}</div>
         <div className="flex items-center gap-2">
@@ -110,26 +142,65 @@ export default function SmallCalendar({ appointments = [], unavailableDates = []
 
       {/* popup with day details */}
       {selectedDate && popupPos && (
-        <div style={{ left: popupPos.left, top: popupPos.top }} className="absolute w-80 z-40">
-          <div className="rounded-lg border bg-white p-3 shadow-md">
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-medium">{selectedDate}</div>
-              <button onClick={() => setSelectedDate(null)} className="text-xs text-gray-500">Close</button>
+        <div 
+          ref={popupRef}
+          style={{ 
+            left: `${popupPos.left}px`, 
+            top: `${popupPos.top}px`,
+            maxWidth: 'calc(100% - 1rem)'
+          }} 
+          className="absolute z-50 min-w-[280px] w-auto"
+        >
+          <div className="rounded-lg border border-gray-300 bg-white shadow-xl">
+            {/* Header with date */}
+            <div className="border-b border-gray-200 px-3 py-2 bg-gray-50 rounded-t-lg">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-semibold text-gray-900">{selectedDate}</div>
+                <button 
+                  onClick={() => setSelectedDate(null)} 
+                  className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+                >
+                  ×
+                </button>
+              </div>
             </div>
-            <div className="mt-3 space-y-2">
+            
+            {/* Appointments list */}
+            <div className="p-3 space-y-2 max-h-[300px] overflow-y-auto">
               {(() => {
                 const dayAppts = apptMap[selectedDate] ?? [];
                 const isSelUnavailable = selectedDate ? unavailableDates.includes(selectedDate) : false;
                 if (!dayAppts || dayAppts.length === 0) {
-                  return <div className="text-sm text-gray-500">{isSelUnavailable ? "This day is marked Unavailable." : "No appointments"}</div>;
+                  return (
+                    <div className="text-xs text-gray-500 text-center py-3">
+                      {isSelUnavailable ? "This day is marked Unavailable." : "No appointments"}
+                    </div>
+                  );
                 }
-                return dayAppts.map((a: any) => (
-                  <div key={a.id} className="rounded-md border p-2">
-                    <div className="text-sm font-semibold">{a.time ?? ""} — {a.customer}</div>
-                    <div className="text-xs text-gray-600">{a.service} · {a.vehicle}</div>
-                    <div className="text-xs text-gray-500 mt-1">Status: {a.status}</div>
-                    <div className="mt-2 flex items-center justify-end gap-2">
-                      <button onClick={() => { router.push(`/employee/schedule?date=${selectedDate}&appt=${a.id}`); }} className="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700">View</button>
+                return dayAppts.map((a) => (
+                  <div key={a.id} className="border border-gray-200 rounded-md p-2 hover:shadow-sm transition-shadow">
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <div className="flex-1">
+                        <div className="text-xs font-semibold text-gray-900">
+                          {'time' in a ? a.time : ''} — {'customer' in a ? a.customer : ''}
+                        </div>
+                        <div className="text-[11px] text-gray-600 mt-0.5">
+                          {'service' in a ? a.service : ''} · {'vehicle' in a ? a.vehicle : ''}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between mt-1.5">
+                      <div className="text-[11px] text-gray-500">
+                        Status: <span className="font-medium">{'status' in a ? a.status : ''}</span>
+                      </div>
+                      <button 
+                        onClick={() => { 
+                          router.push(`/employee/schedule?date=${selectedDate}&appt=${a.id}`); 
+                        }} 
+                        className="text-[11px] bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 transition-colors"
+                      >
+                        View
+                      </button>
                     </div>
                   </div>
                 ));
