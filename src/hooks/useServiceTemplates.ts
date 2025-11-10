@@ -2,8 +2,8 @@
 import { useCallback, useState } from 'react';
 import { auth } from '@/lib/firebase';
 
-// Default to the API Gateway on port 8080; can be overridden via NEXT_PUBLIC_API_BASE_URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+// Default to the API Gateway on port 9090; can be overridden via NEXT_PUBLIC_API_BASE_URL
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:9090';
 const ADMIN_TEMPLATES_ENDPOINT = `${API_BASE_URL}/api/v1/admin/service-templates`;
 
 export interface ServiceTemplateDto {
