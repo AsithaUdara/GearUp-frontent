@@ -24,7 +24,7 @@ export default function SmallCalendar({ appointments = [], unavailableDates = []
   const router = useRouter();
 
   // subscribe to shared appointments store and merge with any passed-in appointments
-  const storeAppointments = useSyncExternalStore(subscribe, getAppointments);
+  const storeAppointments = useSyncExternalStore(subscribe, getAppointments, getAppointments as any);
   const mergedAppointments = (appointments && appointments.length > 0) ? appointments.concat(storeAppointments as any) : (storeAppointments as any);
 
   const days = useMemo(() => {
