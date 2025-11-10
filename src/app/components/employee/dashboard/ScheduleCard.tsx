@@ -13,9 +13,17 @@ function todayISO() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+// Server snapshot functions cached outside component
+const getServerSnapshot = () => [];
+
 export default function ScheduleCard() {
-  const appointments = useSyncExternalStore(subscribe, getAppointments);
-  const unavailableDates = useSyncExternalStore(subscribeUnavailable, getUnavailableDates);
+
+  const appointments = useSyncExternalStore(subscribe, getAppointments, getServerSnapshot);
+  const unavailableDates = useSyncExternalStore(subscribeUnavailable, getUnavailableDates, getServerSnapshot);
+
+  const appointments = useSyncExternalStore(subscribe, getAppointments, getAppointments);
+  const unavailableDates = useSyncExternalStore(subscribeUnavailable, getUnavailableDates, getUnavailableDates);
+
 
   const today = todayISO();
   const todaysTasks = appointments.filter((a) => a.date === today && !a.past);

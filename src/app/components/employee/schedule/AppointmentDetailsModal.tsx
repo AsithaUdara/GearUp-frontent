@@ -1,5 +1,5 @@
 "use client";
-import { Pencil, X, XCircle } from "lucide-react";
+import { X } from "lucide-react";
 import Link from "next/link";
 
 type AppointmentDetails = {
@@ -20,13 +20,10 @@ type Props = {
   open: boolean;
   details: AppointmentDetails;
   onClose: () => void;
-  onConfirm?: () => void;
-  onRequestReschedule?: () => void;
-  allowActions?: boolean;
   showScheduleLink?: boolean;
 };
 
-export default function AppointmentDetailsModal({ open, details, onClose, onConfirm, onRequestReschedule, allowActions = true, showScheduleLink = false }: Props) {
+export default function AppointmentDetailsModal({ open, details, onClose, showScheduleLink = false }: Props) {
   if (!open) return null;
   const s = details;
   return (
