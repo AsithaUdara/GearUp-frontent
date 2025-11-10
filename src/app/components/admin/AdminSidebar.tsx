@@ -1,20 +1,23 @@
 // app/components/admin/AdminSidebar.tsx
 'use client';
 
-import { LayoutDashboard, Calendar, Users, Wrench, LogOut, Star } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, UserCheck, Wrench, Clock, Package, BarChart3, Star, LogOut, Settings } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { clsx } from 'clsx';
-import { auth } from '@/lib/firebase';
-import { signOut } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import { signOut } from '@/lib/authService';
 
 const navLinks = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/admin/appointments', label: 'Appointments', icon: Calendar },
+  { href: '/admin/appointment', label: 'Appointments', icon: Calendar },
   { href: '/admin/users', label: 'User Management', icon: Users },
   { href: '/admin/services', label: 'Service Templates', icon: Wrench },
+  { href: '/admin/modifications', label: 'Modifications', icon: Settings },
+  { href: '/admin/available-slots', label: 'Available Slots', icon: Clock },
+  { href: '/admin/material-request', label: 'Material Request', icon: Package },
+  { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/admin/feedback', label: 'Feedback', icon: Star },
+  { href: '/admin/assign', label: 'Assign Employees', icon: UserCheck },
 ];
 
 export default function AdminSidebar() {
@@ -22,40 +25,56 @@ export default function AdminSidebar() {
   const router = useRouter();
 
   const handleSignOut = async () => {
-    await signOut(auth);
-    router.push('/'); // Redirect to landing page after sign out
+    try {
+      await signOut();
+      router.push('/');
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
   };
 
   return (
-    <aside className="w-64 flex-shrink-0 bg-white border-r border-border flex flex-col">
-      <div className="flex h-20 items-center justify-center border-b border-border">
-        <Wrench className="h-7 w-7 text-primary" />
-        <span className="ml-2 font-heading text-2xl font-bold">GearUp Admin</span>
+    <aside className="w-60 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col shadow-sm">
+      {/* Header */}
+      <div className="flex h-16 items-center px-6 border-b border-gray-200">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center">
+            <span className="text-white text-lg font-bold">🔧</span>
+          </div>
+          <span className="font-bold text-lg text-gray-800">GearUp Admin</span>
+        </div>
       </div>
-      <nav className="flex-1 p-4">
-        <ul className="space-y-2">
-          {navLinks.map((link) => (
-            <li key={link.href}>
-              <Link 
-                href={link.href} 
-                className={clsx(
-                  "flex items-center gap-3 rounded-md px-3 py-2.5 font-body text-sm font-medium transition-colors",
-                  pathname === link.href
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-gray-100"
-                )}
-              >
-                <link.icon className="h-5 w-5" />
-                <span>{link.label}</span>
-              </Link>
-            </li>
-          ))}
+
+      {/* Navigation */}
+      <nav className="flex-1 p-4 overflow-y-auto">
+        <ul className="space-y-1">
+          {navLinks.map((link) => {
+            const isActive = pathname === link.href || pathname?.startsWith(link.href + '/');
+            return (
+              <li key={link.href}>
+                <Link 
+                  href={link.href} 
+                  className={clsx(
+                    "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200",
+                    isActive
+                      ? "bg-red-50 text-red-600 border-l-4 border-red-600"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  )}
+                >
+                  <link.icon className="h-5 w-5" />
+                  <span>{link.label}</span>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </nav>
-      <div className="p-4 border-t border-border">
+
+      {/* Sign Out Button */}
+      <div className="p-4 border-t border-gray-200">
         <button 
           onClick={handleSignOut}
-          className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 font-body text-sm font-medium text-muted-foreground hover:bg-red-50 hover:text-primary"
+          className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
         >
           <LogOut className="h-5 w-5" />
           <span>Sign Out</span>

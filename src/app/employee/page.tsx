@@ -1,5 +1,7 @@
 // src/app/employee/page.tsx
-'use client'; 
+"use client"; 
+// Force dynamic rendering so Next won't try to prerender this client-heavy page
+export const dynamic = 'force-dynamic';
 
 import { useState } from 'react'; 
 import AssignedTasksList, { Task } from "@/app/components/employee/dashboard/AssignedTasksList"; 

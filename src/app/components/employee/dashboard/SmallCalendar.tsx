@@ -44,12 +44,17 @@ export default function SmallCalendar({ appointments = [], unavailableDates = []
   }, [selectedDate]);
 
   // subscribe to shared appointments store and merge with any passed-in appointments
+
   const storeAppointments = useSyncExternalStore(
     subscribe, 
     getAppointments,
     getServerSnapshot
   );
   const mergedAppointments: Array<Appointment | StoreAppointment> = (appointments && appointments.length > 0) ? [...appointments, ...storeAppointments] : storeAppointments;
+
+  const storeAppointments = useSyncExternalStore(subscribe, getAppointments, getAppointments as any);
+  const mergedAppointments = (appointments && appointments.length > 0) ? appointments.concat(storeAppointments as any) : (storeAppointments as any);
+
 
   const days = useMemo(() => {
     const year = current.getFullYear();
