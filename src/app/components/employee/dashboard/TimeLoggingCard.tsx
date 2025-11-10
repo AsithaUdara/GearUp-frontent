@@ -1,7 +1,7 @@
 // src/app/components/employee/dashboard/TimeLoggingCard.tsx
 "use client";
 
-import { Pause, Square, PenSquare, Play } from "lucide-react";
+import { Pause, Square, Play } from "lucide-react";
 import React, { useState, useEffect, useRef } from 'react';
 
 // --- MODIFICATION: `isClockedIn` is no longer part of the props ---
