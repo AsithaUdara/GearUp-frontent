@@ -68,7 +68,7 @@ export default function CalendarInteractive({ appointments = [], unavailableDate
 
   function jumpToDate(value: string) {
     if (!value) return;
-    const [y, m, d] = value.split("-").map(Number);
+    const [y, m] = value.split("-").map(Number);
     setCurrent(new Date(y, m - 1, 1));
     setSelectedDate(value);
   }

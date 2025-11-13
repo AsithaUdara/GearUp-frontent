@@ -184,14 +184,16 @@ export async function loginUser(email: string, password: string): Promise<LoginR
     console.log('Mapped user profile:', userProfile);
 
     // Step 3: Determine dashboard path based on role
+    // NOTE: employees should go to the top-level /employee route (not /employee/dashboard)
     let dashboardPath = '/customer/dashboard';
-    
+
     switch (userProfile.role) {
       case 'ADMIN':
         dashboardPath = '/admin/dashboard';
         break;
       case 'EMPLOYEE':
-        dashboardPath = '/employee/dashboard';
+        // Redirect employees to the employee root as requested
+        dashboardPath = '/employee';
         break;
       case 'CUSTOMER':
         dashboardPath = '/customer/dashboard';

@@ -1,11 +1,12 @@
 // app/components/admin/AdminSidebar.tsx
 'use client';
 
-import { LayoutDashboard, Calendar, Users, UserCheck, Wrench, Clock, Package, BarChart3, Star, LogOut } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, UserCheck, Wrench, Clock, Package, BarChart3, Star, LogOut, CreditCard,Settings } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { clsx } from 'clsx';
 import { signOut } from '@/lib/authService';
+import Hero from '../landing/Hero';
 
 const navLinks = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -16,8 +17,9 @@ const navLinks = [
   { href: '/admin/available-slots', label: 'Available Slots', icon: Clock },
   { href: '/admin/material-request', label: 'Material Request', icon: Package },
   { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/admin/feedback', label: 'Feedback', icon: Star },
+  { href: '/admin/reviews', label: 'Reviews', icon: Star },
   { href: '/admin/assign', label: 'Assign Employees', icon: UserCheck },
+  { href: '/admin/payments', label: 'Payment', icon: CreditCard },
 ];
 
 export default function AdminSidebar() {
