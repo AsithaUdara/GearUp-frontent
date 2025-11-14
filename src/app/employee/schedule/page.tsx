@@ -44,30 +44,6 @@ export default function EmployeeSchedulePage() {
     setDetailsOpen(true);
   }
 
-  function handleConfirm() {
-    if (!selected) return;
-    setAppointments((prev) => prev.map((a) => (a.id === selected.id ? { ...a, status: "Confirmed", communications: [...(a.communications ?? []), { title: "Confirmed", detail: "Employee confirmed the appointment.", at: new Date().toLocaleString() }] } : a)));
-    setDetailsOpen(false);
-  }
-
-  function handleConfirmRow(r: Appointment) {
-    const appt = appointments.find((a) => a.id === r.id);
-    if (!appt) return;
-    setSelected(appt);
-    setAppointments((prev) => prev.map((a) => (a.id === appt.id ? { ...a, status: "Confirmed", communications: [...(a.communications ?? []), { title: "Confirmed", detail: "Employee confirmed the appointment.", at: new Date().toLocaleString() }] } : a)));
-  }
-
-  function handleRequestReschedule() {
-    setRescheduleOpen(true);
-  }
-
-  function handleRequestRow(r: Appointment) {
-    const appt = appointments.find((a) => a.id === r.id);
-    if (!appt) return;
-    setSelected(appt);
-    setRescheduleOpen(true);
-  }
-
   function handleSubmitReschedule(payload: { preferredDate?: string; preferredTime?: string; reason?: string }) {
     if (!selected) return;
     const note = `Reschedule requested: ${payload.preferredDate ?? ""} ${payload.preferredTime ?? ""} - ${payload.reason ?? ""}`;
@@ -142,9 +118,6 @@ export default function EmployeeSchedulePage() {
             communications: selected.communications,
           }}
           onClose={() => setDetailsOpen(false)}
-          onConfirm={handleConfirm}
-          onRequestReschedule={handleRequestReschedule}
-          allowActions={selected.status !== "Completed"}
         />
       )}
 

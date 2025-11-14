@@ -2,8 +2,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Clock, MapPin, User, Phone, Car, CheckCircle, AlertCircle } from 'lucide-react';
-import Header from '@/app/components/landing/Header';
-import Footer from '@/app/components/landing/Footer';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { getAvailableTimeSlotsForCustomer, getAllServices, createBooking, CreateBookingRequest, ServiceDTO, TimeSlotDTO } from '@/app/services/appointmentService';
@@ -35,52 +33,7 @@ interface BookingForm {
   specialRequests: string;
 }
 
-const services: Service[] = [
-  {
-    id: '1',
-    name: 'Oil Change & Filter',
-    duration: 30,
-    price: 15000,
-    description: 'Complete oil change with premium filter replacement'
-  },
-  {
-    id: '2',
-    name: 'Full Service',
-    duration: 120,
-    price: 45000,
-    description: 'Comprehensive vehicle inspection and maintenance'
-  },
-  {
-    id: '3',
-    name: 'Brake Service',
-    duration: 90,
-    price: 35000,
-    description: 'Brake pad replacement and brake fluid check'
-  },
-  {
-    id: '4',
-    name: 'Engine Diagnostic',
-    duration: 60,
-    price: 25000,
-    description: 'Complete engine health check and diagnostics'
-  },
-  {
-    id: '5',
-    name: 'Tire Service',
-    duration: 45,
-    price: 20000,
-    description: 'Tire rotation, balancing, and alignment check'
-  },
-  {
-    id: '6',
-    name: 'AC Service',
-    duration: 75,
-    price: 30000,
-    description: 'Air conditioning system cleaning and gas refill'
-  }
-];
-
-// Removed mock timeSlots - will be fetched from API based on selected service and date
+// Removed hardcoded services - now fetched from API
 
 export default function AppointmentBooking() {
   const { user, loading } = useAuth();
@@ -92,6 +45,8 @@ export default function AppointmentBooking() {
   const [selectedTimeSlotId, setSelectedTimeSlotId] = useState<number | null>(null);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlotDTO[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [services, setServices] = useState<Service[]>([]);
+  const [loadingServices, setLoadingServices] = useState(true);
   const [bookingForm, setBookingForm] = useState<BookingForm>({
     service: '',
     date: '',
@@ -111,6 +66,32 @@ export default function AppointmentBooking() {
       router.push('/customer/appointment');
     }
   }, [user, loading, router]);
+
+  // Fetch services from API
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        setLoadingServices(true);
+        const servicesData = await getAllServices();
+        // Map ServiceDTO to Service interface
+        const mappedServices: Service[] = servicesData.map(s => ({
+          id: s.id.toString(),
+          name: s.name,
+          duration: s.duration || 60,
+          price: s.price || 0,
+          description: s.description || ''
+        }));
+        setServices(mappedServices);
+      } catch (error) {
+        console.error('Error fetching services:', error);
+        setServices([]);
+      } finally {
+        setLoadingServices(false);
+      }
+    };
+
+    fetchServices();
+  }, []);
 
   const getAvailableDates = () => {
     const dates = [];
@@ -216,7 +197,6 @@ export default function AppointmentBooking() {
   if (bookingSuccess) {
     return (
       <div className="min-h-screen bg-background">
-        <Header onLoginClick={() => {}} showDefaultActions={false} preserveActionSpace={true} />
         <div className="pt-24 pb-16">
           <div className="container mx-auto px-6">
             <motion.div
@@ -283,15 +263,12 @@ export default function AppointmentBooking() {
             </motion.div>
           </div>
         </div>
-        <Footer />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onLoginClick={() => {}} showDefaultActions={false} preserveActionSpace={true} />
-      
       <div className="pt-24 pb-16">
         <div className="container mx-auto px-6">
           {/* Header */}
@@ -621,8 +598,6 @@ export default function AppointmentBooking() {
           </div>
         </div>
       </div>
-      
-      <Footer />
     </div>
   );
 }

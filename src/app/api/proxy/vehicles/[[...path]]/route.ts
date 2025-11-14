@@ -49,6 +49,17 @@ async function proxy(req: NextRequest, params: { path?: string[] }) {
   try {
     console.log(`[vehicles-proxy] ${req.method} ${url}`);
     const resp = await fetch(url, init);
+    // Dev helper: if the service responds 403 (secured) and we're running locally,
+    // provide a small mock so the frontend can render during local development.
+    const devFallbackEnabled = (process.env.NEXT_PUBLIC_ALLOW_DEV_VEHICLES_FALLBACK as string | undefined) === '1' || (process.env.NODE_ENV === 'development');
+    if (resp.status === 403 && devFallbackEnabled) {
+      console.warn('[vehicles-proxy] received 403 from vehicle service — returning dev fallback');
+      const sample = [
+        { id: 'veh-dev-1', make: 'Toyota', model: 'Corolla', year: 2018, userId: 'user-dev' },
+        { id: 'veh-dev-2', make: 'Honda', model: 'Civic', year: 2020, userId: 'user-dev' }
+      ];
+      return new Response(JSON.stringify(sample), { status: 200, headers: { 'content-type': 'application/json' } });
+    }
     console.log(`[vehicles-proxy] response status: ${resp.status}`);
     const body = await resp.arrayBuffer();
     const outHeaders = new Headers();
