@@ -13,7 +13,7 @@ interface MetricsData {
 
 export default function KpiCards() {
   const [metrics, setMetrics] = useState<MetricsData>({
-    appointments: 342,
+    appointments: 0,
     appointmentsChange: '+3.1%',
     newCustomers: 97,
     newCustomersChange: '+5.5%',
@@ -23,10 +23,43 @@ export default function KpiCards() {
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        const response = await fetch('http://localhost:8087/api/analytics/metrics');
-        if (response.ok) {
-          const data = await response.json();
-          setMetrics(data);
+        // Fetch total appointments from appointment service database
+        const bookingsResponse = await fetch('http://localhost:8084/api/bookings');
+        let totalAppointments = 0; // Start with 0
+        
+        if (bookingsResponse.ok) {
+          const bookingsData = await bookingsResponse.json();
+          totalAppointments = bookingsData.length;
+          console.log('Fetched bookings count from database:', totalAppointments);
+          console.log('Bookings data:', bookingsData);
+        } else {
+          console.error('Failed to fetch bookings:', bookingsResponse.status);
+        }
+
+        // Fetch other metrics from analytics service
+        try {
+          const analyticsResponse = await fetch('http://localhost:8087/api/analytics/metrics');
+          if (analyticsResponse.ok) {
+            const data = await analyticsResponse.json();
+            console.log('Analytics data:', data);
+            setMetrics({
+              ...data,
+              appointments: totalAppointments, // Override with actual database count
+            });
+          } else {
+            console.log('Analytics service unavailable, using bookings count only');
+            // If analytics service fails, still update with bookings count
+            setMetrics(prev => ({
+              ...prev,
+              appointments: totalAppointments,
+            }));
+          }
+        } catch (analyticsError) {
+          console.log('Analytics service error, using bookings count only:', analyticsError);
+          setMetrics(prev => ({
+            ...prev,
+            appointments: totalAppointments,
+          }));
         }
       } catch (error) {
         console.error('Error fetching metrics:', error);

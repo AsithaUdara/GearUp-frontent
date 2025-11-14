@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useMemo, useRef, useState, useEffect } from "react";
-import { Plus, Ban, Search, ChevronLeft, ChevronRight, MoreHorizontal, CheckCircle2, CalendarDays, Pencil, Trash2, X, Calendar, Clock, User, Mail, Phone, FileText, Briefcase } from "lucide-react";
+import React, { useMemo, useRef, useState } from "react";
+import { Plus, Ban, Search, ChevronLeft, ChevronRight, MoreHorizontal, CheckCircle2, CalendarDays, Pencil, Trash2, X, Clock, User, Phone, Mail, FileText } from "lucide-react";
 import AddSlotForm from "./AddSlotForm";
 import EditSlotForm from "./EditSlotForm";
 import { Slot, SlotInput, ServiceType, Booking } from "./types";
-import { getAllBookings, getTimeSlots, getAllEmployees, getAllServices, createBooking, getAvailableTimeSlotsForCustomer, BookingDTO, TimeSlotDTO, EmployeeDTO, ServiceDTO, CreateBookingRequest } from "@/app/services/appointmentService";
+import { getAllServices, getTimeSlots, createBooking, ServiceDTO, TimeSlotDTO, CreateBookingRequest } from "@/app/services/appointmentService";
 
 // Small helpers
 const rid = (len = 8) => Math.random().toString(36).slice(2, 2 + len);
@@ -21,22 +21,10 @@ function fromYmd(iso: string) {
   const [y, m, d] = iso.split('-').map(Number);
   return new Date((y || 0), ((m || 1) - 1), (d || 1));
 }
-// Simple technician availability model (mock). days: 0=Sun..6=Sat
-const techniciansAvailability: Record<string, { days: number[]; start: string; end: string }> = {
-  Alex: { days: [1,2,3,4,5], start: '08:00', end: '17:00' },
-  Jordan: { days: [1,2,3,4,5,6], start: '09:00', end: '13:00' },
-  Mike: { days: [1,2,3,4,5], start: '10:00', end: '18:00' }
-};
-
+// Technician availability check - simplified for now (can be enhanced with real data later)
 function isTechAvailable(tech: string | undefined | null, dateIso: string, time: string) {
-  if (!tech) return true;
-  const avail = techniciansAvailability[tech];
-  if (!avail) return true;
-  const d = fromYmd(dateIso);
-  const day = d.getDay();
-  if (!avail.days.includes(day)) return false;
-  // compare hh:mm strings lexicographically
-  if (time < avail.start || time >= avail.end) return false;
+  // For now, assume all technicians are available during business hours
+  // This can be enhanced later by fetching real technician schedules from the backend
   return true;
 }
 function firstDayOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 1); }
@@ -59,48 +47,113 @@ export default function ManageTimeSlotsPage() {
   const [view, setView] = useState<'day'|'week'|'month'>('month');
   const [showBooking, setShowBooking] = useState(false);
   const [bookingSlot, setBookingSlot] = useState<Slot | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>(ymd(new Date()));
-  const availRef = useRef<HTMLDivElement>(null);
-
-  // API Data State
-  const [apiBookings, setApiBookings] = useState<BookingDTO[]>([]);
-  const [apiTimeSlots, setApiTimeSlots] = useState<TimeSlotDTO[]>([]);
-  const [apiEmployees, setApiEmployees] = useState<EmployeeDTO[]>([]);
-  const [apiServices, setApiServices] = useState<ServiceDTO[]>([]);
+  const [showNewAppointment, setShowNewAppointment] = useState(false);
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [blocks, setBlocks] = useState<string[]>([]);
+  const [bookings, setBookings] = useState<Array<{ id: string; date: string; time: string; title: string }>>([]);
   const [loading, setLoading] = useState(true);
+  const [services, setServices] = useState<ServiceDTO[]>([]);
+  const [totalBookingsCount, setTotalBookingsCount] = useState(0);
 
-  // Fetch real data from appointment service
-  useEffect(() => {
-    const fetchData = async () => {
+  // Fetch time slots and bookings from the backend
+  React.useEffect(() => {
+    async function fetchData() {
       try {
         setLoading(true);
-        const [bookingsData, employeesData, servicesData] = await Promise.all([
-          getAllBookings(),
-          getAllEmployees(),
-          getAllServices(),
-        ]);
-        setApiBookings(bookingsData);
-        setApiEmployees(employeesData);
-        setApiServices(servicesData);
+        
+        // Fetch time slots for current month - we need to fetch for all days in the month
+        const firstDay = firstDayOfMonth(current);
+        const lastDay = new Date(current.getFullYear(), current.getMonth() + 1, 0);
+        
+        const allSlots: Slot[] = [];
+        
+        // Fetch slots for each day in the current month
+        for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
+          const dateStr = ymd(d);
+          try {
+            const slotsResponse = await fetch(`http://localhost:8084/api/timeslots?date=${dateStr}`);
+            if (slotsResponse.ok) {
+              const slotsData = await slotsResponse.json();
+              console.log(`Time slots for ${dateStr}:`, slotsData);
+              
+              // Transform API data to Slot format
+              const daySlots: Slot[] = slotsData.map((slot: any) => ({
+                id: slot.id.toString(),
+                date: slot.slotDate, // API returns slotDate
+                startTime: slot.startTime, // API returns LocalTime as string
+                endTime: slot.endTime,
+                serviceType: (slot.serviceName || 'General Service') as ServiceType,
+                bay: `Bay ${slot.serviceId || 1}`,
+                technician: 'Technician',
+                bookings: [],
+                isAvailable: slot.isAvailable // Track availability from backend
+              }));
+              
+              allSlots.push(...daySlots);
+            }
+          } catch (err) {
+            console.error(`Error fetching slots for ${dateStr}:`, err);
+          }
+        }
+        
+        console.log('All fetched slots:', allSlots);
+        setSlots(allSlots);
+
+        // Fetch bookings
+        try {
+          const bookingsResponse = await fetch('http://localhost:8084/api/bookings');
+          if (bookingsResponse.ok) {
+            const bookingsData = await bookingsResponse.json();
+            console.log('Bookings from API:', bookingsData);
+            
+            // Store total bookings count
+            setTotalBookingsCount(bookingsData.length);
+            
+            // Transform API data to booking format
+            const transformedBookings = bookingsData.map((booking: any) => {
+              // Get date and time from the booking's timeSlot object (from API response)
+              const slotDate = booking.timeSlot?.slotDate || ymd(new Date());
+              const slotTime = booking.timeSlot?.startTime || '00:00';
+              
+              return {
+                id: booking.id.toString(),
+                date: slotDate,
+                time: slotTime,
+                title: `${booking.customerName || 'Customer'} — ${booking.timeSlot?.serviceName || 'Service'}`
+              };
+            });
+            
+            console.log('Transformed bookings:', transformedBookings);
+            setBookings(transformedBookings);
+          }
+        } catch (err) {
+          console.error('Error fetching bookings:', err);
+        }
       } catch (error) {
-        console.error('Error fetching appointment data:', error);
+        console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
       }
-    };
+    }
 
     fetchData();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
+  }, [current]); // Re-fetch when month changes
+  
+  // Fetch available services for the New Appointment modal
+  React.useEffect(() => {
+    async function fetchServices() {
+      try {
+        const servicesData = await getAllServices();
+        setServices(servicesData);
+      } catch (error) {
+        console.error('Error fetching services:', error);
+      }
+    }
+    fetchServices();
   }, []);
 
-  // Blocked dates state
-  const [blocks, setBlocks] = useState<string[]>([]);
-
-  // Legacy states - no longer using mock data
-  const [slots, setSlots] = useState<Slot[]>([]);
-  const [bookings, setBookings] = useState<Array<{ id: string; date: string; time: string; title: string }>>([]);
+  const [selectedDate, setSelectedDate] = useState<string>(ymd(new Date()));
+  const availRef = useRef<HTMLDivElement>(null);
 
   function addSlot(input: SlotInput) {
     const id = rid();
@@ -119,41 +172,125 @@ export default function ManageTimeSlotsPage() {
   }
 
   // Fixed conflict check to use actual booking time ranges
-  function addBooking(slotId: string, date: string, time: string, title: string): true | 'conflict' | 'tech-unavailable' {
-    const slot = slots.find(s => s.id === slotId && s.date === date);
-    if (!slot) return 'conflict';
+  async function addBooking(slotId: string, date: string, time: string, title: string, serviceType?: ServiceType): Promise<true | 'conflict' | 'tech-unavailable'> {
+    // Parse customer name and service type from title
+    const customerName = title.split(' — ')[0];
+    const serviceTypeName = serviceType || (title.split(' — ')[1] as ServiceType);
 
-    // prevent overlapping bookings within the same slot
-    if (slot.bookings.some(b => {
-        const bookingStart = b.time;
-        const bookingEnd = addMinutes(bookingStart, 60); // Assuming each booking lasts 60 minutes
-        return time >= bookingStart && time < bookingEnd;
-    })) {
+    // Get the service ID from the service type name by matching with database services
+    const serviceMap: Record<string, number> = {
+      'Oil Change': 1,
+      'Tire Rotation': 2,
+      'Brake Inspection': 3,
+      'Battery Check': 4,
+      'General Inspection': 5,
+      'General Service': 5, // Default to General Inspection
+      'Diagnostics': 5,
+      'Brake Service': 3
+    };
+    
+    const serviceId = (serviceTypeName && serviceMap[serviceTypeName]) ? serviceMap[serviceTypeName] : 5;
+
+    // Try to find the slot in local state first
+    let slot = slots.find(s => s.id === slotId && s.date === date);
+    let actualTimeSlotId: number;
+
+    // If slot doesn't exist in local state (e.g., from "New Appointment" button)
+    // Find an available time slot for the selected date and time
+    if (!slot || isNaN(parseInt(slotId))) {
+      try {
+        // Fetch available time slots for this date
+        const slotsResponse = await fetch(`http://localhost:8084/api/timeslots?date=${date}`);
+        if (!slotsResponse.ok) {
+          console.error('Failed to fetch time slots');
+          return 'conflict';
+        }
+        const availableSlots = await slotsResponse.json();
+        
+        // Find a slot that matches the service and time, and is available
+        const matchingSlot = availableSlots.find((s: any) => 
+          s.serviceName === serviceTypeName && 
+          s.startTime <= time && 
+          s.endTime >= time &&
+          s.isAvailable
+        );
+
+        if (!matchingSlot) {
+          console.error('No available time slot found for this service and time');
+          return 'conflict';
+        }
+
+        actualTimeSlotId = matchingSlot.id;
+      } catch (err) {
+        console.error('Error finding available time slot:', err);
         return 'conflict';
+      }
+    } else {
+      // Use the existing slot ID
+      actualTimeSlotId = parseInt(slotId);
+
+      // prevent overlapping bookings within the same slot
+      if (slot.bookings.some(b => {
+          const bookingStart = b.time;
+          const bookingEnd = addMinutes(bookingStart, 60); // Assuming each booking lasts 60 minutes
+          return time >= bookingStart && time < bookingEnd;
+      })) {
+          return 'conflict';
+      }
+
+      // check technician availability for requested time
+      if (slot.technician && !isTechAvailable(slot.technician, date, time)) {
+          return 'tech-unavailable';
+      }
     }
 
-    // check technician availability for requested time
-    if (slot.technician && !isTechAvailable(slot.technician, date, time)) {
-        return 'tech-unavailable';
-    }
+    try {
+      // Create booking in the database via API
+      const response = await fetch('http://localhost:8084/api/bookings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          serviceId: serviceId,
+          timeSlotId: actualTimeSlotId, // Use the actual time slot ID from database
+          userId: 'admin-user-' + rid(), // Generate a user ID for admin bookings
+          customerName: customerName,
+          customerEmail: undefined, // No email provided in quick booking
+          customerPhone: undefined, // No phone provided in quick booking
+          notes: `Quick booking created by admin on ${new Date().toISOString()}`
+        })
+      });
 
-    const id = rid();
-    const newBooking: Booking = {
-        id,
+      if (!response.ok) {
+        console.error('Failed to create booking:', response.statusText);
+        return 'conflict';
+      }
+
+      const bookingData = await response.json();
+      console.log('Booking created successfully:', bookingData);
+
+      // Update local state with the new booking
+      const newBooking: Booking = {
+        id: bookingData.id?.toString() || rid(),
         slotId,
         date,
         time,
-        customer: title.split(' — ')[0],
-        serviceType: title.split(' — ')[1] as ServiceType,
-        bay: slot.bay || '',
-        technician: slot.technician || '',
+        customer: customerName,
+        serviceType: serviceTypeName as ServiceType,
+        bay: slot?.bay || 'Bay 1',
+        technician: slot?.technician || 'Technician',
         title,
-    };
+      };
 
-    setBookings(prev => [...prev, newBooking]);
-    setSlots(prev => prev.map(s => s.id === slotId ? { ...s, bookings: [...s.bookings, newBooking] } : s));
+      setBookings(prev => [...prev, newBooking]);
+      setSlots(prev => prev.map(s => s.id === slotId ? { ...s, bookings: [...s.bookings, newBooking] } : s));
 
-    return true;
+      return true;
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      return 'conflict';
+    }
   }
 
   // Helper function to add minutes to a time string
@@ -201,30 +338,22 @@ export default function ManageTimeSlotsPage() {
     const map = new Map<string, DayEvent[]>();
     const monthStr = (day: number) => ymd(new Date(current.getFullYear(), current.getMonth(), day));
 
-    // Add real bookings from API (only database data)
-    for (const booking of apiBookings) {
-      const slotDate = booking.timeSlot?.slotDate;
-      if (!slotDate) continue;
-      
-      const d = fromYmd(slotDate);
+    for (const s of slots) {
+      const d = fromYmd(s.date);
       if (d.getMonth() === current.getMonth() && d.getFullYear() === current.getFullYear()) {
-        // Apply filters
-        if (filters.serviceType !== 'all' && booking.serviceName !== filters.serviceType) continue;
-        if (filters.technician) {
-          const empName = apiEmployees.find(e => e.id === booking.assignedEmployeeId)?.name || '';
-          if (!empName.toLowerCase().includes(filters.technician.toLowerCase())) continue;
-        }
-
-        const key = monthStr(d.getDate());
+        // apply filters
+        if (filters.serviceType !== 'all' && s.serviceType !== filters.serviceType) continue;
+        if (filters.bay !== 'all' && s.bay !== filters.bay) continue;
+        if (filters.technician && !((s.technician||'').toLowerCase().includes(filters.technician.toLowerCase()))) continue;
+        const day = d.getDate();
+        const key = monthStr(day);
         const arr = map.get(key) ?? [];
-        const time = booking.timeSlot?.startTime?.substring(0, 5) || '00:00';
-        const label = `${booking.customerName} — ${booking.serviceName}`;
-        arr.push({ id: booking.id.toString(), type: "booking", label, time });
+        const label = `${s.startTime}-${s.endTime} ${s.serviceType ?? 'Service'}${s.bay ? ` — ${s.bay}`:''}`;
+        arr.push({ id: s.id, type: "available", label });
         map.set(key, arr);
       }
     }
 
-    // Add blocked dates
     for (const b of blocks) {
       const d = fromYmd(b);
       if (d.getMonth() === current.getMonth() && d.getFullYear() === current.getFullYear()) {
@@ -235,9 +364,19 @@ export default function ManageTimeSlotsPage() {
       }
     }
 
+    for (const a of bookings) {
+      const d = fromYmd(a.date);
+      if (d.getMonth() === current.getMonth() && d.getFullYear() === current.getFullYear()) {
+        const key = monthStr(d.getDate());
+        const arr = map.get(key) ?? [];
+        arr.push({ id: a.id, type: "booking", label: a.title, time: a.time });
+        map.set(key, arr);
+      }
+    }
+
     return map;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monthKey, blocks, apiBookings, apiEmployees, filters]);
+  }, [monthKey, slots, blocks, bookings, filters]);
 
   const totalDays = daysInMonth(current);
   const offset = startOffset(current);
@@ -249,195 +388,262 @@ export default function ManageTimeSlotsPage() {
   const monthLabel = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" }).format(current);
   const todayKey = ymd(new Date());
 
+  // Calculate statistics
+  const stats = useMemo(() => {
+    const today = ymd(new Date());
+    const totalSlots = slots.length;
+    const bookedSlots = slots.filter(s => s.isAvailable === false).length;
+    const availableSlots = slots.filter(s => s.isAvailable === true).length;
+    const todayBookings = bookings.filter(b => b.date === today).length;
+    
+    return {
+      totalBookings: totalBookingsCount,
+      totalSlots,
+      bookedSlots,
+      availableSlots,
+      todayBookings
+    };
+  }, [slots, bookings, totalBookingsCount]);
+
   return (
-    <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-8 flex flex-col min-h-screen bg-gray-50">
+    <div className="w-full p-6 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="bg-white rounded-2xl p-8 mb-8 shadow-lg border-2 border-gray-200">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="p-3 bg-red-100 rounded-xl">
-            <CalendarDays className="h-7 w-7 text-red-600" />
-          </div>
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Appointment & Slot Management</h1>
-            <p className="text-gray-600 mt-1">Manage appointments, block dates, and prevent scheduling conflicts</p>
+            <h1 className="text-3xl font-bold text-gray-900">Appointment Management</h1>
+            <p className="mt-2 text-sm text-gray-600">Manage time slots and appointments for your service center</p>
           </div>
-        </div>
-        
-        {/* Quick Stats Bar */}
-        <div className="grid grid-cols-3 gap-4 mt-6">
-          <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-4 border-2 border-red-200">
-            <div className="flex items-center gap-2 text-red-700 text-sm font-medium mb-1">
-              <CalendarDays className="h-4 w-4" />
-              Total Appointments
-            </div>
-            <div className="text-2xl font-bold text-red-600">{apiBookings.length}</div>
-          </div>
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border-2 border-blue-200">
-            <div className="flex items-center gap-2 text-blue-700 text-sm font-medium mb-1">
-              <Clock className="h-4 w-4" />
-              Blocked Dates
-            </div>
-            <div className="text-2xl font-bold text-blue-600">{blocks.length}</div>
-          </div>
-          <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-4 border-2 border-emerald-200">
-            <div className="text-emerald-700 text-sm font-medium mb-1">Active Services</div>
-            <div className="text-2xl font-bold text-emerald-600">{apiServices.length}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Top controls row: search + actions */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input 
-              placeholder="Search appointments by customer name..." 
-              className="w-full rounded-xl border-2 border-gray-200 pl-12 pr-4 py-3 text-sm shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all hover:border-gray-300"
-            />
-          </div>
-          <div className="flex items-center gap-3">
+          <div className="flex gap-3">
             <button 
-              onClick={() => setShowBlockRange(true)} 
-              className="rounded-xl border-2 border-red-200 bg-white text-red-600 px-5 py-3 text-sm font-semibold hover:bg-red-50 hover:border-red-300 transition-all inline-flex items-center gap-2 shadow-sm"
+              onClick={() => setShowNewAppointment(true)} 
+              className="inline-flex items-center gap-2 rounded-lg bg-red-600 text-white px-4 py-2.5 text-sm font-medium hover:bg-red-700 shadow-sm transition-colors duration-200"
             >
-              <Ban className="h-4 w-4" />
-              Block Date Range
-            </button>
-            <button 
-              onClick={() => setShowBooking(true)} 
-              className="rounded-xl bg-gradient-to-r from-red-600 to-red-700 text-white px-5 py-3 text-sm font-semibold hover:from-red-700 hover:to-red-800 transition-all inline-flex items-center gap-2 shadow-md hover:shadow-lg"
-            >
-              <Plus className="h-4 w-4" />
-              New Appointment
+              <Plus className="h-4 w-4" /> New Appointment
             </button>
           </div>
         </div>
       </div>
 
-      {/* Month navigation */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Summary cards */}
+      <div className="mb-8">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Total Appointments */}
+          <div className="bg-white overflow-hidden shadow-lg rounded-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <CalendarDays className="h-8 w-8 text-blue-600" />
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">Total Appointments</dt>
+                    <dd className="flex items-baseline">
+                      <div className="text-2xl font-semibold text-gray-900">{stats.totalBookings}</div>
+                    </dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+            <div className="bg-blue-50 px-5 py-3">
+              <div className="text-sm">
+                <span className="font-medium text-blue-600">All bookings in database</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Available Slots */}
+          <div className="bg-white overflow-hidden shadow-lg rounded-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <CheckCircle2 className="h-8 w-8 text-green-600" />
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">Available</dt>
+                    <dd className="flex items-baseline">
+                      <div className="text-2xl font-semibold text-gray-900">{stats.availableSlots}</div>
+                      <span className="ml-2 text-sm font-medium text-green-600">
+                        {stats.totalSlots > 0 ? `${Math.round((stats.availableSlots / stats.totalSlots) * 100)}%` : '0%'}
+                      </span>
+                    </dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+            <div className="bg-green-50 px-5 py-3">
+              <div className="text-sm">
+                <span className="font-medium text-green-600">Ready to book</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Booked Slots */}
+          <div className="bg-white overflow-hidden shadow-lg rounded-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <Clock className="h-8 w-8 text-yellow-600" />
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">Booked</dt>
+                    <dd className="flex items-baseline">
+                      <div className="text-2xl font-semibold text-gray-900">{stats.bookedSlots}</div>
+                      <span className="ml-2 text-sm font-medium text-yellow-600">
+                        {stats.totalSlots > 0 ? `${Math.round((stats.bookedSlots / stats.totalSlots) * 100)}%` : '0%'}
+                      </span>
+                    </dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+            <div className="bg-yellow-50 px-5 py-3">
+              <div className="text-sm">
+                <span className="font-medium text-yellow-600">Confirmed appointments</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Today's Bookings */}
+          <div className="bg-white overflow-hidden shadow-lg rounded-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <User className="h-8 w-8 text-red-600" />
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">Today's Appointments</dt>
+                    <dd className="flex items-baseline">
+                      <div className="text-2xl font-semibold text-gray-900">{stats.todayBookings}</div>
+                    </dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+            <div className="bg-red-50 px-5 py-3">
+              <div className="text-sm">
+                <span className="font-medium text-red-600">Scheduled for today</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Calendar Controls - Top Bar */}
+      <div className="mb-4 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          {/* Left: Month Navigation */}
           <div className="flex items-center gap-3">
             <button
               aria-label="Previous month"
-              className="rounded-xl border-2 border-gray-200 bg-white p-2.5 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
+              className="rounded-lg border border-gray-300 bg-white p-2 hover:bg-gray-50 transition-colors"
               onClick={() => setCurrent(prev => new Date(prev.getFullYear(), prev.getMonth()-1, 1))}
             >
-              <ChevronLeft className="h-5 w-5 text-gray-700"/>
+              <ChevronLeft className="h-5 w-5"/>
             </button>
-            <div className="text-xl font-bold text-gray-900 min-w-[200px] text-center">{monthLabel}</div>
+            <div className="text-lg font-bold text-gray-900 min-w-[180px] text-center">{monthLabel}</div>
             <button
               aria-label="Next month"
-              className="rounded-xl border-2 border-gray-200 bg-white p-2.5 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
+              className="rounded-lg border border-gray-300 bg-white p-2 hover:bg-gray-50 transition-colors"
               onClick={() => setCurrent(prev => new Date(prev.getFullYear(), prev.getMonth()+1, 1))}
             >
-              <ChevronRight className="h-5 w-5 text-gray-700"/>
+              <ChevronRight className="h-5 w-5"/>
             </button>
             <button
-              className="ml-2 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2.5 text-sm font-semibold hover:from-blue-600 hover:to-blue-700 transition-all shadow-sm"
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium hover:bg-gray-50 transition-colors"
               onClick={() => { const d = new Date(); setCurrent(d); setSelectedDate(ymd(d)); }}
             >
               Today
             </button>
           </div>
+
+          {/* Center: Legend */}
+          <div className="flex items-center gap-6 text-sm">
+            <div className="inline-flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full bg-black inline-block"/> 
+              <span className="text-gray-700">Booked</span>
+            </div>
+            <div className="inline-flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full bg-emerald-500 inline-block"/> 
+              <span className="text-gray-700">Available</span>
+            </div>
+            <div className="inline-flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full bg-red-600 inline-block"/> 
+              <span className="text-gray-700">Blocked</span>
+            </div>
+          </div>
+
+          {/* Right: Date Picker */}
           <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-gray-700">Jump to date:</label>
+            <label className="text-sm font-medium text-gray-700">Selected Date:</label>
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => { const iso = e.target.value; setSelectedDate(iso); const d = fromYmd(iso); setCurrent(new Date(d.getFullYear(), d.getMonth(), 1)); }}
-              className="rounded-xl border-2 border-gray-200 px-4 py-2.5 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all hover:border-gray-300 shadow-sm"
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-red-600 focus:border-transparent"
             />
           </div>
         </div>
       </div>
 
-      {/* Toolbar - Quick Actions */}
-      <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl shadow-sm border border-gray-200 p-5 mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm font-bold text-gray-800 uppercase tracking-wide">Quick Actions:</span>
-            <button 
-              onClick={() => blockDate(selectedDate)} 
-              className="inline-flex items-center gap-2 rounded-xl bg-white border-2 border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 hover:border-red-300 transition-all shadow-sm"
-            >
-              <Ban className="h-4 w-4"/> Block Selected Date
-            </button>
-            <button 
-              onClick={() => unblockDate(selectedDate)} 
-              className="inline-flex items-center gap-2 rounded-xl bg-white border-2 border-emerald-200 px-4 py-2.5 text-sm font-semibold text-emerald-600 hover:bg-emerald-50 hover:border-emerald-300 transition-all shadow-sm"
-            >
-              <CheckCircle2 className="h-4 w-4"/> Unblock Selected
-            </button>
-          </div>
-          <div className="flex flex-wrap items-center gap-4 text-sm font-medium">
-            <span className="text-gray-700">Legend:</span>
-            <div className="inline-flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-black shadow-sm"/> Booked
-            </div>
-            <div className="inline-flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-emerald-500 shadow-sm"/> Available
-            </div>
-            <div className="inline-flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-red-600 shadow-sm"/> Blocked
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Calendar with availability panel */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
-        <div className="xl:col-span-2 rounded-2xl border-2 border-gray-200 bg-white shadow-lg overflow-hidden">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
+        <div className="xl:col-span-2 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+          {loading ? (
+            <div className="p-12 text-center text-gray-500">
+              <div className="flex justify-center items-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+                <span className="ml-3">Loading calendar data...</span>
+              </div>
+            </div>
+          ) : (
+            <>
           {/* Calendar grid */}
-          <div className="grid grid-cols-7 gap-px bg-gradient-to-r from-gray-100 to-gray-200 text-sm font-bold text-gray-800">
+          <div className="grid grid-cols-7 gap-px bg-gray-200 text-xs font-medium text-gray-600">
             {"Sun Mon Tue Wed Thu Fri Sat".split(" ").map(d => (
-              <div key={d} className="bg-white px-4 py-3 text-center border-b-2 border-gray-200">{d}</div>
+              <div key={d} className="bg-gray-50 px-3 py-2">{d}</div>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-1 bg-gray-100 p-1 rounded-xl">
+          <div className="grid grid-cols-7 gap-px bg-gray-200">
             {grid.map((day, idx) => {
-              if (day === 0) return <div key={idx} className="bg-gray-50 min-h-[110px] rounded-lg"/>;
+              if (day === 0) return <div key={idx} className="bg-gray-50"/>;
               const key = ymd(new Date(current.getFullYear(), current.getMonth(), day));
               const evts = eventsByDay.get(key) ?? [];
               const isSelected = key === selectedDate;
-              const isToday = key === todayKey;
               return (
                 <button
                   key={idx}
                   onClick={() => setSelectedDate(key)}
                   aria-selected={isSelected}
-                  className={`group bg-white p-3 min-h-[110px] text-left cursor-pointer transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-red-500 rounded-lg shadow-sm hover:shadow-md ${
-                    isToday ? 'ring-2 ring-blue-500 ring-inset' : ''
+                  className={`group bg-white p-2 min-h-[120px] text-left cursor-pointer transition-colors duration-150 ease-in-out focus:outline-none ${
+                    key===todayKey ? 'ring-1 ring-red-600' : ''
                   } ${
-                    isSelected ? 'bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-500' : 'hover:bg-gray-50 border-2 border-transparent'
+                    isSelected ? 'bg-red-50' : 'hover:bg-red-50 hover:ring-1 hover:ring-red-300'
                   }`}
                 >
-                  <div className="text-sm font-bold text-gray-700 mb-2 flex items-center justify-between">
-                    <span className={`${isToday ? 'text-blue-600 bg-blue-100 rounded-full px-2 py-0.5' : ''} ${isSelected ? 'text-red-700' : 'group-hover:text-red-600'}`}>
-                      {day}
-                    </span>
+                  <div className="text-xs text-gray-500 mb-1 flex items-center justify-between">
+                    <span className="group-hover:text-red-700">{day}</span>
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
+                    {
+                      // Group events: bookings first, then a single available summary pill. Blocked shows as a separate pill.
+                    }
                     {evts.some(x => x.type === 'blocked') && (
-                      <div className="inline-flex items-center rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white px-2.5 py-1 text-[10px] font-semibold shadow-sm">
-                        <Ban className="h-2.5 w-2.5 mr-1" />
-                        Blocked
-                      </div>
+                      <div className="inline-flex items-center rounded-full bg-red-100 text-red-700 px-2.5 py-0.5 text-xs">Blocked</div>
                     )}
                     {(() => {
                       const bookings = evts.filter(x => x.type === 'booking') as Array<{ id: string; type: 'booking'; label: string; time: string }>;
                       return (
-                        <div className="flex flex-col gap-1.5">
-                          {bookings.slice(0, 2).map(b => (
-                            <div key={b.id} className="rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 text-gray-900 px-2 py-1.5 text-[10px] border border-gray-300 shadow-sm hover:shadow transition-shadow">
-                              <div className="font-bold text-gray-700">{b.time}</div>
-                              <div className="truncate text-gray-600">{b.label}</div>
+                        <div className="flex flex-col gap-1">
+                          {bookings.map(b => (
+                            <div key={b.id} className="rounded-md bg-neutral-100 text-black px-2 py-1 text-xs border border-black/10">
+                              <div className="font-medium">{b.time}</div>
+                              <div className="truncate">{b.label}</div>
                             </div>
                           ))}
-                          {bookings.length > 2 && (
-                            <div className="text-[10px] font-semibold text-gray-600 px-1.5 py-0.5 bg-gray-100 rounded-md">+{bookings.length - 2} more</div>
-                          )}
                         </div>
                       );
                     })()}
@@ -446,62 +652,33 @@ export default function ManageTimeSlotsPage() {
               );
             })}
           </div>
+            </>
+          )}
         </div>
 
         {/* Manage slots side panel */}
-        <div ref={availRef} className="rounded-2xl border-2 border-gray-200 bg-white shadow-lg overflow-hidden">
-          <div className="border-b-2 border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <CalendarDays className="h-5 w-5 text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">
-                  Slots & Appointments
-                </h3>
-                <div className="text-sm font-medium text-gray-600">{new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</div>
-              </div>
-            </div>
-            <p className="text-xs text-gray-600 ml-12">Check conflicts • Add slots • Block times</p>
+        <div ref={availRef} className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-semibold text-gray-900">Manage Appointments — {selectedDate}</h3>
           </div>
-          <div className="p-6">
-            <SlotsForDate
-              date={selectedDate}
-              slots={slots}
-              apiBookings={apiBookings}
-              apiEmployees={apiEmployees}
-              onEdit={(s) => { setEditing(s); setShowEdit(true); }}
-              onDelete={(id) => deleteSlot(id)}
-            />
-          </div>
+          <AppointmentsForDate selectedDate={selectedDate} />
         </div>
       </div>
 
       {/* Upcoming appointments table */}
-      <UpcomingAppointments 
-        selectedDate={selectedDate} 
-        bookings={bookings}
-        apiBookings={apiBookings}
-        apiEmployees={apiEmployees}
-      />
+      <div>
+        <UpcomingAppointments selectedDate={selectedDate} bookings={bookings} />
+      </div>
 
       {/* Add Slot Modal */}
       {showAdd && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" role="dialog">
-          <div className="w-full max-w-lg rounded-2xl border-2 border-gray-200 bg-white shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b-2 border-gray-200 bg-gradient-to-r from-red-50 to-red-100">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  <Plus className="h-5 w-5 text-red-600" />
-                  Add Time Slot
-                </h3>
-                <p className="text-sm text-gray-600 mt-1">Create availability for customer bookings</p>
-              </div>
-              <button className="rounded-xl p-2 text-gray-600 hover:bg-white hover:text-red-600 transition-all" onClick={() => setShowAdd(false)}>
-                <X className="h-5 w-5" />
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog">
+          <div className="w-full max-w-lg rounded-xl border border-gray-200 bg-white shadow-xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <h3 className="text-base font-semibold">Add Slot</h3>
+              <button className="rounded-md px-2 py-1 text-sm hover:bg-gray-50" onClick={() => setShowAdd(false)}>Close</button>
             </div>
-            <div className="p-6">
+            <div className="p-4">
               <AddSlotForm onSubmit={addSlot} initial={addInitial} />
             </div>
           </div>
@@ -510,21 +687,13 @@ export default function ManageTimeSlotsPage() {
 
       {/* Edit Slot Modal */}
       {showEdit && editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" role="dialog">
-          <div className="w-full max-w-lg rounded-2xl border-2 border-gray-200 bg-white shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b-2 border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  <Pencil className="h-5 w-5 text-blue-600" />
-                  Edit Time Slot
-                </h3>
-                <p className="text-sm text-gray-600 mt-1">Modify slot details or availability</p>
-              </div>
-              <button className="rounded-xl p-2 text-gray-600 hover:bg-white hover:text-blue-600 transition-all" onClick={() => { setShowEdit(false); setEditing(null); }}>
-                <X className="h-5 w-5" />
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog">
+          <div className="w-full max-w-lg rounded-xl border border-gray-200 bg-white shadow-xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <h3 className="text-base font-semibold">Edit Slot</h3>
+              <button className="rounded-md px-2 py-1 text-sm hover:bg-gray-50" onClick={() => { setShowEdit(false); setEditing(null); }}>Close</button>
             </div>
-            <div className="p-6">
+            <div className="p-4">
               <EditSlotForm slot={editing} onSubmit={updateSlot} onCancel={() => { setShowEdit(false); setEditing(null); }} />
             </div>
           </div>
@@ -541,18 +710,26 @@ export default function ManageTimeSlotsPage() {
         />
       )}
 
+      {/* Booking Modal */}
+      {showBooking && bookingSlot && (
+        <BookingModal
+          slot={bookingSlot}
+          onCreate={addBooking}
+          onClose={() => { setShowBooking(false); setBookingSlot(null); }}
+        />
+      )}
+
       {/* New Appointment Modal */}
-      {showBooking && (
+      {showNewAppointment && (
         <NewAppointmentModal
           selectedDate={selectedDate}
-          services={apiServices}
+          services={services}
           blockedDates={blocks}
-          onClose={() => setShowBooking(false)}
-          onSuccess={async () => {
-            setShowBooking(false);
+          onClose={() => setShowNewAppointment(false)}
+          onSuccess={() => {
+            setShowNewAppointment(false);
             // Refresh data
-            const bookingsData = await getAllBookings();
-            setApiBookings(bookingsData);
+            window.location.reload();
           }}
         />
       )}
@@ -561,114 +738,76 @@ export default function ManageTimeSlotsPage() {
 }
 
 // List and manage slots for a given date (admin panel)
-function SlotsForDate({ 
-  date, 
-  slots, 
-  apiBookings,
-  apiEmployees,
-  onEdit, 
-  onDelete 
-}: { 
-  date: string; 
-  slots: Slot[]; 
-  apiBookings: BookingDTO[];
-  apiEmployees: EmployeeDTO[];
-  onEdit: (slot: Slot) => void; 
-  onDelete: (id: string) => void; 
-}) {
-  // Get real bookings for this date from API
-  const dateBookings = apiBookings.filter(b => b.timeSlot?.slotDate === date);
-  
-  // Detect double bookings - same time slot with multiple bookings
-  const timeSlotMap = new Map<number, BookingDTO[]>();
-  dateBookings.forEach(booking => {
-    const slotId = booking.timeSlotId;
-    if (!timeSlotMap.has(slotId)) {
-      timeSlotMap.set(slotId, []);
-    }
-    timeSlotMap.get(slotId)!.push(booking);
-  });
+function SlotsForDate({ date, slots, onEdit, onDelete }: { date: string; slots: Slot[]; onEdit: (slot: Slot) => void; onDelete: (id: string) => void; }) {
+  const items = slots
+    .filter(s => s.date === date)
+    .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
-  // Find conflicts
-  const conflicts = Array.from(timeSlotMap.entries())
-    .filter(([_, bookings]) => bookings.length > 1)
-    .map(([slotId, bookings]) => ({ slotId, bookings }));
-
-  // Show "no appointments" message if no bookings exist
-  if (dateBookings.length === 0) {
+  if (items.length === 0) {
     return (
-      <div className="text-center py-8">
-        <CalendarDays className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-        <p className="text-sm font-medium text-gray-900">No appointments for this date</p>
-        <p className="text-xs text-gray-500 mt-1">Customers can book time slots if they are available</p>
+      <div className="text-sm text-gray-600">
+        No slots for this date. Use Add Slot to create availability with a time range, capacity, and service details.
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      {conflicts.length > 0 && (
-        <div className="text-center py-2 mb-3 bg-red-50 rounded-lg border border-red-300">
-          <p className="text-xs font-bold text-red-900">⚠️ {conflicts.length} DOUBLE BOOKING CONFLICT{conflicts.length !== 1 ? 'S' : ''} DETECTED!</p>
-          <p className="text-xs text-red-700 mt-1">Same time slot has multiple bookings - please resolve immediately</p>
-        </div>
-      )}
-      <div className="text-center py-2 mb-3 bg-emerald-50 rounded-lg border border-emerald-200">
-        <p className="text-xs font-medium text-emerald-900">✓ Showing {dateBookings.length} appointment{dateBookings.length !== 1 ? 's' : ''} from database</p>
-      </div>
-        {dateBookings
-          .sort((a, b) => (a.timeSlot?.startTime || '').localeCompare(b.timeSlot?.startTime || ''))
-          .map(booking => {
-            const employeeName = booking.assignedEmployeeName || 'Not assigned';
-            const statusBgColor = 
-              booking.status === 'CONFIRMED' ? 'bg-emerald-100 text-emerald-700' : 
-              booking.status === 'PENDING' ? 'bg-amber-100 text-amber-700' : 
-              booking.status === 'CANCELLED' ? 'bg-red-100 text-red-700' : 
-              'bg-blue-100 text-blue-700';
-            
-            // Check if this booking has a conflict (double-booked slot)
-            const hasConflict = timeSlotMap.get(booking.timeSlotId)!.length > 1;
-            
-            return (
-              <div key={booking.id} className={`rounded-lg border p-3 hover:shadow-md transition-shadow ${hasConflict ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'}`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-sm font-semibold text-gray-900">
-                        {booking.timeSlot?.startTime?.substring(0, 5)}–{booking.timeSlot?.endTime?.substring(0, 5)}
-                      </span>
-                      <span className="inline-flex items-center rounded-full bg-blue-100 text-blue-700 px-2 py-0.5 text-xs font-medium">
-                        {booking.serviceName}
-                      </span>
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusBgColor}`}>
-                        {booking.status}
-                      </span>
-                      {hasConflict && (
-                        <span className="inline-flex items-center rounded-full bg-red-200 text-red-900 px-2 py-0.5 text-xs font-bold">
-                          ⚠️ DOUBLE BOOKED
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-gray-600">
-                      <span className="font-medium">{booking.customerName}</span>
-                      <span> • {booking.customerPhone}</span>
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      <span className="font-medium">Assigned to:</span> {employeeName}
-                    </div>
-                    {booking.notes && (
-                      <div className="text-xs text-gray-500 mt-1 italic">
-                        "{booking.notes}"
-                      </div>
-                    )}
+      {items.map(s => {
+        const isBooked = s.isAvailable === false;
+        return (
+          <div key={s.id} className={`rounded-lg border p-3 ${isBooked ? 'border-gray-300 bg-gray-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className={`text-sm font-semibold ${isBooked ? 'text-gray-500' : 'text-gray-900'}`}>
+                    {s.startTime}–{s.endTime} • {s.serviceType || 'Service'}
                   </div>
+                  {isBooked && (
+                    <span className="inline-flex items-center rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-xs font-medium">
+                      Booked
+                    </span>
+                  )}
+                  {!isBooked && (
+                    <span className="inline-flex items-center rounded-full bg-green-100 text-green-700 px-2 py-0.5 text-xs font-medium">
+                      Available
+                    </span>
+                  )}
                 </div>
+                <div className="text-xs text-gray-600">{s.bay || 'Bay'} {s.technician ? `• ${s.technician}` : ''}</div>
+                {!isTechAvailable(s.technician, s.date, s.startTime) && (
+                  <div className="mt-1 inline-flex items-center rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs">Technician unavailable</div>
+                )}
               </div>
-            );
-          })}
-      </div>
-    );
-  }
+              <div className="flex items-center gap-1">
+                <button 
+                  className="inline-flex items-center rounded-md border border-black bg-white px-2 py-1 text-xs hover:bg-gray-100" 
+                  onClick={() => onEdit(s)}
+                >
+                  <Pencil className="h-3 w-3 mr-1"/> Edit
+                </button>
+                <button 
+                  className="inline-flex items-center rounded-md border border-red-600 text-red-600 bg-white px-2 py-1 text-xs hover:bg-red-50" 
+                  onClick={() => onDelete(s.id)}
+                >
+                  <Trash2 className="h-3 w-3 mr-1"/> Delete
+                </button>
+                {!isBooked && (
+                  <button 
+                    className="inline-flex items-center rounded-md border border-emerald-600 text-emerald-600 bg-white px-2 py-1 text-xs hover:bg-emerald-50" 
+                    onClick={() => { (window as any).__openBookingModal?.(s); }}
+                  >
+                    Book
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 // Modal component to block a date range
 function BlockRangeModal({ defaultStart, defaultEnd, onSubmit, onClose }: { defaultStart: string; defaultEnd: string; onSubmit: (start: string, end: string) => void; onClose: () => void; }) {
@@ -703,44 +842,82 @@ function BlockRangeModal({ defaultStart, defaultEnd, onSubmit, onClose }: { defa
 }
 
 // Booking modal used by admin to create a booking within a slot
-function BookingModal({ slot, onCreate, onClose }: { slot: Slot; onCreate: (slotId: string, date: string, time: string, title: string) => true | 'conflict' | 'tech-unavailable'; onClose: () => void }) {
+function BookingModal({ slot, onCreate, onClose }: { slot: Slot; onCreate: (slotId: string, date: string, time: string, title: string, serviceType?: ServiceType) => Promise<true | 'conflict' | 'tech-unavailable'>; onClose: () => void }) {
   const [time, setTime] = useState<string>(slot.startTime);
   const [customer, setCustomer] = useState<string>('');
-  const [serviceType, setServiceType] = useState<ServiceType>('General Service');
-  const [bay, setBay] = useState<string>('Bay 1');
-  const [technician, setTechnician] = useState<string>('Alex');
+  const [serviceType, setServiceType] = useState<ServiceType>(slot.serviceType || 'General Service');
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [services, setServices] = useState<ServiceDTO[]>([]);
+  const [loadingServices, setLoadingServices] = useState(true);
 
-  function submit(e: React.FormEvent) {
+  // Fetch services from API
+  React.useEffect(() => {
+    async function fetchServices() {
+      try {
+        setLoadingServices(true);
+        const servicesData = await getAllServices();
+        setServices(servicesData);
+        setLoadingServices(false);
+      } catch (error) {
+        console.error('Error fetching services:', error);
+        setLoadingServices(false);
+      }
+    }
+    fetchServices();
+  }, []);
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const title = `${customer.trim()} — ${serviceType}`;
-    const result = onCreate(slot.id, slot.date, time, title);
-    if (result === 'conflict') {
-      setError('This time slot is already booked.');
+    
+    if (!customer.trim()) {
+      setError('Customer name is required.');
       return;
     }
-    if (result === 'tech-unavailable') {
-      setError('The assigned technician is unavailable at this time.');
-      return;
-    }
+    
+    setIsSubmitting(true);
     setError(null);
-    onClose();
+    
+    try {
+      const title = `${customer.trim()} — ${serviceType}`;
+      const result = await onCreate(slot.id, slot.date, time, title, serviceType);
+      
+      if (result === 'conflict') {
+        setError('This time slot is already booked or failed to create booking.');
+        setIsSubmitting(false);
+        return;
+      }
+      if (result === 'tech-unavailable') {
+        setError('The assigned technician is unavailable at this time.');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      setError(null);
+      onClose();
+    } catch (err) {
+      setError('Failed to create booking. Please try again.');
+      setIsSubmitting(false);
+    }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog">
-      <form onSubmit={submit} className="w-full max-w-md rounded-xl border border-gray-200 bg-white shadow-xl">
-        <div className="flex items-center justify-between px-4 py-3 border-b">
-          <div>
-            <h3 className="text-base font-semibold">Add Manual Appointment</h3>
-            <p className="text-xs text-gray-600 mt-0.5">{slot.date} • {slot.startTime}-{slot.endTime}</p>
-          </div>
+      <form onSubmit={submit} className="w-full max-w-md rounded-xl border border-gray-200 bg-white shadow-xl p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-base font-semibold">Book Appointment — {slot.date} {slot.startTime}-{slot.endTime}</h3>
           <button type="button" className="rounded-md px-2 py-1 text-sm hover:bg-gray-50" onClick={onClose}>Close</button>
         </div>
-        <div className="p-4 grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 gap-3">
           <div>
-            <label className="block text-sm text-gray-700">Customer name</label>
-            <input value={customer} onChange={(e) => setCustomer(e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 focus:ring-2 focus:ring-red-600" />
+            <label className="block text-sm text-gray-700">Customer name *</label>
+            <input 
+              value={customer} 
+              onChange={(e) => setCustomer(e.target.value)} 
+              placeholder="Enter customer name"
+              required
+              className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 focus:ring-2 focus:ring-red-600" 
+            />
           </div>
           <div>
             <label className="block text-sm text-gray-700">Time</label>
@@ -749,34 +926,26 @@ function BookingModal({ slot, onCreate, onClose }: { slot: Slot; onCreate: (slot
           </div>
           <div>
             <label className="block text-sm text-gray-700">Service Type</label>
-            <select value={serviceType} onChange={(e) => setServiceType(e.target.value as ServiceType)} className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 focus:ring-2 focus:ring-red-600">
-              {['General Service', 'Oil Change', 'Diagnostics', 'Tire Rotation', 'Brake Service'].map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm text-gray-700">Bay</label>
-            <select value={bay} onChange={(e) => setBay(e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 focus:ring-2 focus:ring-red-600">
-              {['Bay 1', 'Bay 2', 'Bay 3'].map(b => (
-                <option key={b} value={b}>{b}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm text-gray-700">Technician</label>
-            <select value={technician} onChange={(e) => setTechnician(e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 focus:ring-2 focus:ring-red-600">
-              {['Alex', 'Jordan', 'Mike'].map(t => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
+            {loadingServices ? (
+              <div className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-500">
+                Loading services...
+              </div>
+            ) : (
+              <select value={serviceType} onChange={(e) => setServiceType(e.target.value as ServiceType)} className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 focus:ring-2 focus:ring-red-600">
+                {services.map(s => (
+                  <option key={s.id} value={s.name}>{s.name}</option>
+                ))}
+              </select>
+            )}
           </div>
           {error && (
             <div className="text-sm text-red-600">{error}</div>
           )}
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" className="rounded-md border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50" onClick={onClose}>Cancel</button>
-            <button type="submit" className="rounded-md bg-emerald-600 text-white px-4 py-2 text-sm hover:bg-emerald-700">Confirm Booking</button>
+            <button type="button" className="rounded-md border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50" onClick={onClose} disabled={isSubmitting}>Cancel</button>
+            <button type="submit" className="rounded-md bg-emerald-600 text-white px-4 py-2 text-sm hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled={isSubmitting}>
+              {isSubmitting ? 'Creating...' : 'Confirm Booking'}
+            </button>
           </div>
         </div>
       </form>
@@ -784,58 +953,42 @@ function BookingModal({ slot, onCreate, onClose }: { slot: Slot; onCreate: (slot
   );
 }
 
-// Right side availability panel component (local)
-function AvailabilityPanel() {
-  type Day = { name: string; enabled: boolean; start: string; end: string };
-  const [days, setDays] = useState<Day[]>([
-    { name: 'Monday', enabled: true, start: '09:00', end: '17:00' },
-    { name: 'Tuesday', enabled: true, start: '09:00', end: '17:00' },
-    { name: 'Wednesday', enabled: true, start: '09:00', end: '17:00' },
-    { name: 'Thursday', enabled: true, start: '09:00', end: '17:00' },
-    { name: 'Friday', enabled: true, start: '09:00', end: '17:00' },
-    { name: 'Saturday', enabled: false, start: '09:00', end: '17:00' },
-    { name: 'Sunday', enabled: false, start: '09:00', end: '17:00' },
-  ]);
-  function update(i: number, patch: Partial<Day>) {
-    setDays(prev => prev.map((d, idx) => idx===i ? { ...d, ...patch } : d));
-  }
-  return (
-    <div className="space-y-2">
-      {days.map((d, i) => (
-        <div key={d.name} className="flex items-center justify-between gap-2 text-sm">
-          <label className="inline-flex items-center gap-2">
-            <input type="checkbox" className="accent-red-600" checked={d.enabled} onChange={(e) => update(i, { enabled: e.target.checked })} />
-            <span className="w-28">{d.name}</span>
-          </label>
-          <div className="flex items-center gap-2">
-            <input type="time" value={d.start} onChange={(e) => update(i, { start: e.target.value })} className="rounded-md border border-gray-300 px-2 py-1 focus:ring-2 focus:ring-red-600" />
-            <span className="text-gray-400">—</span>
-            <input type="time" value={d.end} onChange={(e) => update(i, { end: e.target.value })} className="rounded-md border border-gray-300 px-2 py-1 focus:ring-2 focus:ring-red-600" />
-          </div>
-        </div>
-      ))}
-      <div className="pt-3">
-        <button className="w-full rounded-md bg-red-600 text-white px-3 py-2 text-sm hover:bg-red-700">Save Changes</button>
-      </div>
-    </div>
-  );
-}
+// Display appointments for a specific date in the side panel
+function AppointmentsForDate({ selectedDate }: { selectedDate: string }) {
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-// Upcoming appointments table (local)
-function UpcomingAppointments({ 
-  selectedDate, 
-  bookings, 
-  apiBookings, 
-  apiEmployees 
-}: { 
-  selectedDate: string; 
-  bookings: Array<{ id: string; date: string; time: string; title: string }>; 
-  apiBookings: BookingDTO[];
-  apiEmployees: EmployeeDTO[];
-}) {
-  // Get bookings for the selected date from API
-  const dateBookings = apiBookings.filter(b => b.timeSlot?.slotDate === selectedDate);
-  
+  React.useEffect(() => {
+    async function fetchAppointments() {
+      try {
+        setLoading(true);
+        const response = await fetch('http://localhost:8084/api/bookings');
+        if (response.ok) {
+          const bookingsData = await response.json();
+          // Filter bookings for the selected date
+          const dateAppointments = bookingsData.filter((booking: any) => {
+            if (booking.timeSlot && booking.timeSlot.slotDate) {
+              return booking.timeSlot.slotDate === selectedDate;
+            }
+            return false;
+          });
+          // Sort by start time
+          dateAppointments.sort((a: any, b: any) => {
+            const timeA = a.timeSlot?.startTime || '';
+            const timeB = b.timeSlot?.startTime || '';
+            return timeA.localeCompare(timeB);
+          });
+          setAppointments(dateAppointments);
+        }
+      } catch (error) {
+        console.error('Error fetching appointments:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchAppointments();
+  }, [selectedDate]);
+
   const formatTime = (time: string) => {
     if (!time) return '';
     const [hours, minutes] = time.split(':');
@@ -845,78 +998,217 @@ function UpcomingAppointments({
     return `${hour12}:${minutes} ${ampm}`;
   };
 
-  const getEmployeeName = (employeeId?: number) => {
-    if (!employeeId) return 'Not assigned';
-    return apiEmployees.find(e => e.id === employeeId)?.name || 'Unknown';
+  const getStatusColor = (status: string) => {
+    const statusMap: Record<string, string> = {
+      'CONFIRMED': 'bg-green-100 text-green-700 border-green-200',
+      'PENDING': 'bg-amber-100 text-amber-700 border-amber-200',
+      'COMPLETED': 'bg-blue-100 text-blue-700 border-blue-200',
+      'CANCELLED': 'bg-red-100 text-red-700 border-red-200',
+    };
+    return statusMap[status] || 'bg-gray-100 text-gray-700 border-gray-200';
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
+        <p className="text-xs text-gray-600 mt-2">Loading appointments...</p>
+      </div>
+    );
+  }
+
+  if (appointments.length === 0) {
+    return (
+      <div className="text-center py-8 text-gray-600">
+        <CalendarDays className="h-10 w-10 mx-auto mb-2 text-gray-400" />
+        <p className="text-sm">No appointments for this date</p>
+        <p className="text-xs text-gray-500 mt-1">Click "New Appointment" to create one</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 max-h-[600px] overflow-y-auto">
+      {appointments.map((appointment) => (
+        <div 
+          key={appointment.id} 
+          className="p-3 rounded-lg border bg-white hover:shadow-md transition-shadow"
+        >
+          {/* Time and Status */}
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-gray-500" />
+              <span className="font-semibold text-sm">
+                {appointment.timeSlot ? formatTime(appointment.timeSlot.startTime) : 'N/A'}
+              </span>
+            </div>
+            <span className={`text-xs px-2 py-0.5 rounded-full border ${getStatusColor(appointment.status)}`}>
+              {appointment.status}
+            </span>
+          </div>
+
+          {/* Customer Name */}
+          <div className="flex items-center gap-2 mb-1">
+            <User className="h-3.5 w-3.5 text-gray-400" />
+            <span className="text-sm font-medium text-gray-900">
+              {appointment.customerName || 'N/A'}
+            </span>
+          </div>
+
+          {/* Service */}
+          <div className="text-xs text-gray-600 mb-2 pl-5">
+            {appointment.timeSlot?.serviceName || appointment.serviceName || 'N/A'}
+          </div>
+
+          {/* Contact Info */}
+          {(appointment.customerEmail || appointment.customerPhone) && (
+            <div className="space-y-1 pl-5">
+              {appointment.customerEmail && (
+                <div className="flex items-center gap-2 text-xs text-gray-600">
+                  <Mail className="h-3 w-3" />
+                  <span className="truncate">{appointment.customerEmail}</span>
+                </div>
+              )}
+              {appointment.customerPhone && (
+                <div className="flex items-center gap-2 text-xs text-gray-600">
+                  <Phone className="h-3 w-3" />
+                  <span>{appointment.customerPhone}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Notes */}
+          {appointment.notes && (
+            <div className="mt-2 pl-5">
+              <div className="flex items-start gap-2 text-xs text-gray-600">
+                <FileText className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                <span className="line-clamp-2">{appointment.notes}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Assigned Employee */}
+          {appointment.assignedEmployeeName && (
+            <div className="mt-2 pt-2 border-t border-gray-100">
+              <div className="text-xs text-gray-500">
+                Assigned to: <span className="text-gray-700 font-medium">{appointment.assignedEmployeeName}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Upcoming appointments table - displays real bookings from database
+function UpcomingAppointments({ selectedDate, bookings }: { selectedDate: string; bookings: Array<{ id: string; date: string; time: string; title: string }>; }) {
+  const [detailedBookings, setDetailedBookings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  React.useEffect(() => {
+    async function fetchDetailedBookings() {
+      try {
+        setLoading(true);
+        const response = await fetch('http://localhost:8084/api/bookings');
+        if (response.ok) {
+          const bookingsData = await response.json();
+          // Filter bookings for the selected date
+          const todayBookings = bookingsData.filter((booking: any) => {
+            if (booking.timeSlot && booking.timeSlot.slotDate) {
+              return booking.timeSlot.slotDate === selectedDate;
+            }
+            return false;
+          });
+          setDetailedBookings(todayBookings);
+        }
+      } catch (error) {
+        console.error('Error fetching bookings:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchDetailedBookings();
+  }, [selectedDate]);
+
+  const formatTime = (time: string) => {
+    if (!time) return '';
+    const [hours, minutes] = time.split(':');
+    const h = parseInt(hours);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hour12 = h % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'CONFIRMED':
-        return 'bg-emerald-100 text-emerald-700';
-      case 'PENDING':
-        return 'bg-amber-100 text-amber-700';
-      case 'CANCELLED':
-        return 'bg-red-100 text-red-700';
-      case 'COMPLETED':
-        return 'bg-blue-100 text-blue-700';
-      default:
-        return 'bg-gray-100 text-gray-700';
-    }
+    const statusMap: Record<string, string> = {
+      'CONFIRMED': 'bg-emerald-100 text-emerald-700',
+      'PENDING': 'bg-amber-100 text-amber-700',
+      'COMPLETED': 'bg-blue-100 text-blue-700',
+      'CANCELLED': 'bg-red-100 text-red-700',
+    };
+    return statusMap[status] || 'bg-gray-100 text-gray-700';
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labelMap: Record<string, string> = {
+      'CONFIRMED': 'Confirmed',
+      'PENDING': 'Pending',
+      'COMPLETED': 'Completed',
+      'CANCELLED': 'Cancelled',
+    };
+    return labelMap[status] || status;
   };
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-      <div className="px-4 py-3 border-b bg-gray-50">
-        <h3 className="text-base font-semibold text-gray-900">Scheduled Appointments</h3>
-        <p className="text-xs text-gray-600 mt-0.5">
-          Monitor bookings • Detect conflicts • {selectedDate} 
-          <span className="ml-2 font-medium">({dateBookings.length} {dateBookings.length === 1 ? 'booking' : 'bookings'})</span>
-        </p>
-      </div>
+    <div className="mt-6 rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="px-4 py-3 border-b text-sm font-medium">Upcoming Appointments — {selectedDate}</div>
       <div className="overflow-x-auto">
-        {dateBookings.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <CalendarDays className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-            <p className="text-sm">No appointments scheduled for this date</p>
+        {loading ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
+            <p className="text-sm text-gray-600 mt-2">Loading appointments...</p>
+          </div>
+        ) : detailedBookings.length === 0 ? (
+          <div className="text-center py-8 text-gray-600">
+            <CalendarDays className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+            <p>No appointments scheduled for this date</p>
           </div>
         ) : (
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 text-xs font-semibold text-gray-700">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Time</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Customer</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Contact</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Service</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Assigned To</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Notes</th>
+                <th className="px-4 py-2 text-left">Time</th>
+                <th className="px-4 py-2 text-left">Customer</th>
+                <th className="px-4 py-2 text-left">Service</th>
+                <th className="px-4 py-2 text-left">Contact</th>
+                <th className="px-4 py-2 text-left">Assigned To</th>
+                <th className="px-4 py-2 text-left">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
-              {dateBookings.map((booking) => (
-                <tr key={booking.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                    {formatTime(booking.timeSlot?.startTime || '')} - {formatTime(booking.timeSlot?.endTime || '')}
+            <tbody className="divide-y divide-gray-200 text-sm">
+              {detailedBookings.map((booking) => (
+                <tr key={booking.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-2">
+                    {booking.timeSlot ? formatTime(booking.timeSlot.startTime) : 'N/A'}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{booking.customerName}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    <div className="text-xs">{booking.customerPhone}</div>
-                    <div className="text-xs text-gray-500">{booking.customerEmail}</div>
+                  <td className="px-4 py-2 font-medium">{booking.customerName || 'N/A'}</td>
+                  <td className="px-4 py-2">{booking.timeSlot?.serviceName || booking.serviceName || 'N/A'}</td>
+                  <td className="px-4 py-2">
+                    <div className="text-xs">
+                      {booking.customerEmail && <div className="text-gray-600">{booking.customerEmail}</div>}
+                      {booking.customerPhone && <div className="text-gray-600">{booking.customerPhone}</div>}
+                      {!booking.customerEmail && !booking.customerPhone && <span className="text-gray-400">No contact</span>}
+                    </div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{booking.serviceName}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
-                    <span className={booking.assignedEmployeeId ? '' : 'text-amber-600 font-medium'}>
-                      {booking.assignedEmployeeName || 'Not assigned'}
-                    </span>
+                  <td className="px-4 py-2">
+                    {booking.assignedEmployeeName || <span className="text-gray-400">Unassigned</span>}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-2">
                     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusBadge(booking.status)}`}>
-                      {booking.status}
+                      {getStatusLabel(booking.status)}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-gray-600 max-w-xs truncate">
-                    {booking.notes || '—'}
                   </td>
                 </tr>
               ))}
@@ -928,7 +1220,7 @@ function UpcomingAppointments({
   );
 }
 
-// Professional New Appointment Modal
+// New Appointment Modal - Similar to customer booking flow
 function NewAppointmentModal({ 
   selectedDate, 
   services, 
@@ -942,7 +1234,7 @@ function NewAppointmentModal({
   onClose: () => void; 
   onSuccess: () => void; 
 }) {
-  const [step, setStep] = useState<1 | 2>(1); // Step 1: Select service & date, Step 2: Fill customer details
+  const [step, setStep] = useState<1 | 2>(1);
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [date, setDate] = useState(selectedDate);
@@ -954,41 +1246,30 @@ function NewAppointmentModal({
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [notes, setNotes] = useState('');
+  
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // Check if selected date is blocked
-  const isDateBlocked = blockedDates.includes(date);
-
-  // Fetch available slots when service or date changes
-  useEffect(() => {
-    if (selectedServiceId && date) {
-      // Don't fetch if date is blocked
-      if (isDateBlocked) {
-        setAvailableSlots([]);
-        setLoadingSlots(false);
-        return;
-      }
-      fetchAvailableSlots();
-    }
-  }, [selectedServiceId, date, isDateBlocked]);
-
-  const fetchAvailableSlots = async () => {
-    try {
-      setLoadingSlots(true);
-      // Use customer endpoint to exclude already booked slots
-      const slots = await getAvailableTimeSlotsForCustomer(date, selectedServiceId!);
-      setAvailableSlots(slots);
-    } catch (error) {
-      console.error('Error fetching time slots:', error);
-      setAvailableSlots([]);
-    } finally {
-      setLoadingSlots(false);
-    }
-  };
-
   const selectedService = services.find(s => s.id === selectedServiceId);
   const selectedSlot = availableSlots.find(s => s.id === selectedSlotId);
+
+  // Fetch available time slots when service or date changes
+  React.useEffect(() => {
+    if (selectedServiceId && date) {
+      setLoadingSlots(true);
+      getTimeSlots(date, selectedServiceId)
+        .then(slots => {
+          // Filter out already booked slots
+          const available = slots.filter(slot => slot.isAvailable);
+          setAvailableSlots(available);
+        })
+        .catch(err => {
+          console.error('Error fetching slots:', err);
+          setAvailableSlots([]);
+        })
+        .finally(() => setLoadingSlots(false));
+    }
+  }, [selectedServiceId, date]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1027,7 +1308,7 @@ function NewAppointmentModal({
   };
 
   const formatTime = (time: string) => {
-    const[hours, minutes] = time.split(':');
+    const [hours, minutes] = time.split(':');
     const h = parseInt(hours);
     const ampm = h >= 12 ? 'PM' : 'AM';
     const hour12 = h % 12 || 12;
@@ -1035,41 +1316,40 @@ function NewAppointmentModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div 
-        className="w-full max-w-3xl rounded-2xl border border-gray-200 bg-white shadow-2xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-red-600 to-red-700">
+        <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-white">New Appointment</h2>
-            <p className="text-sm text-red-100 mt-0.5">
-              {step === 1 ? 'Select service and time slot' : 'Enter customer details'}
-            </p>
+            <h2 className="text-2xl font-bold">New Appointment</h2>
+            <p className="text-sm text-red-100">Create a booking for a customer</p>
           </div>
           <button 
-            onClick={onClose}
-            className="rounded-lg p-2 text-white hover:bg-white/20 transition-colors"
+            onClick={onClose} 
+            className="p-2 hover:bg-white/20 rounded-lg transition-colors"
           >
-            <X className="h-5 w-5" />
+            <X className="h-6 w-6" />
           </button>
         </div>
 
         {/* Progress Steps */}
-        <div className="px-6 py-4 bg-gray-50 border-b">
-          <div className="flex items-center justify-center gap-4">
+        <div className="px-6 py-4 border-b bg-gray-50">
+          <div className="flex items-center justify-center gap-8">
             <div className="flex items-center gap-2">
-              <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${step === 1 ? 'bg-red-600 text-white' : 'bg-green-500 text-white'}`}>
-                {step === 1 ? '1' : '✓'}
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold ${
+                step === 1 ? 'bg-red-600 text-white' : 'bg-gray-300 text-gray-600'
+              }`}>
+                1
               </div>
-              <span className={`text-sm font-medium ${step === 1 ? 'text-gray-900' : 'text-green-600'}`}>
+              <span className={`text-sm font-medium ${step === 1 ? 'text-gray-900' : 'text-gray-500'}`}>
                 Service & Time
               </span>
             </div>
-            <div className="h-0.5 w-16 bg-gray-300"></div>
+            <div className="flex-1 h-0.5 bg-gray-300 max-w-[100px]"></div>
             <div className="flex items-center gap-2">
-              <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${step === 2 ? 'bg-red-600 text-white' : 'bg-gray-300 text-gray-600'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold ${
+                step === 2 ? 'bg-red-600 text-white' : 'bg-gray-300 text-gray-600'
+              }`}>
                 2
               </div>
               <span className={`text-sm font-medium ${step === 2 ? 'text-gray-900' : 'text-gray-500'}`}>
@@ -1079,102 +1359,83 @@ function NewAppointmentModal({
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[calc(100vh-300px)] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[calc(90vh-200px)] overflow-y-auto">
           {step === 1 ? (
             // Step 1: Select Service, Date, and Time Slot
             <>
               {/* Select Service */}
               <div>
                 <label className="block text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                  <Briefcase className="h-4 w-4 text-red-600" />
+                  <CalendarDays className="h-4 w-4 text-red-600" />
                   Select Service *
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {services.filter(s => s.isActive).map(service => (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {services.map(service => (
                     <button
                       key={service.id}
                       type="button"
-                      onClick={() => {
-                        setSelectedServiceId(service.id);
-                        setSelectedSlotId(null); // Reset slot selection
-                      }}
+                      onClick={() => setSelectedServiceId(service.id)}
                       className={`p-4 rounded-lg border-2 text-left transition-all ${
                         selectedServiceId === service.id
-                          ? 'border-red-600 bg-red-50 ring-2 ring-red-200'
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                          ? 'border-red-600 bg-red-50'
+                          : 'border-gray-200 hover:border-red-300'
                       }`}
                     >
                       <div className="font-semibold text-gray-900">{service.name}</div>
-                      <div className="text-xs text-gray-600 mt-1">
-                        {service.duration} minutes
-                        {service.price && ` • Rs. ${service.price.toFixed(2)}`}
-                      </div>
-                      {service.description && (
-                        <div className="text-xs text-gray-500 mt-1">{service.description}</div>
-                      )}
+                      <div className="text-sm text-gray-600 mt-1">{service.duration} minutes</div>
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* Select Date */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-red-600" />
-                  Select Date *
-                </label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => {
-                    setDate(e.target.value);
-                    setSelectedSlotId(null); // Reset slot selection
-                  }}
-                  min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                />
-              </div>
-
-              {/* Available Time Slots */}
               {selectedServiceId && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Select Date *
+                  </label>
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent"
+                  />
+                </div>
+              )}
+
+              {/* Select Time Slot */}
+              {selectedServiceId && date && (
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
                     <Clock className="h-4 w-4 text-red-600" />
-                    Available Time Slots *
+                    Select Time Slot *
                   </label>
-                  
                   {loadingSlots ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto mb-2"></div>
-                      <p className="text-sm">Loading available slots...</p>
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
+                      <p className="text-sm text-gray-600 mt-2">Loading available slots...</p>
                     </div>
                   ) : availableSlots.length === 0 ? (
-                    <div className={`text-center py-8 rounded-lg border ${isDateBlocked ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
-                      <Calendar className={`h-10 w-10 mx-auto mb-2 ${isDateBlocked ? 'text-red-500' : 'text-amber-500'}`} />
-                      <p className={`text-sm font-medium ${isDateBlocked ? 'text-red-900' : 'text-amber-900'}`}>
-                        {isDateBlocked ? 'This date is blocked' : 'No available slots'}
-                      </p>
-                      <p className={`text-xs mt-1 ${isDateBlocked ? 'text-red-700' : 'text-amber-700'}`}>
-                        {isDateBlocked ? 'No bookings can be made on this date' : 'Please select a different date'}
-                      </p>
+                    <div className="text-center py-8 text-gray-600">
+                      <Clock className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+                      <p>No available time slots for this date</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-[300px] overflow-y-auto">
                       {availableSlots.map(slot => (
                         <button
                           key={slot.id}
                           type="button"
                           onClick={() => setSelectedSlotId(slot.id)}
-                          className={`p-3 rounded-lg border-2 text-center text-sm font-medium transition-all ${
+                          className={`p-3 rounded-lg border-2 text-center transition-all ${
                             selectedSlotId === slot.id
-                              ? 'border-red-600 bg-red-50 text-red-900 ring-2 ring-red-200'
-                              : 'border-gray-200 hover:border-gray-300 bg-white text-gray-700'
+                              ? 'border-red-600 bg-red-50'
+                              : 'border-gray-200 hover:border-red-300'
                           }`}
                         >
-                          <div>{formatTime(slot.startTime)}</div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            {formatTime(slot.endTime)}
-                          </div>
+                          <div className="text-sm font-semibold">{formatTime(slot.startTime)}</div>
+                          <div className="text-xs text-gray-600">{formatTime(slot.endTime)}</div>
                         </button>
                       ))}
                     </div>
@@ -1182,15 +1443,8 @@ function NewAppointmentModal({
                 </div>
               )}
 
-              {/* Step 1 Actions */}
-              <div className="flex justify-between pt-4 border-t">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition-colors"
-                >
-                  Cancel
-                </button>
+              {/* Navigation */}
+              <div className="flex justify-end pt-4 border-t">
                 <button
                   type="button"
                   onClick={() => {
@@ -1213,19 +1467,19 @@ function NewAppointmentModal({
             <>
               {/* Booking Summary */}
               <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-lg p-4">
-                <h3 className="text-sm font-bold text-gray-900 mb-2">Booking Summary</h3>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
+                <h3 className="font-semibold text-gray-900 mb-2">Booking Summary</h3>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
                     <span className="text-gray-600">Service:</span>
-                    <span className="ml-2 font-medium text-gray-900">{selectedService?.name}</span>
+                    <span className="font-medium text-gray-900">{selectedService?.name}</span>
                   </div>
-                  <div>
+                  <div className="flex justify-between">
                     <span className="text-gray-600">Date:</span>
-                    <span className="ml-2 font-medium text-gray-900">{date}</span>
+                    <span className="font-medium text-gray-900">{new Date(date).toLocaleDateString()}</span>
                   </div>
-                  <div className="col-span-2">
+                  <div className="flex justify-between">
                     <span className="text-gray-600">Time:</span>
-                    <span className="ml-2 font-medium text-gray-900">
+                    <span className="font-medium text-gray-900">
                       {selectedSlot && `${formatTime(selectedSlot.startTime)} - ${formatTime(selectedSlot.endTime)}`}
                     </span>
                   </div>
@@ -1243,8 +1497,8 @@ function NewAppointmentModal({
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   placeholder="Enter full name"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent"
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 />
               </div>
 
@@ -1252,14 +1506,14 @@ function NewAppointmentModal({
               <div>
                 <label className="block text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
                   <Mail className="h-4 w-4 text-red-600" />
-                  Email Address
+                  Email (Optional)
                 </label>
                 <input
                   type="email"
                   value={customerEmail}
                   onChange={(e) => setCustomerEmail(e.target.value)}
                   placeholder="customer@example.com"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent"
                 />
               </div>
 
@@ -1267,14 +1521,14 @@ function NewAppointmentModal({
               <div>
                 <label className="block text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
                   <Phone className="h-4 w-4 text-red-600" />
-                  Phone Number
+                  Phone Number (Optional)
                 </label>
                 <input
                   type="tel"
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
-                  placeholder="+94-77-123-4567"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  placeholder="+1 (555) 123-4567"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent"
                 />
               </div>
 
@@ -1282,41 +1536,38 @@ function NewAppointmentModal({
               <div>
                 <label className="block text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
                   <FileText className="h-4 w-4 text-red-600" />
-                  Additional Notes
+                  Notes (Optional)
                 </label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Any special requests or information..."
+                  placeholder="Any special requests or notes..."
                   rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent"
                 />
               </div>
 
               {/* Error Message */}
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
-                  <Ban className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-red-900">{error}</p>
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  {error}
                 </div>
               )}
 
-              {/* Step 2 Actions */}
+              {/* Navigation */}
               <div className="flex justify-between pt-4 border-t">
                 <button
                   type="button"
-                  onClick={() => {
-                    setStep(1);
-                    setError('');
-                  }}
-                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition-colors"
+                  onClick={() => setStep(1)}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+                  disabled={submitting}
                 >
                   ← Back
                 </button>
                 <button
                   type="submit"
                   disabled={submitting || !customerName.trim()}
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {submitting ? (
                     <>
