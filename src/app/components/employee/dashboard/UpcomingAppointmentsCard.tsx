@@ -27,7 +27,7 @@ export default function UpcomingAppointmentsCard({ max = 3 }: { max?: number }) 
 
       <ul className="mt-3 space-y-3">
         {upcoming.length === 0 && <li className="text-sm text-gray-500">No upcoming appointments</li>}
-        {upcoming.map((a: any) => (
+        {upcoming.map((a) => (
           <li key={a.id} className="rounded-lg border border-gray-100 p-3 bg-gray-50">
             <div className="flex items-start justify-between">
               <div>

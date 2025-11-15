@@ -13,13 +13,18 @@ function todayISO() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// Server snapshot functions cached outside component
-const getServerSnapshot = () => [];
+// Server snapshot constants cached outside component to avoid infinite loop
+const emptyAppointmentsSnapshot: ReturnType<typeof getAppointments> = [];
+const emptyDatesSnapshot: ReturnType<typeof getUnavailableDates> = [];
 
 export default function ScheduleCard() {
 
+  const appointments = useSyncExternalStore(subscribe, getAppointments, () => emptyAppointmentsSnapshot);
+  const unavailableDates = useSyncExternalStore(subscribeUnavailable, getUnavailableDates, () => emptyDatesSnapshot);
+
   const appointments = useSyncExternalStore(subscribe, getAppointments, getServerSnapshot);
   const unavailableDates = useSyncExternalStore(subscribeUnavailable, getUnavailableDates, getServerSnapshot);
+
 
   const today = todayISO();
   const todaysTasks = appointments.filter((a) => a.date === today && !a.past);
@@ -29,7 +34,7 @@ export default function ScheduleCard() {
       <h3 className="font-heading text-lg font-semibold mb-3">My Schedule</h3>
 
       <div className="mb-3">
-        <h4 className="text-sm font-medium mb-2">Today's Tasks</h4>
+        <h4 className="text-sm font-medium mb-2">Today&apos;s Tasks</h4>
         {todaysTasks.length === 0 ? (
           <p className="text-xs text-gray-600">No tasks scheduled for today.</p>
         ) : (
