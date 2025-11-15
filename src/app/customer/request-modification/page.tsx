@@ -7,9 +7,9 @@ import { useRouter } from "next/navigation";
 import { subscribeVehicles, type VehicleDoc } from "@/lib/vehicles";
 import {
   createModification,
-  listModificationsByUser,
-  deleteModificationById,
-  type ModificationDTO,
+  getUserModifications,
+  deleteModification,
+  type Modification,
 } from "@/lib/api/modifications";
 import { Loader2, CheckCircle, LucideClock, LucideCheck, LucideX, LucideWrench, LucideTrash2 } from "lucide-react";
 
@@ -24,7 +24,7 @@ export default function VisualModification() {
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
   const [submitErr, setSubmitErr] = useState<string | null>(null);
-  const [myModifications, setMyModifications] = useState<ModificationDTO[]>([]);
+  const [myModifications, setMyModifications] = useState<Modification[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -46,7 +46,7 @@ export default function VisualModification() {
     }
     const fetchModifications = async () => {
       try {
-        const list = await listModificationsByUser(user.uid);
+        const list = await getUserModifications(user.uid);
         setMyModifications(list);
       } catch {
         setMyModifications([]);
@@ -71,7 +71,6 @@ export default function VisualModification() {
         vehicleId: selectedVehicleId,
         subject,
         message: inquiry,
-        userId: user!.uid,
       });
       setSubmitMsg("Modification request submitted successfully!");
       setSubject("");
@@ -89,8 +88,8 @@ export default function VisualModification() {
     setDeletingId(modId);
     setDeleteConfirmId(null);
     try {
-      await deleteModificationById(modId);
-      const list = await listModificationsByUser(user!.uid);
+      await deleteModification(modId);
+      const list = await getUserModifications(user!.uid);
       setMyModifications(list);
       setSubmitMsg("✓ Modification request deleted successfully");
       setTimeout(() => setSubmitMsg(null), 3000);
@@ -102,37 +101,37 @@ export default function VisualModification() {
     }
   };
 
-  const getStatusBadge = (status: ModificationDTO["status"]) => {
+  const getStatusBadge = (status: Modification["status"]) => {
     switch (status) {
-      case "pending":
+      case "PENDING":
         return (
           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs font-medium">
             <LucideClock size={14} />
             Pending
           </span>
         );
-      case "approved":
+      case "APPROVED":
         return (
           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
             <LucideCheck size={14} />
             Approved
           </span>
         );
-      case "in_progress":
+      case "IN_PROGRESS":
         return (
           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-medium">
             <LucideWrench size={14} />
             In Progress
           </span>
         );
-      case "completed":
+      case "COMPLETED":
         return (
           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
             <LucideCheck size={14} />
             Completed
           </span>
         );
-      case "rejected":
+      case "REJECTED":
         return (
           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-medium">
             <LucideX size={14} />

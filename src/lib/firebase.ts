@@ -1,7 +1,7 @@
 // src/lib/firebase.ts
-import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { getFirestore, type Firestore } from 'firebase/firestore';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { initializeFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
 // IMPORTANT: For client bundles, Next.js only inlines env vars when referenced statically
@@ -23,12 +23,6 @@ const MESSAGING_SENDER_ID = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
 const APP_ID = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
 const MEASUREMENT_ID = process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID; // optional
 
-let app: FirebaseApp | undefined;
-let authInstance: Auth | undefined;
-let dbInstance: Firestore | undefined;
-let storageInstance: FirebaseStorage | undefined;
-
-
 // All NEXT_PUBLIC_* keys are safe for the client – Firebase requires them to initialize.
 const firebaseConfig = {
   apiKey: reqPublic(API_KEY, 'NEXT_PUBLIC_FIREBASE_API_KEY'),
@@ -41,22 +35,29 @@ const firebaseConfig = {
   ...(MEASUREMENT_ID && { measurementId: MEASUREMENT_ID })
 } as const;
 
-app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-authInstance = getAuth(app);
-dbInstance = getFirestore(app);
-storageInstance = getStorage(app);
+// Initialize Firebase app
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const authInstance = getAuth(app);
+const dbInstance = initializeFirestore(app, {
+  experimentalAutoDetectLongPolling: true,
+});
 
-// Enable Firebase auth persistence to keep user logged in across page refreshes
+// Enable offline persistence if in browser environment
 if (typeof window !== 'undefined') {
-  setPersistence(authInstance, browserLocalPersistence).catch((error) => {
-    console.error('Failed to set Firebase persistence:', error);
+  enableIndexedDbPersistence(dbInstance).catch((err) => {
+    // Ignore persistence errors (e.g., multiple tabs). Firestore will still work without persistence.
+    console.warn('Firestore persistence not enabled', err?.code || err);
   });
 }
 
-// For TypeScript consumers that import { auth } in client components, keep the
-// type as Auth while avoiding SSR initialization. This assertion is safe
-// because all usages are in 'use client' boundaries.
-export { app };
-export const auth = authInstance as unknown as ReturnType<typeof getAuth>;
-export const db = dbInstance as unknown as Firestore;
-export const storage = storageInstance as unknown as FirebaseStorage;
+const storageInstance = getStorage(app);
+
+// Enable Firebase auth persistence to keep user logged in across page refreshes
+setPersistence(authInstance, browserLocalPersistence).catch((error) => {
+  console.error('Failed to set Firebase persistence:', error);
+});
+
+// Export Firebase instances for client components
+export const auth = authInstance;
+export const db = dbInstance;
+export const storage = storageInstance as FirebaseStorage;

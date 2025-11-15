@@ -1,5 +1,5 @@
 "use client";
-import { Pencil, X, XCircle } from "lucide-react";
+import { X } from "lucide-react";
 import Link from "next/link";
 
 type AppointmentDetails = {
@@ -20,13 +20,10 @@ type Props = {
   open: boolean;
   details: AppointmentDetails;
   onClose: () => void;
-  onConfirm?: () => void;
-  onRequestReschedule?: () => void;
-  allowActions?: boolean;
   showScheduleLink?: boolean;
 };
 
-export default function AppointmentDetailsModal({ open, details, onClose, onConfirm, onRequestReschedule, allowActions = true, showScheduleLink = false }: Props) {
+export default function AppointmentDetailsModal({ open, details, onClose, showScheduleLink = false }: Props) {
   if (!open) return null;
   const s = details;
   return (
@@ -39,16 +36,6 @@ export default function AppointmentDetailsModal({ open, details, onClose, onConf
               <Link href="/employee/schedule" className="inline-flex items-center gap-2 rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700">
                 View My Schedule
               </Link>
-            )}
-            {allowActions && (
-              <>
-                <button onClick={() => onConfirm?.()} className="inline-flex items-center gap-2 rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700">
-                  Confirm
-                </button>
-                <button onClick={() => onRequestReschedule?.()} className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-gray-50">
-                  Request Reschedule
-                </button>
-              </>
             )}
             {/* print removed for employee details view */}
             <button aria-label="Close" onClick={onClose} className="rounded-md p-1 hover:bg-gray-100">
