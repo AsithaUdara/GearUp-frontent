@@ -180,8 +180,8 @@ export default function CustomerDashboard() {
             {vehicles.length > 0 ? (
               <div className="rounded-lg bg-white shadow-sm p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-[#181111] text-xl font-bold">Your Vehicles</h2>
-                  <Link href="/customer/vehicles" className="text-primary font-medium hover:underline">Manage</Link>
+                  <h2 className="text-gray-800 text-xl font-bold">Your Vehicles</h2>
+                  <Link href="/customer/vehicles" className="text-red-600 font-medium hover:underline">Manage</Link>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {vehicles.map((v) => (
@@ -192,18 +192,18 @@ export default function CustomerDashboard() {
                       />
                       <div className="p-4 flex-1">
                         <p className="text-sm text-gray-500">{v.numberPlate}</p>
-                        <p className="text-[#181111] font-semibold">{v.year} {v.make} {v.model}</p>
+                        <p className="text-gray-800 font-semibold">{v.year} {v.make} {v.model}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center rounded-lg bg-white shadow-sm p-12 text-center">
+                <div className="flex flex-col items-center justify-center rounded-lg bg-white shadow-sm p-12 text-center">
                 <LucideCar className="text-gray-400 mb-4" size={64} />
-                <p className="text-[#181111] text-lg font-bold mb-2">No Vehicles Registered</p>
+                <p className="text-gray-800 text-lg font-bold mb-2">No Vehicles Registered</p>
                 <p className="text-gray-500 mb-4">Add your first vehicle to get started.</p>
-                <a href="/customer/vehicle_registration" className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-white font-semibold">
+                <a href="/customer/vehicle_registration" className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-6 py-3 text-white font-semibold hover:bg-red-700">
                   <LucidePlus size={20} /><span>Register Your First Vehicle</span>
                 </a>
               </div>
@@ -211,27 +211,27 @@ export default function CustomerDashboard() {
 
             {/* Quick Action Buttons */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Link 
+                <Link 
                 href="/customer/appointment"
-                className="flex items-center gap-3 p-6 rounded-lg bg-white shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:ring-1 hover:ring-primary/20"
+                className="flex items-center gap-3 p-6 rounded-lg bg-white shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
               >
-                <div className="p-3 rounded-full bg-primary/10">
-                  <LucidePlus className="text-primary" size={24} />
+                <div className="p-3 rounded-full bg-red-50">
+                  <LucidePlus className="text-red-600" size={24} />
                 </div>
                 <div>
-                  <p className="text-[#181111] font-bold text-lg">Book Appointment</p>
+                  <p className="text-gray-800 font-bold text-lg">Book Appointment</p>
                   <p className="text-gray-500 text-sm">Schedule a service</p>
                 </div>
               </Link>
               <a 
                 href="/customer/vehicles"
-                className="flex items-center gap-3 p-6 rounded-lg bg-white shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:ring-1 hover:ring-primary/20"
+                className="flex items-center gap-3 p-6 rounded-lg bg-white shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
               >
-                <div className="p-3 rounded-full bg-primary/10">
-                  <LucideCar className="text-primary" size={24} />
+                <div className="p-3 rounded-full bg-red-50">
+                  <LucideCar className="text-red-600" size={24} />
                 </div>
                 <div>
-                  <p className="text-[#181111] font-bold text-lg">My Vehicles</p>
+                  <p className="text-gray-800 font-bold text-lg">My Vehicles</p>
                   <p className="text-gray-500 text-sm">Manage your fleet</p>
                 </div>
               </a>
@@ -239,9 +239,9 @@ export default function CustomerDashboard() {
 
             {/* Recent Service History */}
             <div className="rounded-lg bg-white shadow-sm p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-[#181111] text-xl font-bold">Recent Service History</h2>
-                <Link href="/customer/service-history" className="text-primary font-medium hover:underline">View All</Link>
+                <div className="flex items-center justify-between mb-4">
+                <h2 className="text-gray-800 text-xl font-bold">Recent Service History</h2>
+                <Link href="/customer/service-history" className="text-red-600 font-medium hover:underline">View All</Link>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -273,7 +273,7 @@ export default function CustomerDashboard() {
           <div className="flex flex-col gap-6">
             {/* Upcoming Appointment */}
             <div className="rounded-lg bg-white shadow-sm p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
-              <h3 className="text-[#181111] text-lg font-bold mb-4">Upcoming Appointment</h3>
+              <h3 className="text-gray-800 text-lg font-bold mb-4">Upcoming Appointment</h3>
               {apptLoading ? (
                 <div className="text-sm text-gray-500">Loading...</div>
               ) : apptError ? (
@@ -290,7 +290,7 @@ export default function CustomerDashboard() {
                   </div>
                   <Link 
                     href="/customer/appointment"
-                    className="block w-full text-center rounded-lg bg-primary/10 px-4 py-3 text-primary font-semibold hover:bg-primary/20 transition-colors"
+                    className="block w-full text-center rounded-lg bg-red-50 px-4 py-3 text-red-600 font-semibold hover:bg-red-100 transition-colors"
                   >
                     Manage Appointment
                   </Link>
@@ -303,7 +303,7 @@ export default function CustomerDashboard() {
                   </div>
                   <Link 
                     href="/customer/appointment"
-                    className="block w-full text-center rounded-lg bg-primary/10 px-4 py-3 text-primary font-semibold hover:bg-primary/20 transition-colors"
+                    className="block w-full text-center rounded-lg bg-red-50 px-4 py-3 text-red-600 font-semibold hover:bg-red-100 transition-colors"
                   >
                     Book Now
                   </Link>
@@ -313,7 +313,7 @@ export default function CustomerDashboard() {
 
             {/* Modification Requests (scrollable list) */}
             <div className="rounded-lg bg-white shadow-sm p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
-              <h3 className="text-[#181111] text-lg font-bold mb-4">Modification Requests</h3>
+              <h3 className="text-gray-800 text-lg font-bold mb-4">Modification Requests</h3>
               {modLoading ? (
                 <div className="text-sm text-gray-500">Loading...</div>
               ) : modError ? (
@@ -334,7 +334,7 @@ export default function CustomerDashboard() {
                         return bMs - aMs; // Most recent first
                       })
                       .map((mod) => (
-                        <div key={mod.id} className="p-3 rounded-lg border border-gray-200 hover:border-primary/30 transition-colors">
+                        <div key={mod.id} className="p-3 rounded-lg border border-gray-200 hover:border-red-100 transition-colors">
                           {mod.vehicleLabel && (
                             <div className="text-xs text-gray-600 mb-1">{mod.vehicleLabel}</div>
                           )}
@@ -350,7 +350,7 @@ export default function CustomerDashboard() {
                   </div>
                   <Link 
                     href="/customer/modification"
-                    className="block w-full text-center rounded-lg bg-primary/10 px-4 py-3 text-primary font-semibold hover:bg-primary/20 transition-colors mt-3"
+                    className="block w-full text-center rounded-lg bg-red-50 px-4 py-3 text-red-600 font-semibold hover:bg-red-100 transition-colors mt-3"
                   >
                     Manage Modifications
                   </Link>
@@ -363,17 +363,12 @@ export default function CustomerDashboard() {
                   </div>
                   <Link 
                     href="/customer/modification"
-                    className="block w-full text-center rounded-lg bg-primary/10 px-4 py-3 text-primary font-semibold hover:bg-primary/20 transition-colors"
+                    className="block w-full text-center rounded-lg bg-red-50 px-4 py-3 text-red-600 font-semibold hover:bg-red-100 transition-colors"
                   >
                     Request Modification
                   </Link>
-                </div>
-              )}
-            </div>
-
-            {/* Current Service Status */}
             <div className="rounded-lg bg-white shadow-sm p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
-              <h3 className="text-[#181111] text-lg font-bold mb-4">Current Service Status</h3>
+              <h3 className="text-gray-800 text-lg font-bold mb-4">Current Service Status</h3>
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
                   <div className="mt-1 p-1 rounded-full bg-green-100">
@@ -415,17 +410,17 @@ export default function CustomerDashboard() {
             </div>
 
             {/* AI Chatbot CTA */}
-            <div className="rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 p-6 border border-primary/20 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
+            <div className="rounded-lg bg-red-50 p-6 border border-red-100 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
               <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 rounded-full bg-primary">
+                  <div className="p-3 rounded-full bg-red-600">
                   <LucideBot className="text-white" size={20} />
                 </div>
-                <h3 className="text-[#181111] text-lg font-bold">Need Help?</h3>
+                <h3 className="text-gray-800 text-lg font-bold">Need Help?</h3>
               </div>
               <p className="text-gray-600 text-sm mb-4">Chat with our AI assistant for quick answers about your service.</p>
               <Link 
                 href="/customer/chatbot"
-                className="block w-full text-center rounded-lg bg-primary px-4 py-3 text-white font-semibold hover:bg-primary/90 transition-colors"
+                className="block w-full text-center rounded-lg bg-red-600 px-4 py-3 text-white font-semibold hover:bg-red-700 transition-colors"
               >
                 Start Chat
               </Link>

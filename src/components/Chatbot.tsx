@@ -83,7 +83,8 @@ export function Chatbot() {
       {!isOpen && (
         <button
           onClick={toggleChatbot}
-          className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-primary shadow-lg hover:bg-primary/90 transition-all duration-300 flex items-center justify-center group animate-pulse-red"
+          className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-[var(--color-primary)] shadow-lg transition-all duration-300 flex items-center justify-center group animate-pulse-red"
+          style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
           aria-label="Open chatbot"
         >
           <MessageCircle className="h-6 w-6 text-white" />
@@ -99,7 +100,7 @@ export function Chatbot() {
           )}
         >
           {/* Header */}
-          <div className="bg-primary px-4 py-3 flex items-center justify-between border-b">
+          <div className="bg-[var(--color-primary)] px-4 py-3 flex items-center justify-between border-b">
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-full bg-white/20 flex items-center justify-center">
                 <MessageCircle className="h-5 w-5 text-white" />
@@ -148,8 +149,8 @@ export function Chatbot() {
               <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-background h-[440px]">
                 {messages.length === 0 && (
                   <div className="flex flex-col items-center justify-center h-full text-center">
-                    <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                      <MessageCircle className="h-8 w-8 text-primary" />
+                    <div className="h-16 w-16 rounded-full bg-[var(--color-primary)] bg-opacity-10 flex items-center justify-center mb-4">
+                      <MessageCircle className="h-8 w-8 text-[var(--color-primary)]" />
                     </div>
                     <h4 className="font-heading font-bold text-foreground mb-2">
                       Welcome to GearUp!
@@ -183,7 +184,7 @@ export function Chatbot() {
                         className={cn(
                           "max-w-[75%] rounded-2xl px-4 py-2 break-words",
                           message.sender === "user"
-                            ? "bg-primary text-white rounded-br-sm"
+                            ? "bg-[var(--color-primary)] text-white rounded-br-sm"
                             : "bg-border/50 text-foreground rounded-bl-sm"
                         )}
                       >
@@ -204,7 +205,7 @@ export function Chatbot() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleQuickReply(action)}
-                              className="text-xs border-primary text-primary hover:bg-primary hover:text-white rounded-full"
+                              className="text-xs border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white rounded-full"
                             >
                               {action}
                             </Button>
@@ -254,7 +255,7 @@ export function Chatbot() {
                     onClick={handleSend}
                     disabled={!inputValue.trim() || isLoading}
                     size="icon"
-                    className="h-8 w-8 rounded-full bg-primary hover:bg-primary/90"
+                    className="h-8 w-8 rounded-full bg-[var(--color-primary)] hover:opacity-90"
                     title="Send message"
                   >
                     <Send className="h-4 w-4 text-white" />

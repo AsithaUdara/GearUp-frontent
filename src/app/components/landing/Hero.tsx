@@ -96,13 +96,14 @@ export default function Hero() {
                 >
                   <motion.div variants={textVariants} className="font-heading uppercase">
                     <span className="block text-6xl md:text-7xl font-medium text-foreground">{currentSlide.line1}</span>
-                    <span className="block text-7xl md:text-8xl font-bold text-primary mt-1">{currentSlide.line2}</span>
+                    <span className="block text-7xl md:text-8xl font-bold text-[var(--color-primary)] mt-1">{currentSlide.line2}</span>
                     <span className="font-body block text-4xl md:text-5xl font-medium text-foreground mt-2">{currentSlide.line3}</span>
                   </motion.div>
                   <motion.div variants={textVariants}>
                     <a
                       href="#"
-                      className="group relative mt-8 inline-flex items-center overflow-hidden rounded-md bg-primary px-8 py-4 font-heading text-base font-semibold uppercase text-primary-foreground shadow-lg shadow-primary/40 ring-1 ring-primary/80 transition-all duration-300 hover:bg-white hover:text-primary hover:shadow-2xl hover:shadow-primary/40"
+                      className="group relative mt-8 inline-flex items-center overflow-hidden rounded-md bg-[var(--color-primary)] px-8 py-4 font-heading text-base font-semibold uppercase text-[var(--color-primary-foreground)] shadow-lg ring-1 transition-all duration-300 hover:bg-white hover:text-[var(--color-primary)] hover:shadow-2xl"
+                      style={{ boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
                     >
                       <span className="absolute inset-0 bg-white/0 transition-colors duration-300 group-hover:bg-white/10"></span>
                       <span className="relative">{currentSlide.buttonText}</span>
@@ -143,18 +144,18 @@ export default function Hero() {
             key={s.id}
             onClick={() => setIndex(i)}
             className={`h-2.5 w-2.5 rounded-full transition-all duration-300 ${
-              i === index ? 'w-8 bg-primary' : 'bg-black/20 hover:bg-black/40'
+              i === index ? 'w-8 bg-[var(--color-primary)]' : 'bg-black/20 hover:bg-black/40'
             }`}
           />
         ))}
       </div>
       <div className="absolute left-0 top-1/2 -translate-y-1/2 z-30 space-y-2">
-          <div className="h-24 w-4 bg-foreground"></div>
-          <div className="h-24 w-4 bg-primary"></div>
+            <div className="h-24 w-4 bg-foreground"></div>
+            <div className="h-24 w-4 bg-[var(--color-primary)]"></div>
       </div>
       <div className="absolute right-0 top-1/2 -translate-y-1/2 z-30 space-y-2">
-          <div className="h-24 w-4 bg-foreground"></div>
-          <div className="h-24 w-4 bg-primary"></div>
+            <div className="h-24 w-4 bg-foreground"></div>
+            <div className="h-24 w-4 bg-[var(--color-primary)]"></div>
       </div>
     </section>
   );

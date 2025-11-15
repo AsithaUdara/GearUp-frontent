@@ -94,7 +94,7 @@ export default function CustomerHeader() {
           <div onMouseEnter={() => setServicesMenuOpen(true)}>
             <button className="group relative flex items-center gap-1 font-heading text-sm font-semibold tracking-wider uppercase text-foreground transition-colors hover:text-primary">
               SERVICES <ChevronDown className="h-4 w-4 transition-transform group-hover:rotate-180" />
-              <span className="absolute -bottom-2 left-1/2 h-0.5 w-0 -translate-x-1/2 bg-primary transition-all duration-300 group-hover:w-full" />
+              <span className="absolute -bottom-2 left-1/2 h-0.5 w-0 -translate-x-1/2 bg-[var(--color-primary)] transition-all duration-300 group-hover:w-full" />
             </button>
           </div>
         </nav>
@@ -136,10 +136,10 @@ export default function CustomerHeader() {
             </AnimatePresence>
           </div>
           
-          <Link
+                <Link
             href="/customer/appointment"
             className={clsx(
-              "group relative inline-flex items-center gap-2 overflow-hidden rounded-md bg-primary px-5 py-3 font-heading text-sm font-bold uppercase text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-primary/80 transition-all duration-300 hover:bg-white hover:text-primary",
+              "group relative inline-flex items-center gap-2 overflow-hidden rounded-md bg-[var(--color-primary)] px-5 py-3 font-heading text-sm font-bold uppercase text-[var(--color-primary-foreground)] shadow-lg ring-1 transition-all duration-300 hover:bg-white hover:text-[var(--color-primary)]",
               shouldHideButtons && "invisible"
             )}
           >
@@ -164,14 +164,14 @@ export default function CustomerHeader() {
             <div className="container mx-auto grid grid-cols-1 gap-x-8 gap-y-10 px-6 py-10 md:grid-cols-3">
               {serviceCategories.map((category) => (
                 <div key={category.title}>
-                  <div className="relative mb-4 h-12 -skew-x-12 bg-primary flex items-center justify-center">
+                  <div className="relative mb-4 h-12 -skew-x-12 bg-[var(--color-primary)] flex items-center justify-center">
                     <h3 className="skew-x-12 font-heading text-lg font-bold uppercase text-white">{category.title}</h3>
                   </div>
                   <ul className="mt-6 space-y-4">
                     {category.services.map((service) => (
                       <li key={service.name}>
-                        <Link href="/#services" className="group flex items-center gap-4 text-muted-foreground transition-colors hover:text-primary">
-                          <service.icon className="h-6 w-6 text-primary/70 transition-colors group-hover:text-primary" />
+                        <Link href="/#services" className="group flex items-center gap-4 text-muted-foreground transition-colors hover:text-[var(--color-primary)]">
+                          <service.icon className="h-6 w-6 text-[var(--color-primary)] opacity-70 transition-colors group-hover:opacity-100" />
                           <span className="font-body text-base">{service.name}</span>
                           <span className="ml-auto h-px flex-1 bg-border/50" />
                         </Link>
