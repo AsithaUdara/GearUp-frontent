@@ -18,7 +18,7 @@ When the Auth Service is ready, replace hardcoded emails with real user authenti
 
 ---
 
-## 🔄 **Integration Points**
+
 
 ### **1. ApprovedBills Component**
 **File:** `src/app/components/customer/dashboard/ApprovedBills.tsx`
