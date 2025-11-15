@@ -13,6 +13,9 @@
  *   firestore-backup/users.json
  */
 
+/* eslint-env node */
+/* eslint-disable @typescript-eslint/no-require-imports */
+
 const admin = require('firebase-admin');
 const fs = require('fs');
 const path = require('path');

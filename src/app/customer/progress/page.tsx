@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import Footer from '@/app/components/landing/Footer';
 
 interface ServiceStep {
   id: string;

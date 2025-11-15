@@ -34,13 +34,13 @@ import {
   X as LucideX
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
 import { getModificationServices, createModificationRequest, ModificationService as BackendModificationService } from '@/services/modificationService';
 import { db } from '@/lib/firebase';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 
 export default function ModificationRedirect() {
   const router = useRouter();
+  const { user, loading } = useAuth();
   // Remove mock data - we'll show only available services and submission form
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showNewRequest, setShowNewRequest] = useState(false);
@@ -49,6 +49,17 @@ export default function ModificationRedirect() {
   const [submittingRequest, setSubmittingRequest] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  type ModificationDoc = {
+    id: string;
+    userId: string;
+    vehicleId: string;
+    vehicleLabel?: string | null;
+    subject?: string | null;
+    message: string;
+    status: 'pending' | 'approved' | 'in_progress' | 'completed' | 'rejected';
+    createdAt?: { seconds: number; nanoseconds: number } | null;
+  };
+
   const [myModifications, setMyModifications] = useState<ModificationDoc[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [newRequest, setNewRequest] = useState({
@@ -61,6 +72,8 @@ export default function ModificationRedirect() {
     customerAddress: '',
     preferredDate: ''
   });
+
+
 
   const dummyServices = [
     {

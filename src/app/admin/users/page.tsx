@@ -20,7 +20,7 @@ export type User = {
 
 export default function UsersPage() {
   const { user: authUser, loading: authLoading } = useAuth();
-  const { getAllUsers, loading, error } = useAdminUsers();
+  const { getAllUsers, loading, error, deleteUser } = useAdminUsers();
   const [users, setUsers] = useState<User[]>([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -110,7 +110,6 @@ export default function UsersPage() {
   const confirmDelete = async () => {
     if (userToDelete) {
       try {
-        const { deleteUser } = useAdminUsers();
         await deleteUser(userToDelete.id);
         alert(`User ${userToDelete.name} deleted successfully!`);
         await loadUsers(); // Refresh the list

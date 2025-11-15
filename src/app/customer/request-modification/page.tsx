@@ -7,9 +7,9 @@ import { useRouter } from "next/navigation";
 import { subscribeVehicles, type VehicleDoc } from "@/lib/vehicles";
 import {
   createModification,
-  getUserModifications,
-  deleteModification,
-  type Modification,
+  listModificationsByUser,
+  deleteModificationById,
+  type ModificationDTO,
 } from "@/lib/api/modifications";
 import { Loader2, CheckCircle, LucideClock, LucideCheck, LucideX, LucideWrench, LucideTrash2 } from "lucide-react";
 
@@ -24,7 +24,7 @@ export default function VisualModification() {
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
   const [submitErr, setSubmitErr] = useState<string | null>(null);
-  const [myModifications, setMyModifications] = useState<Modification[]>([]);
+  const [myModifications, setMyModifications] = useState<ModificationDTO[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -46,7 +46,7 @@ export default function VisualModification() {
     }
     const fetchModifications = async () => {
       try {
-        const list = await getUserModifications(user.uid);
+        const list = await listModificationsByUser(user.uid);
         setMyModifications(list);
       } catch {
         setMyModifications([]);
@@ -88,8 +88,8 @@ export default function VisualModification() {
     setDeletingId(modId);
     setDeleteConfirmId(null);
     try {
-      await deleteModification(modId);
-      const list = await getUserModifications(user!.uid);
+      await deleteModificationById(modId);
+      const list = await listModificationsByUser(user!.uid);
       setMyModifications(list);
       setSubmitMsg("✓ Modification request deleted successfully");
       setTimeout(() => setSubmitMsg(null), 3000);
@@ -101,37 +101,37 @@ export default function VisualModification() {
     }
   };
 
-  const getStatusBadge = (status: Modification["status"]) => {
+  const getStatusBadge = (status: ModificationDTO["status"]) => {
     switch (status) {
-      case "PENDING":
+      case "pending":
         return (
           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs font-medium">
             <LucideClock size={14} />
             Pending
           </span>
         );
-      case "APPROVED":
+      case "approved":
         return (
           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
             <LucideCheck size={14} />
             Approved
           </span>
         );
-      case "IN_PROGRESS":
+      case "in_progress":
         return (
           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-medium">
             <LucideWrench size={14} />
             In Progress
           </span>
         );
-      case "COMPLETED":
+      case "completed":
         return (
           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
             <LucideCheck size={14} />
             Completed
           </span>
         );
-      case "REJECTED":
+      case "rejected":
         return (
           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-medium">
             <LucideX size={14} />
