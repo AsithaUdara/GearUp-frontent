@@ -7,6 +7,16 @@ import { subscribeVehicles, type VehicleDoc, fetchVehicles } from "@/lib/vehicle
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 
+// Inline SVG placeholder (data URI) to avoid external network fetches in dev
+const PLACEHOLDER_SVG = encodeURIComponent(
+  `
+  <svg xmlns='http://www.w3.org/2000/svg' width='400' height='200' viewBox='0 0 400 200'>
+    <rect width='100%' height='100%' fill='#f3f4f6' />
+    <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='#9ca3af' font-family='Arial, Helvetica, sans-serif' font-size='20'>No Photo</text>
+  </svg>`
+);
+const PLACEHOLDER = `data:image/svg+xml;utf8,${PLACEHOLDER_SVG}`;
+
 type AppointmentDoc = {
   id: string;
   userId: string;
@@ -147,6 +157,56 @@ export default function CustomerDashboard() {
     return withMs.sort((a, b) => (b._ms ?? 0) - (a._ms ?? 0))[0] || null;
   }, [mods]);
 
+  const modificationSection = (() => {
+    if (modLoading) return <div className="text-sm text-gray-500">Loading...</div>;
+    if (modError) return <div className="text-sm text-red-600">{modError}</div>;
+    if (mods.length > 0) {
+      return (
+        <div className="space-y-3">
+          <div className="max-h-[300px] overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+            {mods
+              .filter((mod) => mod.status === "pending")
+              .sort((a, b) => {
+                const aMs = a.createdAt && typeof a.createdAt.seconds === "number" ? a.createdAt.seconds * 1000 : 0;
+                const bMs = b.createdAt && typeof b.createdAt.seconds === "number" ? b.createdAt.seconds * 1000 : 0;
+                return bMs - aMs;
+              })
+              .map((mod) => (
+                <div key={mod.id} className="p-3 rounded-lg border border-gray-200 hover:border-red-100 transition-colors">
+                  {mod.vehicleLabel && <div className="text-xs text-gray-600 mb-1">{mod.vehicleLabel}</div>}
+                  {mod.subject && <div className="text-sm font-semibold text-gray-800 mb-2">Topic: {mod.subject}</div>}
+                  <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-100 text-xs">
+                    <LucideWrench size={14} className="text-yellow-700" />
+                    <span className="text-yellow-700 capitalize">Pending</span>
+                  </div>
+                </div>
+              ))}
+          </div>
+          <Link
+            href="/customer/modification"
+            className="block w-full text-center rounded-lg bg-red-50 px-4 py-3 text-red-600 font-semibold hover:bg-red-100 transition-colors mt-3"
+          >
+            Manage Modifications
+          </Link>
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-gray-600">
+          <LucideWrench size={18} />
+          <span className="text-sm">No modification requests yet</span>
+        </div>
+        <Link
+          href="/customer/modification"
+          className="block w-full text-center rounded-lg bg-red-50 px-4 py-3 text-red-600 font-semibold hover:bg-red-100 transition-colors"
+        >
+          Request Modification
+        </Link>
+      </div>
+    );
+  })();
+
   return (
     <>
       <div className="relative w-full overflow-hidden bg-black">
@@ -188,7 +248,7 @@ export default function CustomerDashboard() {
                     <div key={v.id} className="group flex rounded-lg overflow-hidden border border-gray-100">
                       <div
                         className="w-40 h-28 bg-center bg-cover flex-shrink-0"
-                        style={{ backgroundImage: `url('${v.photoURL || "https://via.placeholder.com/400x200?text=No+Photo"}')` }}
+                        style={{ backgroundImage: `url('${v.photoURL || PLACEHOLDER}')` }}
                       />
                       <div className="p-4 flex-1">
                         <p className="text-sm text-gray-500">{v.numberPlate}</p>
@@ -314,59 +374,9 @@ export default function CustomerDashboard() {
             {/* Modification Requests (scrollable list) */}
             <div className="rounded-lg bg-white shadow-sm p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
               <h3 className="text-gray-800 text-lg font-bold mb-4">Modification Requests</h3>
-              {modLoading ? (
-                <div className="text-sm text-gray-500">Loading...</div>
-              ) : modError ? (
-                <div className="text-sm text-red-600">{modError}</div>
-              ) : mods.length > 0 ? (
-                <div className="space-y-3">
-                  {/* Scrollable list of modifications */}
-                  <div className="max-h-[300px] overflow-y-auto space-y-3 pr-2 custom-scrollbar">
-                    {mods
-                      .filter((mod) => mod.status === "pending")
-                      .sort((a, b) => {
-                        const aMs = a.createdAt && typeof a.createdAt.seconds === "number" 
-                          ? a.createdAt.seconds * 1000 
-                          : 0;
-                        const bMs = b.createdAt && typeof b.createdAt.seconds === "number" 
-                          ? b.createdAt.seconds * 1000 
-                          : 0;
-                        return bMs - aMs; // Most recent first
-                      })
-                      .map((mod) => (
-                        <div key={mod.id} className="p-3 rounded-lg border border-gray-200 hover:border-red-100 transition-colors">
-                          {mod.vehicleLabel && (
-                            <div className="text-xs text-gray-600 mb-1">{mod.vehicleLabel}</div>
-                          )}
-                          {mod.subject && (
-                            <div className="text-sm font-semibold text-gray-800 mb-2">Topic: {mod.subject}</div>
-                          )}
-                          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-100 text-xs">
-                            <LucideWrench size={14} className="text-yellow-700" />
-                            <span className="text-yellow-700 capitalize">Pending</span>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                  <Link 
-                    href="/customer/modification"
-                    className="block w-full text-center rounded-lg bg-red-50 px-4 py-3 text-red-600 font-semibold hover:bg-red-100 transition-colors mt-3"
-                  >
-                    Manage Modifications
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <LucideWrench size={18} />
-                    <span className="text-sm">No modification requests yet</span>
-                  </div>
-                  <Link 
-                    href="/customer/modification"
-                    className="block w-full text-center rounded-lg bg-red-50 px-4 py-3 text-red-600 font-semibold hover:bg-red-100 transition-colors"
-                  >
-                    Request Modification
-                  </Link>
+              {modificationSection}
+            </div>
+
             <div className="rounded-lg bg-white shadow-sm p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
               <h3 className="text-gray-800 text-lg font-bold mb-4">Current Service Status</h3>
               <div className="space-y-4">

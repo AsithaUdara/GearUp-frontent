@@ -49,16 +49,34 @@ async function proxy(req: NextRequest, params: { path?: string[] }) {
   try {
     console.log(`[vehicles-proxy] ${req.method} ${url}`);
     const resp = await fetch(url, init);
-    // Dev helper: if the service responds 403 (secured) and we're running locally,
-    // provide a small mock so the frontend can render during local development.
-    const devFallbackEnabled = (process.env.NEXT_PUBLIC_ALLOW_DEV_VEHICLES_FALLBACK as string | undefined) === '1' || (process.env.NODE_ENV === 'development');
-    if (resp.status === 403 && devFallbackEnabled) {
-      console.warn('[vehicles-proxy] received 403 from vehicle service — returning dev fallback');
-      const sample = [
-        { id: 'veh-dev-1', make: 'Toyota', model: 'Corolla', year: 2018, userId: 'user-dev' },
-        { id: 'veh-dev-2', make: 'Honda', model: 'Civic', year: 2020, userId: 'user-dev' }
-      ];
-      return new Response(JSON.stringify(sample), { status: 200, headers: { 'content-type': 'application/json' } });
+    // Dev helper: only enable fallback when explicitly configured. Previously
+    // the code fell back automatically in development which can hide real
+    // backend errors. To enable dev fallback set
+    // `NEXT_PUBLIC_ALLOW_DEV_VEHICLES_FALLBACK=1` in your env.
+    const devFallbackEnabled = (process.env.NEXT_PUBLIC_ALLOW_DEV_VEHICLES_FALLBACK as string | undefined) === '1';
+    if (resp.status === 403 || resp.status >= 500) {
+      // Log backend error body to help debugging
+      try {
+        const txt = await resp.clone().text();
+        console.warn(`[vehicles-proxy] backend error body: ${txt}`);
+      } catch (e) {
+        console.warn('[vehicles-proxy] failed to read backend error body', e);
+      }
+      if (devFallbackEnabled) {
+        console.warn('[vehicles-proxy] vehicle service returned error — returning dev fallback');
+        const sample = [
+          { id: 'veh-dev-1', make: 'Toyota', model: 'Corolla', year: 2018, userId: 'user-dev' },
+          { id: 'veh-dev-2', make: 'Honda', model: 'Civic', year: 2020, userId: 'user-dev' }
+        ];
+        return new Response(JSON.stringify(sample), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      // Forward the backend error (status + body) to the client so you can see
+      // actual backend responses in the browser instead of a silent mock.
+      const body = await resp.arrayBuffer();
+      const outHeaders = new Headers();
+      const respCT = resp.headers.get('content-type');
+      if (respCT) outHeaders.set('content-type', respCT);
+      return new Response(body, { status: resp.status, headers: outHeaders });
     }
     console.log(`[vehicles-proxy] response status: ${resp.status}`);
     const body = await resp.arrayBuffer();
