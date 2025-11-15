@@ -3,6 +3,7 @@
 
 import { Pause, Square, Play } from "lucide-react";
 import React, { useState, useEffect, useRef } from 'react';
+import { startTimeLog, updateActiveLogTime, stopTimeLog } from "@/lib/timeLoggingStore";
 
 // --- MODIFICATION: `isClockedIn` is no longer part of the props ---
 type TaskProps = {
@@ -33,7 +34,13 @@ export default function TimeLoggingCard({ task }: TaskProps) {
     // Timer logic
     useEffect(() => {
         if (isActive && task) {
-            timerRef.current = setInterval(() => setTimeElapsed(prev => prev + 1), 1000);
+            timerRef.current = setInterval(() => {
+                setTimeElapsed(prev => {
+                    const newTime = prev + 1;
+                    updateActiveLogTime(newTime);
+                    return newTime;
+                });
+            }, 1000);
         } else {
             if (timerRef.current) clearInterval(timerRef.current);
         }
@@ -59,14 +66,27 @@ export default function TimeLoggingCard({ task }: TaskProps) {
           <div className="mt-1.5 flex items-center gap-2">
              {/* --- MODIFICATION: Button is only disabled if no task is selected --- */}
              <button 
-                  onClick={() => setIsActive(!isActive)}
+                  onClick={() => {
+                      if (!isActive && task) {
+                          // Starting the timer
+                          startTimeLog(task.id, task.title);
+                          setIsActive(true);
+                      } else if (isActive) {
+                          // Pausing the timer
+                          setIsActive(false);
+                      }
+                  }}
                   disabled={!task}
                   className="inline-flex w-20 justify-center items-center gap-1.5 rounded-lg bg-black text-white px-2.5 py-1 text-xs hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed">
                   {isActive ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
                   {isActive ? 'Pause' : 'Start'}
              </button>
              <button 
-                  onClick={() => { setIsActive(false); setTimeElapsed(0); }}
+                  onClick={() => { 
+                      stopTimeLog();
+                      setIsActive(false); 
+                      setTimeElapsed(0); 
+                  }}
                   disabled={!task}
                   className="inline-flex w-20 justify-center items-center gap-1.5 rounded-lg bg-red-600 text-white px-2.5 py-1 text-xs hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
                   <Square className="h-3 w-3" /> Stop

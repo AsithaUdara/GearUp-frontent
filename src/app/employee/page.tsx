@@ -3,7 +3,7 @@
 // Force dynamic rendering so Next won't try to prerender this client-heavy page
 export const dynamic = 'force-dynamic';
 
-import { useState } from 'react'; 
+import { useState, useEffect } from 'react'; 
 import AssignedTasksList, { Task } from "@/app/components/employee/dashboard/AssignedTasksList"; 
 import ScheduleCard from "@/app/components/employee/dashboard/ScheduleCard";
 import SmallCalendar from "@/app/components/employee/dashboard/SmallCalendar";
@@ -11,6 +11,8 @@ import SmallCalendar from "@/app/components/employee/dashboard/SmallCalendar";
 import TimeLoggingCard from "@/app/components/employee/dashboard/TimeLoggingCard";
 import StatsCards from "@/app/components/employee/dashboard/StatsCards";
 import UpcomingAppointmentsCard from "@/app/components/employee/dashboard/UpcomingAppointmentsCard";
+import { setServiceTasks } from "@/lib/serviceTasksStore";
+import { fetchTasksByEmployeeId } from "@/lib/workScheduleData";
 
 const mockTasks: Task[] = [
   { id: "1", title: "Oil Change - Toyota Camry", customer: "John Doe", vehicle: "V-XYZ123", status: "In Progress" },
@@ -23,6 +25,27 @@ export default function EmployeeOverviewPage() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(tasks[0] || null); // Default to the first task for the timer
 
   // --- FIX: All state and handlers for `isClockedIn` have been removed ---
+
+  // Load service tasks data on mount
+  useEffect(() => {
+    let mounted = true;
+    const loadServiceTasks = async () => {
+      try {
+        // Using the same employee ID as service progress page
+        const employeeId = "emp-1";
+        const res = await fetchTasksByEmployeeId(employeeId);
+        if (mounted) {
+          setServiceTasks(res.assigned, res.completed);
+        }
+      } catch (error) {
+        console.error("Failed to load service tasks:", error);
+      }
+    };
+    loadServiceTasks();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleTaskSelect = (task: Task) => {
     setSelectedTask(task); 

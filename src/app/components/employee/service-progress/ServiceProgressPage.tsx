@@ -17,6 +17,7 @@ import {
   ModificationRequest,
   PartsRequest
 } from "@/lib/workScheduleData";
+import { setServiceTasks, updateAssignedTasks, updateCompletedTasks } from "@/lib/serviceTasksStore";
 import { ClipboardList, Clock, CheckCircle2, Bell, Car, User } from "lucide-react";
 
 export default function ServiceProgressPage() {
@@ -43,6 +44,9 @@ export default function ServiceProgressPage() {
       setCurrentTask(res.currentTask ?? null);
       setAssignedTasks(res.assigned);
       setCompletedTasks(res.completed);
+      
+      // Update the store for real-time sync with dashboard
+      setServiceTasks(res.assigned, res.completed);
       
       // Load pending customer requests
       const pendingReqs = await fetchPendingModificationRequestsForEmployee(employeeId);
@@ -86,11 +90,16 @@ export default function ServiceProgressPage() {
   const handleTaskUpdate = async (updated: WorkTask | null) => {
     if (!updated) return;
     setCurrentTask(updated);
-    setAssignedTasks((prev) => prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t)));
+    setAssignedTasks((prev) => {
+      const next = prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t));
+      updateAssignedTasks(() => next); // Update store
+      return next;
+    });
     if (updated.status === "completed") {
       setCompletedTasks((prev) => {
         const exists = prev.some((x) => x.id === updated.id);
         const next = exists ? prev.map((x) => (x.id === updated.id ? updated : x)) : [...prev, updated];
+        updateCompletedTasks(() => next); // Update store
         return next;
       });
       
@@ -144,7 +153,11 @@ export default function ServiceProgressPage() {
         employeeId,
         request.id
       );
-      setAssignedTasks((prev) => [...prev, newTask]);
+      setAssignedTasks((prev) => {
+        const next = [...prev, newTask];
+        updateAssignedTasks(() => next); // Update store
+        return next;
+      });
       setPendingRequests((prev) => prev.filter((r) => r.id !== request.id));
       setNotificationMessage(`New task created from customer request: ${request.title}`);
       setTimeout(() => setNotificationMessage(null), 5000);
