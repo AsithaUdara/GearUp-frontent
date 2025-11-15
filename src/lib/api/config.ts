@@ -7,13 +7,13 @@
 const USE_API_GATEWAY = false;
 
 // API Gateway base URL (when auth service is ready)
-const API_GATEWAY_URL = 'http://localhost:8080';
+const API_GATEWAY_URL = 'http://localhost:9090';
 
 // Direct service URLs (for development)
 const DIRECT_SERVICE_URLS = {
   payment: 'http://localhost:8083',
   auth: 'http://localhost:8082',
-  automobile: 'http://localhost:8080',
+  automobile: 'http://localhost:9090',
   notification: 'http://localhost:8081',
 };
 
