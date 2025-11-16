@@ -16,6 +16,7 @@ export default function ServiceEditModal({ isOpen, onClose, template }: Props) {
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState<number | ''>(0);
   const [durationMinutes, setDurationMinutes] = useState<number | ''>(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { createTemplate, updateTemplate, listTemplates } = useServiceTemplates();
 
   useEffect(() => {
@@ -36,12 +37,14 @@ export default function ServiceEditModal({ isOpen, onClose, template }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-  const p = Number(price);
-  const d = Number(durationMinutes);
-  if (!name.trim()) return;
-  if (isNaN(p) || p < 0) return;
-  if (isNaN(d) || d < 1) return;
-  const payload: ServiceTemplateDto = { name: name.trim(), description: description.trim(), price: p, durationMinutes: d, active: true };
+    const p = Number(price);
+    const d = Number(durationMinutes);
+    if (!name.trim()) return;
+    if (isNaN(p) || p < 0) return;
+    if (isNaN(d) || d < 1) return;
+    const payload: ServiceTemplateDto = { name: name.trim(), description: description.trim(), price: p, durationMinutes: d, active: true };
+    
+    setIsSubmitting(true);
     try {
       if (template?.id) {
         await updateTemplate(template.id, payload);
@@ -53,6 +56,9 @@ export default function ServiceEditModal({ isOpen, onClose, template }: Props) {
       onClose();
     } catch (err) {
       console.error('Template save failed', err);
+      // Could add error state here
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -83,8 +89,11 @@ export default function ServiceEditModal({ isOpen, onClose, template }: Props) {
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-4">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium rounded-md bg-gray-100 hover:bg-gray-200">Cancel</button>
-            <button type="submit" className="px-4 py-2 text-sm font-medium rounded-md bg-primary text-white hover:brightness-110">Save Template</button>
+            <button type="button" onClick={onClose} disabled={isSubmitting} className="px-4 py-2 text-sm font-medium rounded-md bg-gray-100 hover:bg-gray-200 disabled:opacity-50">Cancel</button>
+            <button type="submit" disabled={isSubmitting} className="px-4 py-2 text-sm font-medium rounded-md bg-primary text-white hover:brightness-110 disabled:opacity-50 flex items-center gap-2">
+              {isSubmitting && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
+              {isSubmitting ? 'Saving...' : 'Save Template'}
+            </button>
           </div>
         </form>
       </div>
