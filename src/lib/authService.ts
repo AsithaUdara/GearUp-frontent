@@ -48,7 +48,7 @@ export async function loginUser(email: string, password: string): Promise<{ dash
     } else if (roles.some((role: any) => role.name === 'EMPLOYEE')) {
       dashboardPath = '/employee';
     } else if (roles.some((role: any) => role.name === 'CUSTOMER')) {
-      dashboardPath = '/customer';
+      dashboardPath = '/customer/dashboard';
     }
 
     return { dashboardPath };
