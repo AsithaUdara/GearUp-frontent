@@ -11,15 +11,21 @@ import {
   LucideBot,
   LucideLogOut,
   LucideCreditCard,
+  LucideBell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { icon: LucideCar, label: "Dashboard", href: "/customer/dashboard" },
-  { icon: LucideCalendar, label: "Book Appointment", href: "/customer/appointment" },
+  {
+    icon: LucideCalendar,
+    label: "Book Appointment",
+    href: "/customer/appointment",
+  },
   { icon: LucideHistory, label: "Service History", href: "/customer/progress" },
   { icon: LucideCar, label: "My Vehicles", href: "/customer/vehicles" },
   { icon: LucideCreditCard, label: "Payment", href: "/customer/payment" },
+  { icon: LucideBell, label: "Notifications", href: "/notifications" },
   { icon: LucideSettings, label: "Settings", href: "/customer/settings" },
   { icon: LucideBot, label: "AI Chatbot", href: "/customer/chatbot" },
 ];
@@ -32,8 +38,8 @@ export default function CustomerSidebar() {
   const handleLogout = async () => {
     try {
       // Clear any auth tokens or session data
-      localStorage.removeItem('userRole');
-      localStorage.removeItem('authToken');
+      localStorage.removeItem("userRole");
+      localStorage.removeItem("authToken");
       router.push("/");
     } catch (error) {
       console.error("Logout failed:", error);
@@ -55,10 +61,12 @@ export default function CustomerSidebar() {
             className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
             style={{
               backgroundImage: `url('${
-                (user?.displayName || user?.email
+                user?.displayName || user?.email
                   ? "https://api.dicebear.com/7.x/initials/svg?seed=" +
-                    encodeURIComponent(user?.displayName || user?.email || "User")
-                  : "https://api.dicebear.com/7.x/initials/svg?seed=User")
+                    encodeURIComponent(
+                      user?.displayName || user?.email || "User"
+                    )
+                  : "https://api.dicebear.com/7.x/initials/svg?seed=User"
               }')`,
             }}
           />
@@ -66,7 +74,9 @@ export default function CustomerSidebar() {
             <h1 className="text-[#181111] text-base font-medium leading-normal">
               {user?.displayName || "Your name"}
             </h1>
-            <p className="text-gray-500 text-sm font-normal leading-normal">{user?.email}</p>
+            <p className="text-gray-500 text-sm font-normal leading-normal">
+              {user?.email}
+            </p>
           </div>
         </div>
         <nav className="flex flex-col gap-2 mb-6">
@@ -84,8 +94,15 @@ export default function CustomerSidebar() {
                     : "hover:bg-white/10 hover:backdrop-blur-sm hover:shadow text-[#181111]"
                 )}
               >
-                <IconComponent className={active ? "text-primary" : "text-[#181111]"} />
-                <p className={cn("text-sm font-medium leading-normal", active ? "text-primary" : "text-[#181111]")}>
+                <IconComponent
+                  className={active ? "text-primary" : "text-[#181111]"}
+                />
+                <p
+                  className={cn(
+                    "text-sm font-medium leading-normal",
+                    active ? "text-primary" : "text-[#181111]"
+                  )}
+                >
                   {item.label}
                 </p>
               </a>
@@ -99,7 +116,9 @@ export default function CustomerSidebar() {
           className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 hover:backdrop-blur-sm hover:shadow cursor-pointer w-full transition-all duration-200"
         >
           <LucideLogOut className="text-[#181111]" />
-          <p className="text-[#181111] text-sm font-medium leading-normal">Log Out</p>
+          <p className="text-[#181111] text-sm font-medium leading-normal">
+            Log Out
+          </p>
         </button>
       </div>
     </aside>

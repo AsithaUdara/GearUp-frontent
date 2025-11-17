@@ -4,7 +4,9 @@ import { Oswald, Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { ChatbotProvider } from "@/context/ChatbotContext";
+import { NotificationProvider } from "@/context/NotificationContext";
 import { Chatbot } from "@/components/Chatbot";
+import { Toaster } from "@/components/ui/toaster";
 
 const oswald = Oswald({
   subsets: ["latin"],
@@ -36,10 +38,13 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <AuthProvider>
-          <ChatbotProvider>
-            {children}
-            <Chatbot />
-          </ChatbotProvider>
+          <NotificationProvider>
+            <ChatbotProvider>
+              {children}
+              <Chatbot />
+              <Toaster />
+            </ChatbotProvider>
+          </NotificationProvider>
         </AuthProvider>
       </body>
     </html>

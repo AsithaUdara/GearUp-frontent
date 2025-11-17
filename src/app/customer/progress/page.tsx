@@ -309,7 +309,6 @@ export default function ServiceProgress() {
   const [showRecommendations, setShowRecommendations] = useState(false);
   const [showServiceHistory, setShowServiceHistory] = useState(false);
   const [newMessage, setNewMessage] = useState('');
-<<<<<<< HEAD:src/app/progress/page.tsx
   const [notifications, setNotifications] = useState([
     {
       id: '1',
@@ -330,10 +329,8 @@ export default function ServiceProgress() {
       type: 'info'
     }
   ]);
-=======
   // Add floating chat toggle button at bottom right
   const [chatOpen, setChatOpen] = useState(false);
->>>>>>> origin/development:src/app/customer/progress/page.tsx
 
   useEffect(() => {
     if (!loading && !user) {
@@ -645,7 +642,6 @@ export default function ServiceProgress() {
                 </div>
               </motion.div>
 
-<<<<<<< HEAD:src/app/progress/page.tsx
               {/* Notifications */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -686,8 +682,6 @@ export default function ServiceProgress() {
                 </div>
               </motion.div>
 
-=======
->>>>>>> origin/development:src/app/customer/progress/page.tsx
               {/* Service Details */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -710,8 +704,6 @@ export default function ServiceProgress() {
                     <span className="text-muted-foreground">Last Update:</span>
                     <span className="font-semibold">{serviceProgress.lastUpdate}</span>
                   </div>
-<<<<<<< HEAD:src/app/progress/page.tsx
-=======
                   <div className="pt-3 border-t border-gray-200">
                     <button
                       onClick={() => router.push('/customer/modification')}
@@ -721,7 +713,6 @@ export default function ServiceProgress() {
                       Request Modifications
                     </button>
                   </div>
->>>>>>> origin/development:src/app/customer/progress/page.tsx
                 </div>
               </motion.div>
 

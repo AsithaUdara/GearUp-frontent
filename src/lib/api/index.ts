@@ -5,3 +5,11 @@ export type {
   ChatMessageResponse,
   ConversationHistory,
 } from "./chatbot";
+
+export { NotificationApiService } from "./notifications";
+export type {
+  Notification,
+  NotificationResponse,
+  NotificationPageResponse,
+  UnreadCountResponse,
+} from "@/types/notification";
