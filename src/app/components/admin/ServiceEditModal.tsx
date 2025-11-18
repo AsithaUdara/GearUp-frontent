@@ -10,10 +10,11 @@ type Props = {
   template: ServiceTemplateDto | null;
   createTemplate: (payload: ServiceTemplateDto) => Promise<ServiceTemplateDto>;
   updateTemplate: (id: number, payload: ServiceTemplateDto) => Promise<ServiceTemplateDto>;
-  listTemplates: (activeOnly?: boolean) => Promise<ServiceTemplateDto[]>;
+  listTemplates: (page?: number, size?: number, activeOnly?: boolean) => Promise<{ items: ServiceTemplateDto[]; totalElements: number; totalPages: number; page: number; size: number }>;
+  currentPage: number;
 };
 
-export default function ServiceEditModal({ isOpen, onClose, template, createTemplate, updateTemplate, listTemplates }: Props) {
+export default function ServiceEditModal({ isOpen, onClose, template, createTemplate, updateTemplate, listTemplates, currentPage }: Props) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState<number | ''>(0);
@@ -66,7 +67,8 @@ export default function ServiceEditModal({ isOpen, onClose, template, createTemp
         await createTemplate(payload);
       }
       // Refresh list after successful create/update so table reflects new data
-      await listTemplates();
+      const pageToUse = typeof currentPage === 'number' ? currentPage : 0;
+      await listTemplates(pageToUse, 10);
       onClose();
     } catch (err: any) {
       console.error('Template save failed', err);

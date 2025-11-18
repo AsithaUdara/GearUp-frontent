@@ -7,21 +7,27 @@ import DeleteConfirmModal from './DeleteConfirmModal';
 type Props = {
   onEditTemplate: (template: ServiceTemplateDto) => void;
   items: ServiceTemplateDto[];
-  listTemplates: (activeOnly?: boolean) => Promise<ServiceTemplateDto[]>;
+  listTemplates: (page?: number, size?: number, activeOnly?: boolean) => Promise<{ items: ServiceTemplateDto[]; totalElements: number; totalPages: number; page: number; size: number }>;
   deleteTemplate: (id: number) => Promise<boolean>;
+  currentPage: number;
+  onPageChange: (page: number) => void;
 };
 
-export default function ServicesTable({ onEditTemplate, items, listTemplates, deleteTemplate }: Props) {
+export default function ServicesTable({ onEditTemplate, items, listTemplates, deleteTemplate, currentPage, onPageChange }: Props) {
 
   const { user, loading: authLoading } = useAuth();
   const [deleting, setDeleting] = useState<{ id: number; name?: string } | null>(null);
+  const [totalPages, setTotalPages] = useState(0);
 
   // Only load templates after auth is initialized and user exists to ensure token is available
   useEffect(() => {
     if (!authLoading && user) {
-      listTemplates().catch(() => {});
+      // request the current page
+      listTemplates(currentPage, 10).then(pd => {
+        if (pd?.totalPages !== undefined) setTotalPages(pd.totalPages);
+      }).catch(() => {});
     }
-  }, [authLoading, user, listTemplates]);
+  }, [authLoading, user, listTemplates, currentPage]);
 
   const confirmDelete = (id?: number, name?: string) => {
     if (!id) return;
@@ -32,7 +38,8 @@ export default function ServicesTable({ onEditTemplate, items, listTemplates, de
     if (!deleting) return;
     try {
       await deleteTemplate(deleting.id);
-      await listTemplates();
+      const pd = await listTemplates(currentPage, 10);
+      if (pd?.totalPages !== undefined) setTotalPages(pd.totalPages);
     } catch (err) {
       console.error('Delete failed', err);
     } finally {
@@ -78,6 +85,14 @@ export default function ServicesTable({ onEditTemplate, items, listTemplates, de
         onConfirm={doDelete}
         onCancel={() => setDeleting(null)}
       />
+
+      <div className="flex items-center justify-between p-4">
+        <div className="text-sm text-muted-foreground">Page {currentPage + 1} of {totalPages || 1}</div>
+        <div className="flex items-center gap-2">
+          <button disabled={currentPage <= 0} onClick={() => onPageChange(Math.max(0, currentPage - 1))} className="px-3 py-1 rounded border disabled:opacity-50">Prev</button>
+          <button disabled={currentPage >= Math.max(0, totalPages - 1)} onClick={() => onPageChange(Math.min(totalPages - 1, currentPage + 1))} className="px-3 py-1 rounded border disabled:opacity-50">Next</button>
+        </div>
+      </div>
     </div>
   );
 }

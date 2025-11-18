@@ -16,6 +16,7 @@ export default function ServicesPage() {
 
   // Single shared hook instance for the page so child components see the same state
   const templates = useServiceTemplates();
+  const [currentPage, setCurrentPage] = useState(0);
 
   const handleNewTemplate = () => {
     setEditingTemplate(null);
@@ -33,30 +34,41 @@ export default function ServicesPage() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <h1 className="font-heading text-3xl font-bold">Service Template Management</h1>
-      <p className="mt-1 text-muted-foreground">Define, edit, and manage the services your business offers.</p>
+      <div className="mx-auto max-w-6xl p-4 sm:p-6 lg:p-8">
+        <div className="mb-6">
+          <h1 className="text-3xl font-heading font-bold text-gray-900">Service Template Management</h1>
+          <p className="mt-1 text-sm text-gray-600">Define, edit, and manage the services your business offers.</p>
+        </div>
 
-      <div className="mt-8">
-        <ServicesToolbar onNewTemplate={handleNewTemplate} />
-      </div>
+        <div className="mb-6">
+          <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
+            <ServicesToolbar onNewTemplate={handleNewTemplate} />
+          </div>
+        </div>
 
-      <div className="mt-6">
-        <ServicesTable
-          onEditTemplate={handleEditTemplate}
-          items={templates.items}
-          listTemplates={templates.listTemplates}
-          deleteTemplate={templates.deleteTemplate}
+        <div>
+          <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
+            <ServicesTable
+              onEditTemplate={handleEditTemplate}
+              items={templates.items}
+              listTemplates={templates.listTemplatesByPage}
+              deleteTemplate={templates.deleteTemplate}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        </div>
+
+        <ServiceEditModal
+          template={editingTemplate}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          createTemplate={templates.createTemplate}
+          updateTemplate={templates.updateTemplate}
+          listTemplates={templates.listTemplatesByPage}
+          currentPage={currentPage}
         />
       </div>
-
-      <ServiceEditModal
-        template={editingTemplate}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        createTemplate={templates.createTemplate}
-        updateTemplate={templates.updateTemplate}
-        listTemplates={templates.listTemplates}
-      />
     </motion.div>
   );
 }
