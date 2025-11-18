@@ -4,7 +4,7 @@ import { Oswald, Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { ChatbotProvider } from "@/context/ChatbotContext";
-import { Chatbot } from "@/components/Chatbot";
+import ChatbotHost from "@/components/ChatbotHost";
 
 const oswald = Oswald({
   subsets: ["latin"],
@@ -38,7 +38,7 @@ export default function RootLayout({
         <AuthProvider>
           <ChatbotProvider>
             {children}
-            <Chatbot />
+            <ChatbotHost />
           </ChatbotProvider>
         </AuthProvider>
       </body>
