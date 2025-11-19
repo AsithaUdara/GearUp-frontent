@@ -1,19 +1,19 @@
 "use client";
 import { useSyncExternalStore, useState } from "react";
-import { subscribe, getAppointments } from "@/lib/appointmentsStore";
+import { subscribe, getAppointments, Appointment } from "@/lib/appointmentsStore";
 import { useRouter } from "next/navigation";
 import AppointmentDetailsModal from "@/app/components/employee/schedule/AppointmentDetailsModal";
 
 export default function UpcomingAppointmentsCard({ max = 3 }: { max?: number }) {
   const router = useRouter();
-  // include getServerSnapshot (third arg) so server-rendered pages have a stable snapshot
-  const appointments = useSyncExternalStore(subscribe, getAppointments, getAppointments) ?? [];
-  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
+  // Use getAppointments for both client and server snapshots
+  const appointments = useSyncExternalStore(subscribe, getAppointments, getAppointments);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  const upcoming = appointments.filter((a: any) => !a.past).slice(0, max);
+  const upcoming = (appointments || []).filter((a) => !a.past).slice(0, max);
 
-  const handleView = (a: any) => {
+  const handleView = (a: Appointment) => {
     setSelectedAppointment(a);
     setModalOpen(true);
   };
@@ -27,7 +27,7 @@ export default function UpcomingAppointmentsCard({ max = 3 }: { max?: number }) 
 
       <ul className="mt-3 space-y-3">
         {upcoming.length === 0 && <li className="text-sm text-gray-500">No upcoming appointments</li>}
-        {upcoming.map((a: any) => (
+        {upcoming.map((a) => (
           <li key={a.id} className="rounded-lg border border-gray-100 p-3 bg-gray-50">
             <div className="flex items-start justify-between">
               <div>
@@ -50,14 +50,13 @@ export default function UpcomingAppointmentsCard({ max = 3 }: { max?: number }) 
             id: selectedAppointment.id,
             customerName: selectedAppointment.customer,
             vehicle: { make: selectedAppointment.vehicle },
-            services: [selectedAppointment.service],
+            services: [selectedAppointment.service || ""],
             date: selectedAppointment.date,
             time: selectedAppointment.time,
             assignee: "You",
             status: selectedAppointment.status,
           }}
           onClose={() => setModalOpen(false)}
-          allowActions={false}
           showScheduleLink={true}
         />
       )}

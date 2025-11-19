@@ -3,8 +3,9 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { signOut } from "@/lib/authService";
 import {
   Home,
   CalendarClock,
@@ -24,6 +25,16 @@ const items = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      router.push('/'); // Navigate to home/login page
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   return (
     // The `border-r` class has been removed
@@ -64,7 +75,11 @@ export default function Sidebar() {
 
       {/* The `border-t` class has been removed */}
       <div className="px-3 py-3 shrink-0">
-        <button type="button" className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-200">
+        <button 
+          type="button" 
+          onClick={handleLogout}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-200"
+        >
           <LogOut className="h-4 w-4" /> Logout
         </button>
       </div>

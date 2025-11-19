@@ -1,7 +1,6 @@
-// src/lib/firebase.ts
-import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { getFirestore, initializeFirestore, enableIndexedDbPersistence, type Firestore } from 'firebase/firestore';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { initializeFirestore, persistentLocalCache } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
 // IMPORTANT: For client bundles, Next.js only inlines env vars when referenced statically
@@ -40,15 +39,8 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const authInstance = getAuth(app);
 const dbInstance = initializeFirestore(app, {
   experimentalAutoDetectLongPolling: true,
+  localCache: persistentLocalCache(),
 });
-
-// Enable offline persistence if in browser environment
-if (typeof window !== 'undefined') {
-  enableIndexedDbPersistence(dbInstance).catch((err) => {
-    // Ignore persistence errors (e.g., multiple tabs). Firestore will still work without persistence.
-    console.warn('Firestore persistence not enabled', err?.code || err);
-  });
-}
 
 const storageInstance = getStorage(app);
 
