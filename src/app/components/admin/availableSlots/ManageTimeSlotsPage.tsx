@@ -71,7 +71,7 @@ export default function ManageTimeSlotsPage() {
         for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
           const dateStr = ymd(d);
           try {
-            const slotsResponse = await fetch(`http://localhost:8084/api/timeslots?date=${dateStr}`);
+            const slotsResponse = await fetch(`http://localhost:9090/api/v1/timeslots?date=${dateStr}`);
             if (slotsResponse.ok) {
               const slotsData = await slotsResponse.json();
               console.log(`Time slots for ${dateStr}:`, slotsData);
@@ -101,7 +101,7 @@ export default function ManageTimeSlotsPage() {
 
         // Fetch bookings
         try {
-          const bookingsResponse = await fetch('http://localhost:8084/api/bookings');
+          const bookingsResponse = await fetch('http://localhost:9090/api/v1/bookings');
           if (bookingsResponse.ok) {
             const bookingsData = await bookingsResponse.json();
             console.log('Bookings from API:', bookingsData);
@@ -200,7 +200,7 @@ export default function ManageTimeSlotsPage() {
     if (!slot || isNaN(parseInt(slotId))) {
       try {
         // Fetch available time slots for this date
-        const slotsResponse = await fetch(`http://localhost:8084/api/timeslots?date=${date}`);
+        const slotsResponse = await fetch(`http://localhost:9090/api/v1/timeslots?date=${date}`);
         if (!slotsResponse.ok) {
           console.error('Failed to fetch time slots');
           return 'conflict';
@@ -246,7 +246,7 @@ export default function ManageTimeSlotsPage() {
 
     try {
       // Create booking in the database via API
-      const response = await fetch('http://localhost:8084/api/bookings', {
+      const response = await fetch('http://localhost:9090/api/v1/bookings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -962,7 +962,7 @@ function AppointmentsForDate({ selectedDate }: { selectedDate: string }) {
     async function fetchAppointments() {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:8084/api/bookings');
+        const response = await fetch('http://localhost:9090/api/v1/bookings');
         if (response.ok) {
           const bookingsData = await response.json();
           // Filter bookings for the selected date
@@ -1111,7 +1111,7 @@ function UpcomingAppointments({ selectedDate, bookings }: { selectedDate: string
     async function fetchDetailedBookings() {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:8084/api/bookings');
+        const response = await fetch('http://localhost:9090/api/v1/bookings');
         if (response.ok) {
           const bookingsData = await response.json();
           // Filter bookings for the selected date

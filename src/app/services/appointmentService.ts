@@ -1,9 +1,9 @@
 /**
  * Appointment Service API Client
- * Connects to appointment-service backend (port 8084)
+ * Connects to appointment-service backend via API Gateway (port 9090)
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_APPOINTMENT_SERVICE_URL || 'http://localhost:8084/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_APPOINTMENT_SERVICE_URL || 'http://localhost:9090/api';
 
 // ==================== TYPES ====================
 

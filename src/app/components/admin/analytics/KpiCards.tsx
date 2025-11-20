@@ -24,7 +24,7 @@ export default function KpiCards() {
     const fetchMetrics = async () => {
       try {
         // Fetch total appointments from appointment service database
-        const bookingsResponse = await fetch('http://localhost:8084/api/bookings');
+        const bookingsResponse = await fetch('http://localhost:9090/api/v1/bookings');
         let totalAppointments = 0; // Start with 0
         
         if (bookingsResponse.ok) {
@@ -38,7 +38,7 @@ export default function KpiCards() {
 
         // Fetch other metrics from analytics service
         try {
-          const analyticsResponse = await fetch('http://localhost:8087/api/analytics/metrics');
+          const analyticsResponse = await fetch('http://localhost:9090/api/analytics/metrics');
           if (analyticsResponse.ok) {
             const data = await analyticsResponse.json();
             console.log('Analytics data:', data);
@@ -126,6 +126,8 @@ export default function KpiCards() {
     </div>
   );
 }
+
+
 
 
 

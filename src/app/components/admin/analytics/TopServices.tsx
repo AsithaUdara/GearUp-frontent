@@ -30,7 +30,7 @@ export default function TopServices() {
     const fetchServices = async () => {
       try {
         // Fetch all bookings from appointment service
-        const bookingsResponse = await fetch('http://localhost:8084/api/bookings');
+        const bookingsResponse = await fetch('http://localhost:9090/api/v1/bookings');
         
         if (bookingsResponse.ok) {
           const bookingsData: Booking[] = await bookingsResponse.json();
@@ -129,6 +129,8 @@ export default function TopServices() {
     </div>
   );
 }
+
+
 
 
 

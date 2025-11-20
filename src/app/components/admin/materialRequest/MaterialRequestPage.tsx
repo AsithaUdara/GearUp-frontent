@@ -49,7 +49,7 @@ export default function MaterialRequestPage() {
       try {
         setLoading(true);
         console.log('Fetching material requests from API...');
-        const response = await fetch('http://localhost:8093/api/v1/parts-requests');
+        const response = await fetch('http://localhost:9090/api/v1/parts-requests');
         console.log('Response status:', response.status);
         if (!response.ok) throw new Error('Failed to fetch');
         
