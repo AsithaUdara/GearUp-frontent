@@ -3,6 +3,7 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { InventoryStatus, MaterialRequest, MaterialRequestStatus } from './types';
 import { Download, Search, Calendar, Package, PackageCheck, PackageX, CheckCircle2, Filter, Eraser } from 'lucide-react';
+import { api } from '@/lib/apiClient';
 
 // non-secure small id helper
 const rid = (len = 8) => Math.random().toString(36).slice(2, 2 + len);
@@ -49,11 +50,8 @@ export default function MaterialRequestPage() {
       try {
         setLoading(true);
         console.log('Fetching material requests from API...');
-        const response = await fetch('http://localhost:9090/api/v1/parts-requests');
-        console.log('Response status:', response.status);
-        if (!response.ok) throw new Error('Failed to fetch');
         
-        const result = await response.json();
+        const result = await api.get('/api/v1/parts-requests');
         console.log('API Response:', result);
         const data = result.content || [];
         console.log('Data items:', data.length);
@@ -144,16 +142,8 @@ export default function MaterialRequestPage() {
   async function updateStatus(id: string, newStatus: 'APPROVED' | 'REJECTED' | 'PENDING') {
     try {
       console.log(`Updating request ${id} to ${newStatus}`);
-      const response = await fetch(`http://localhost:8093/api/v1/parts-requests/${id}/status?status=${newStatus}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) throw new Error('Failed to update status');
-
-      const updatedItem = await response.json();
+      
+      const updatedItem = await api.put(`/api/v1/parts-requests/${id}/status?status=${newStatus}`);
       console.log('Updated item:', updatedItem);
 
       // Update local state
