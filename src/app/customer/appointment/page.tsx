@@ -242,7 +242,7 @@ export default function AppointmentBooking() {
 
               <div className="flex gap-4 justify-center">
                 <button
-                  onClick={() => router.push('/customer/dashboard')}
+                  onClick={() => router.push('/dashboard')}
                   className="px-8 py-3 bg-primary text-white font-heading font-bold uppercase rounded-md hover:bg-primary/90 transition-colors"
                 >
                   Go to Dashboard

@@ -64,9 +64,9 @@ To test the backend connection:
 
 Expected endpoints:
 - Health: http://localhost:8084/actuator/health
-- Services: http://localhost:8084/api/services  
-- Time Slots: http://localhost:8084/api/timeslots?date=YYYY-MM-DD
-- Bookings: http://localhost:8084/api/bookings
+- Services: http://localhost:8084/api/v1/services  
+- Time Slots: http://localhost:8084/api/v1/timeslots?date=YYYY-MM-DD
+- Bookings: http://localhost:8084/api/v1/bookings
 `);
 
 export { testBackendConnection };

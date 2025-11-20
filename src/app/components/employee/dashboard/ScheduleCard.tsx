@@ -18,13 +18,8 @@ const emptyAppointmentsSnapshot: ReturnType<typeof getAppointments> = [];
 const emptyDatesSnapshot: ReturnType<typeof getUnavailableDates> = [];
 
 export default function ScheduleCard() {
-
   const appointments = useSyncExternalStore(subscribe, getAppointments, () => emptyAppointmentsSnapshot);
   const unavailableDates = useSyncExternalStore(subscribeUnavailable, getUnavailableDates, () => emptyDatesSnapshot);
-
-  const appointments = useSyncExternalStore(subscribe, getAppointments, getServerSnapshot);
-  const unavailableDates = useSyncExternalStore(subscribeUnavailable, getUnavailableDates, getServerSnapshot);
-
 
   const today = todayISO();
   const todaysTasks = appointments.filter((a) => a.date === today && !a.past);

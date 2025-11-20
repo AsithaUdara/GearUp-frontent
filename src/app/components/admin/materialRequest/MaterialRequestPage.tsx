@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { InventoryStatus, MaterialRequest } from './types';
+import { InventoryStatus, MaterialRequest, MaterialRequestStatus } from './types';
 import { Download, Search, Calendar, Package, PackageCheck, PackageX, CheckCircle2, Filter, Eraser } from 'lucide-react';
+import { api } from '@/lib/apiClient';
 
 // non-secure small id helper
 const rid = (len = 8) => Math.random().toString(36).slice(2, 2 + len);
@@ -36,11 +37,66 @@ function badge(status: 'fulfilled' | InventoryStatus) {
 }
 
 export default function MaterialRequestPage() {
-  const all = useMemo(createMock, []);
-  const [items, setItems] = useState<MaterialRequest[]>(all);
+  const [items, setItems] = useState<MaterialRequest[]>([]);
   const [filters, setFilters] = useState<Filters>({ status: 'all', employee: '' });
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize] = useState(6); // Fixed at 6 items per page
+  const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Fetch data from backend on mount
+  useEffect(() => {
+    async function fetchMaterialRequests() {
+      try {
+        setLoading(true);
+        console.log('Fetching material requests from API...');
+        
+        const result = await api.get('/api/v1/parts-requests');
+        console.log('API Response:', result);
+        const data = result.content || [];
+        console.log('Data items:', data.length);
+        
+        // Transform backend data to frontend format
+        const transformed: MaterialRequest[] = data.map((item: any) => {
+          // Map backend status to frontend status
+          let frontendStatus: MaterialRequestStatus = 'pending';
+          let inventoryStatus: InventoryStatus | undefined = undefined;
+          
+          if (item.status === 'APPROVED') {
+            frontendStatus = 'approved';
+            inventoryStatus = 'available';
+          } else if (item.status === 'PENDING') {
+            frontendStatus = 'pending';
+            inventoryStatus = 'low';
+          } else if (item.status === 'REJECTED') {
+            frontendStatus = 'rejected';
+            inventoryStatus = 'out';
+          }
+          
+          return {
+            id: item.id,
+            partName: item.material,
+            partNumber: item.requestId,
+            quantity: item.quantity,
+            requestedBy: item.notes || 'Unknown', // Using notes field temporarily
+            requestedAt: item.createdAt,
+            status: frontendStatus,
+            inventoryStatus: inventoryStatus,
+          };
+        });
+        
+        setItems(transformed);
+      } catch (error) {
+        console.error('Error fetching material requests:', error);
+        // Fallback to empty array on error
+        setItems([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchMaterialRequests();
+  }, []);
 
   // Filtering logic similar to the screenshot controls
   const filtered = items.filter((r) => {
@@ -69,10 +125,12 @@ export default function MaterialRequestPage() {
 
   // Summary stats for header cards
   const stats = useMemo(() => {
-    const s = { available: 0, low: 0, out: 0, fulfilled: 0 } as Record<'available'|'low'|'out'|'fulfilled', number>;
+    const s = { approved: 0, rejected: 0, pending: 0, total: 0 };
     for (const r of items) {
-      if (r.status === 'fulfilled') s.fulfilled++;
-      else if (r.inventoryStatus) s[r.inventoryStatus]++;
+      s.total++;
+      if (r.status === 'approved') s.approved++;
+      else if (r.status === 'rejected') s.rejected++;
+      else if (r.status === 'pending') s.pending++;
     }
     return s;
   }, [items]);
@@ -81,13 +139,41 @@ export default function MaterialRequestPage() {
     setItems((prev) => prev.map((i) => (i.partNumber === partNumber ? { ...i, inventoryStatus: status } : i)));
   }
 
-  function fulfill(id: string) {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, status: 'fulfilled' } : i)));
-  }
+  async function updateStatus(id: string, newStatus: 'APPROVED' | 'REJECTED' | 'PENDING') {
+    try {
+      console.log(`Updating request ${id} to ${newStatus}`);
+      
+      const updatedItem = await api.put(`/api/v1/parts-requests/${id}/status?status=${newStatus}`);
+      console.log('Updated item:', updatedItem);
 
-  function orderExternally(id: string) {
-    // For demo: mark as fulfilled as well, or keep pending. We'll mark fulfilled to mirror "Completed" action after ordering.
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, status: 'fulfilled' } : i)));
+      // Update local state
+      setItems((prev) => prev.map((item) => {
+        if (item.id === id) {
+          let frontendStatus: MaterialRequestStatus = 'pending';
+          let inventoryStatus: InventoryStatus | undefined = undefined;
+          
+          if (newStatus === 'APPROVED') {
+            frontendStatus = 'approved';
+            inventoryStatus = 'available';
+          } else if (newStatus === 'PENDING') {
+            frontendStatus = 'pending';
+            inventoryStatus = 'low';
+          } else if (newStatus === 'REJECTED') {
+            frontendStatus = 'rejected';
+            inventoryStatus = 'out';
+          }
+
+          return { ...item, status: frontendStatus, inventoryStatus };
+        }
+        return item;
+      }));
+      
+      // Close the editing mode
+      setEditingId(null);
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Failed to update status. Please try again.');
+    }
   }
 
   // Inventory Check UI state
@@ -105,29 +191,9 @@ export default function MaterialRequestPage() {
   const showingFrom = total ? start + 1 : 0;
   const showingTo = Math.min(start + pageSize, total);
 
-  // Dynamically size rows to fill available vertical space up to the bottom footer
+  // Refs for table and footer
   const tbodyRef = useRef<HTMLTableSectionElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const compute = () => {
-      if (!tbodyRef.current || !footerRef.current) return;
-      const bodyTop = tbodyRef.current.getBoundingClientRect().top;
-      const footerTop = footerRef.current.getBoundingClientRect().top;
-      const available = Math.max(0, footerTop - bodyTop - 16); // padding
-      // Estimate row height using the first row; fallback to 56px
-      let rowH = 56;
-      const firstRow = tbodyRef.current.querySelector('tr');
-      if (firstRow) {
-        const h = (firstRow as HTMLElement).getBoundingClientRect().height;
-        if (h) rowH = h;
-      }
-      const newSize = Math.max(1, Math.floor(available / rowH));
-      setPageSize((prev) => (prev !== newSize ? newSize : prev));
-    };
-    compute();
-    window.addEventListener('resize', compute);
-    return () => window.removeEventListener('resize', compute);
-  }, [filtered.length]);
 
   // Convenience helpers for friendlier UX
   function clearFilters() {
@@ -177,129 +243,252 @@ export default function MaterialRequestPage() {
   }
 
   return (
-    <div className="w-full flex flex-col min-h-screen">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Material Request Management</h1>
-          <p className="mt-1 text-sm text-gray-600">View and process material requests.</p>
-        </div>
-        <div className="hidden sm:flex gap-2">
-          <button onClick={exportCSV} className="inline-flex items-center gap-2 rounded-md bg-black text-white px-3 py-2 text-sm hover:bg-neutral-800">
-            <Download className="h-4 w-4 text-red-500" /> Export CSV
-          </button>
+    <div className="w-full flex flex-col min-h-screen bg-gray-50">
+      <div className="px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Material Request Management</h1>
+            <p className="mt-2 text-sm text-gray-600">Review and manage material requests from employees</p>
+          </div>
+          <div className="flex gap-3">
+            <button 
+              onClick={exportCSV} 
+              className="inline-flex items-center gap-2 rounded-lg bg-red-600 text-white px-4 py-2.5 text-sm font-medium hover:bg-red-700 shadow-sm transition-colors duration-200"
+            >
+              <Download className="h-4 w-4" /> Export CSV
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Summary cards */}
-      <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm flex items-center gap-3">
-          <CheckCircle2 className="h-5 w-5 text-red-600" />
-          <div>
-            <div className="text-xs text-gray-500">Available</div>
-            <div className="text-lg font-semibold text-gray-900">{stats.available}</div>
+      <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Total Requests */}
+        <div className="bg-white overflow-hidden shadow-lg rounded-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <Package className="h-8 w-8 text-blue-600" />
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Total Requests</dt>
+                  <dd className="flex items-baseline">
+                    <div className="text-2xl font-semibold text-gray-900">{stats.total}</div>
+                  </dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+          <div className="bg-blue-50 px-5 py-3">
+            <div className="text-sm">
+              <span className="font-medium text-blue-600">All material requests</span>
+            </div>
           </div>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm flex items-center gap-3">
-          <Package className="h-5 w-5 text-red-600" />
-          <div>
-            <div className="text-xs text-gray-500">Low Stock</div>
-            <div className="text-lg font-semibold text-gray-900">{stats.low}</div>
+
+        {/* Approved */}
+        <div className="bg-white overflow-hidden shadow-lg rounded-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <CheckCircle2 className="h-8 w-8 text-green-600" />
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Approved</dt>
+                  <dd className="flex items-baseline">
+                    <div className="text-2xl font-semibold text-gray-900">{stats.approved}</div>
+                    <span className="ml-2 text-sm font-medium text-green-600">
+                      {stats.total > 0 ? `${Math.round((stats.approved / stats.total) * 100)}%` : '0%'}
+                    </span>
+                  </dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+          <div className="bg-green-50 px-5 py-3">
+            <div className="text-sm">
+              <span className="font-medium text-green-600">Ready to fulfill</span>
+            </div>
           </div>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm flex items-center gap-3">
-          <PackageX className="h-5 w-5 text-red-600" />
-          <div>
-            <div className="text-xs text-gray-500">Out of Stock</div>
-            <div className="text-lg font-semibold text-gray-900">{stats.out}</div>
+
+        {/* Pending */}
+        <div className="bg-white overflow-hidden shadow-lg rounded-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <Calendar className="h-8 w-8 text-yellow-600" />
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Pending</dt>
+                  <dd className="flex items-baseline">
+                    <div className="text-2xl font-semibold text-gray-900">{stats.pending}</div>
+                    <span className="ml-2 text-sm font-medium text-yellow-600">
+                      {stats.total > 0 ? `${Math.round((stats.pending / stats.total) * 100)}%` : '0%'}
+                    </span>
+                  </dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+          <div className="bg-yellow-50 px-5 py-3">
+            <div className="text-sm">
+              <span className="font-medium text-yellow-600">Awaiting review</span>
+            </div>
           </div>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm flex items-center gap-3">
-          <PackageCheck className="h-5 w-5 text-red-600" />
-          <div>
-            <div className="text-xs text-gray-500">Fulfilled</div>
-            <div className="text-lg font-semibold text-gray-900">{stats.fulfilled}</div>
+
+        {/* Rejected */}
+        <div className="bg-white overflow-hidden shadow-lg rounded-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <PackageX className="h-8 w-8 text-red-600" />
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Rejected</dt>
+                  <dd className="flex items-baseline">
+                    <div className="text-2xl font-semibold text-gray-900">{stats.rejected}</div>
+                    <span className="ml-2 text-sm font-medium text-red-600">
+                      {stats.total > 0 ? `${Math.round((stats.rejected / stats.total) * 100)}%` : '0%'}
+                    </span>
+                  </dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+          <div className="bg-red-50 px-5 py-3">
+            <div className="text-sm">
+              <span className="font-medium text-red-600">Not approved</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Filters and inventory check removed per request */}
-
       {/* Table */}
-      <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Part Name</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Part Number</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Requested By</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Date</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Quantity</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Status</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Action</th>
-            </tr>
-          </thead>
-          <tbody ref={tbodyRef} className="divide-y divide-gray-200">
-            {pageItems.map((r) => {
-              const statusLabel = r.status === 'fulfilled' ? 'fulfilled' : (r.inventoryStatus || 'out');
-              const b = badge(statusLabel as any);
-              const actionBtn = "inline-flex items-center justify-center rounded-md text-white text-sm font-medium w-36 py-1.5";
-              return (
-                <tr key={r.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm text-gray-900">{r.partName}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{r.partNumber}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{r.requestedBy}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{new Date(r.requestedAt).toISOString().slice(0,10)}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{r.quantity}</td>
-                  <td className="px-4 py-3 text-sm">
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium ${b.cls}`}>{b.label}</span>
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    <div className="flex justify-center">
-                      {r.status === 'fulfilled' ? (
-                        <span className="inline-flex items-center justify-center w-36 py-1.5 rounded-md border border-gray-300 bg-gray-100 text-gray-700">Completed</span>
-                      ) : r.inventoryStatus === 'out' ? (
-                        <button className={`${actionBtn} bg-black hover:bg-neutral-800`} onClick={() => orderExternally(r.id)}>
-                          Order Externally
-                        </button>
-                      ) : (
-                        <button className={`${actionBtn} bg-red-600 hover:bg-red-700`} onClick={() => fulfill(r.id)}>
-                          Fulfill
-                        </button>
-                      )}
+      <div className="px-4 sm:px-6 lg:px-8 mt-8">
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Part Name</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Part Number</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Requested By</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Date</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Quantity</th>
+                <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Action</th>
+              </tr>
+            </thead>
+            <tbody ref={tbodyRef} className="bg-white divide-y divide-gray-200">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500">
+                    <div className="flex justify-center items-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+                      <span className="ml-3">Loading requests...</span>
                     </div>
                   </td>
                 </tr>
-              );
-            })}
-            {pageItems.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-600">No results.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-  {/* Footer: pagination – anchored to bottom of page */}
-  <div ref={footerRef} className="mt-auto pt-6 flex items-center justify-between text-sm text-gray-600">
-        <div>
-          {`Showing ${showingFrom} to ${showingTo} of ${total} results`}
+              ) : pageItems.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500">
+                    <Package className="mx-auto h-12 w-12 text-gray-400" />
+                    <p className="mt-2 font-medium">No material requests found</p>
+                  </td>
+                </tr>
+              ) : pageItems.map((r) => {
+                const actionBtn = "inline-flex items-center justify-center rounded-lg text-sm font-medium px-4 py-2 transition-all duration-200";
+                const isEditing = editingId === r.id;
+                
+                return (
+                  <tr key={r.id} className="hover:bg-gray-50 transition-colors duration-150">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{r.partName}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-mono">{r.partNumber}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{r.requestedBy}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{new Date(r.requestedAt).toISOString().slice(0,10)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        {r.quantity}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {isEditing ? (
+                        <div className="flex justify-center gap-2">
+                          <button 
+                            className={`${actionBtn} bg-green-500 hover:bg-green-600 text-white shadow-sm`}
+                            onClick={() => updateStatus(r.id, 'APPROVED')}
+                          >
+                            Approve
+                          </button>
+                          <button 
+                            className={`${actionBtn} bg-red-500 hover:bg-red-600 text-white shadow-sm`}
+                            onClick={() => updateStatus(r.id, 'REJECTED')}
+                          >
+                            Reject
+                          </button>
+                          <button 
+                            className={`${actionBtn} bg-yellow-500 hover:bg-yellow-600 text-white shadow-sm`}
+                            onClick={() => updateStatus(r.id, 'PENDING')}
+                          >
+                            Pending
+                          </button>
+                          <button 
+                            className={`${actionBtn} bg-gray-400 hover:bg-gray-500 text-white shadow-sm`}
+                            onClick={() => setEditingId(null)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex justify-center">
+                          <button 
+                            className={`${actionBtn} ${
+                              r.status === 'approved' ? 'bg-green-600 hover:bg-green-700' : 
+                              r.status === 'rejected' ? 'bg-red-600 hover:bg-red-700' : 
+                              'bg-yellow-600 hover:bg-yellow-700'
+                            } text-white shadow-sm`}
+                            onClick={() => setEditingId(r.id)}
+                          >
+                            {r.status === 'approved' ? 'Approved' : 
+                             r.status === 'rejected' ? 'Rejected' : 
+                             'Pending'}
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-        <div className="flex gap-2">
-          <button
-            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={current === 1}
-          >
-            Previous
-          </button>
-          <button
-            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={current === totalPages}
-          >
-            Next
-          </button>
+
+        {/* Footer: pagination */}
+        <div ref={footerRef} className="mt-6 flex items-center justify-between px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{showingFrom}</span> to <span className="font-medium">{showingTo}</span> of{' '}
+            <span className="font-medium">{total}</span> results
+          </div>
+          <div className="flex gap-2">
+            <button
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={current === 1}
+            >
+              Previous
+            </button>
+            <button
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={current === totalPages}
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
     </div>

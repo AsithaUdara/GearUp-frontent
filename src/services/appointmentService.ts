@@ -145,7 +145,7 @@ export const getAvailableTimeSlots = async (
 export const createAppointment = async (appointmentData: AppointmentData): Promise<ApiResponse<BookingResponse>> => {
   try {
     console.log('Creating appointment with data:', appointmentData);
-    const response = await fetch(`${API_BASE_URL}/api/bookings`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/bookings`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -178,7 +178,7 @@ export const createAppointment = async (appointmentData: AppointmentData): Promi
 // Get user's bookings
 export const getUserBookings = async (userId: string): Promise<ApiResponse<BookingResponse[]>> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/bookings?userId=${userId}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/bookings?userId=${userId}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',

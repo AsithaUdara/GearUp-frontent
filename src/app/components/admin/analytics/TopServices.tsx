@@ -9,25 +9,65 @@ interface TopService {
   percentage: number;
 }
 
+interface Booking {
+  id: number;
+  serviceId: number;
+  timeSlot?: {
+    serviceName?: string;
+  };
+}
+
+interface Service {
+  id: number;
+  serviceName: string;
+}
+
 export default function TopServices() {
-  const [services, setServices] = useState<TopService[]>([
-    { serviceName: 'Oil Change', count: 126, percentage: 36.8 },
-    { serviceName: 'Brake Service', count: 94, percentage: 27.5 },
-    { serviceName: 'Tire Rotation', count: 83, percentage: 24.3 },
-    { serviceName: 'Battery Check', count: 57, percentage: 16.7 },
-    { serviceName: 'Diagnostics', count: 41, percentage: 12.0 },
-  ]);
+  const [services, setServices] = useState<TopService[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const response = await fetch('http://localhost:8087/api/analytics/services/top?limit=5');
-        if (response.ok) {
-          const data = await response.json();
-          setServices(data);
+        // Fetch all bookings from appointment service
+        const bookingsResponse = await fetch('http://localhost:9090/api/v1/bookings');
+        
+        if (bookingsResponse.ok) {
+          const bookingsData: Booking[] = await bookingsResponse.json();
+          console.log('Fetched bookings for popular services:', bookingsData);
+          
+          // Count bookings by service_id
+          const serviceCounts: { [key: number]: { count: number; name: string } } = {};
+          let totalBookings = bookingsData.length;
+          
+          bookingsData.forEach((booking) => {
+            const serviceId = booking.serviceId;
+            const serviceName = booking.timeSlot?.serviceName || `Service ${serviceId}`;
+            
+            if (!serviceCounts[serviceId]) {
+              serviceCounts[serviceId] = { count: 0, name: serviceName };
+            }
+            serviceCounts[serviceId].count++;
+          });
+          
+          // Convert to array and sort by count
+          const topServices: TopService[] = Object.entries(serviceCounts)
+            .map(([serviceId, data]) => ({
+              serviceName: data.name,
+              count: data.count,
+              percentage: totalBookings > 0 ? (data.count / totalBookings) * 100 : 0
+            }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5); // Top 5 services
+          
+          console.log('Calculated top services:', topServices);
+          setServices(topServices);
         }
+        
+        setLoading(false);
       } catch (error) {
         console.error('Error fetching top services:', error);
+        setLoading(false);
       }
     };
 
@@ -37,7 +77,7 @@ export default function TopServices() {
     return () => clearInterval(interval);
   }, []);
 
-  const max = Math.max(...services.map(i => i.count));
+  const max = services.length > 0 ? Math.max(...services.map(i => i.count)) : 1;
 
   return (
     <div className="rounded-xl border-2 border-gray-100 bg-white p-6 shadow-sm h-full hover:shadow-md transition-shadow duration-200">
@@ -50,8 +90,17 @@ export default function TopServices() {
           <Wrench className="h-5 w-5 text-red-600" />
         </div>
       </div>
-      <div className="space-y-5">
-        {services.map((s, index) => (
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-gray-500">Loading popular services...</div>
+        </div>
+      ) : services.length === 0 ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-gray-500">No bookings data available</div>
+        </div>
+      ) : (
+        <div className="space-y-5">
+          {services.map((s, index) => (
           <div key={s.serviceName} className="group">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
@@ -75,10 +124,13 @@ export default function TopServices() {
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
+
+
 
 
 

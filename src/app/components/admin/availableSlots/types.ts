@@ -28,6 +28,7 @@ export type Slot = {
   bay?: string; // e.g., Bay 1, Bay 2
   technician?: string; // optional assigned technician name
   bookings: Booking[]; // Added bookings property
+  isAvailable?: boolean; // Tracks if the time slot is available for booking
 };
 
 // Updated SlotInput type to exclude bookings property

@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SlotInput, ServiceType } from './types';
+import { getAllServices, ServiceDTO } from '@/app/services/appointmentService';
 
 type Props = {
   onSubmit: (input: SlotInput) => void;
@@ -16,6 +17,9 @@ function ymdLocal(date: Date) {
 }
 
 export default function AddSlotForm({ onSubmit, initial }: Props) {
+  const [services, setServices] = useState<ServiceDTO[]>([]);
+  const [loadingServices, setLoadingServices] = useState(true);
+  
   const [form, setForm] = useState<SlotInput>({
     date: initial?.date ?? ymdLocal(new Date()),
     startTime: initial?.startTime ?? '09:00',
@@ -25,8 +29,28 @@ export default function AddSlotForm({ onSubmit, initial }: Props) {
     notes: initial?.notes ?? '',
     serviceType: (initial?.serviceType as ServiceType) ?? 'General Service',
     bay: initial?.bay ?? 'Bay 1',
-    technician: initial?.technician ?? '',
+    technician: initial?.technician ?? ''
   });
+
+  // Fetch services from API
+  useEffect(() => {
+    async function fetchServices() {
+      try {
+        setLoadingServices(true);
+        const servicesData = await getAllServices();
+        setServices(servicesData);
+        // Set default service type to first service if available
+        if (servicesData.length > 0 && !initial?.serviceType) {
+          setForm(prev => ({ ...prev, serviceType: servicesData[0].name as ServiceType }));
+        }
+      } catch (error) {
+        console.error('Error fetching services:', error);
+      } finally {
+        setLoadingServices(false);
+      }
+    }
+    fetchServices();
+  }, [initial?.serviceType]);
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -40,10 +64,7 @@ export default function AddSlotForm({ onSubmit, initial }: Props) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (form.endTime <= form.startTime) {
-      alert('End Time must be later than Start Time');
-      return;
-    }
+    if (form.endTime <= form.startTime) return;
     onSubmit(form);
   }
 
@@ -63,7 +84,7 @@ export default function AddSlotForm({ onSubmit, initial }: Props) {
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Start Time</label>
+            <label className="block text-sm font-medium text-gray-700">Start</label>
             <input
               type="time"
               name="startTime"
@@ -74,7 +95,7 @@ export default function AddSlotForm({ onSubmit, initial }: Props) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">End Time</label>
+            <label className="block text-sm font-medium text-gray-700">End</label>
             <input
               type="time"
               name="endTime"
@@ -115,37 +136,33 @@ export default function AddSlotForm({ onSubmit, initial }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700">Service Type</label>
-          <select
-            name="serviceType"
-            value={form.serviceType as ServiceType}
-            onChange={handleChange}
-            className="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:ring-2 focus:ring-red-600"
-          >
-            {(['General Service','Oil Change','Diagnostics','Tire Rotation','Brake Service'] as ServiceType[]).map(t => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
+          {loadingServices ? (
+            <div className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-500">
+              Loading services...
+            </div>
+          ) : (
+            <select
+              name="serviceType"
+              value={form.serviceType as ServiceType}
+              onChange={handleChange}
+              className="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:ring-2 focus:ring-red-600"
+              required
+            >
+              {services.map(s => (
+                <option key={s.id} value={s.name}>{s.name}</option>
+              ))}
+            </select>
+          )}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700">Bay</label>
-          <select
-            name="bay"
-            value={form.bay || ''}
-            onChange={handleChange}
-            className="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:ring-2 focus:ring-red-600"
-          >
-            {['Bay 1','Bay 2','Bay 3'].map(b => (<option key={b} value={b}>{b}</option>))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Technician</label>
+          <label className="block text-sm font-medium text-gray-700">Technician (Optional)</label>
           <input
             type="text"
             name="technician"
-            placeholder="Optional"
+            placeholder="Enter technician name"
             value={form.technician || ''}
             onChange={handleChange}
             className="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:ring-2 focus:ring-red-600"
