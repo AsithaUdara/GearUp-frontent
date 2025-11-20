@@ -1,51 +1,58 @@
-import { Wrench, CheckCircle2, Clock3, ListChecks } from "lucide-react";
+"use client";
+
+import { useSyncExternalStore } from "react";
+import { ClipboardList, Clock, CheckCircle2, Clock3 } from "lucide-react";
+import { getServiceTasks, subscribeToServiceTasks } from "@/lib/serviceTasksStore";
+import { getTotalSecondsToday, formatSeconds, subscribeToTimeLogging } from "@/lib/timeLoggingStore";
+
+const getServerSnapshot = () => ({ assignedTasks: [], completedTasks: [] });
+const getTimeServerSnapshot = () => 0;
+
+// Cache server snapshots outside component
+const emptyTasksSnapshot = { assignedTasks: [], completedTasks: [] };
+const emptyTimeSnapshot = 0;
 
 export default function StatsCards() {
-  // Duplicate the small mock datasets here (dashboard-only). We intentionally
-  // mirror the arrays used on ServiceProgressCard and LogHoursPage so the
-  // summary cards reflect the same sample data without changing those pages.
-  const services = [
-    { id: 1, title: "Oil Change - Toyota Camry", progress: 65 },
-    { id: 2, title: "Brake Inspection - Honda Civic", progress: 100 },
-    { id: 3, title: "Tire Rotation - Ford F-150", progress: 30 },
-  ];
+  const { assignedTasks, completedTasks } = useSyncExternalStore(
+    subscribeToServiceTasks,
+    getServiceTasks,
+    () => emptyTasksSnapshot
+  );
 
-  const tasks = [
-    { id: "1", title: "Oil Change - Toyota Camry", customer: "John Doe", vehicle: "V-XYZ123", status: "In Progress" },
-    { id: "2", title: "Brake Inspection - Honda Civic", customer: "Jane Smith", vehicle: "V-ABC456", status: "Completed" },
-    { id: "3", title: "Tire Rotation - Ford F-150", customer: "Mike Johnson", vehicle: "V-QWE789", status: "Pending" },
-  ];
+  const totalSeconds = useSyncExternalStore(
+    subscribeToTimeLogging,
+    getTotalSecondsToday,
+    () => emptyTimeSnapshot
+  );
 
-  // derive values for the small stat cards
-  const activeCount = services.filter((s) => s.progress < 100).length;
-  const completedToday = services.filter((s) => s.progress === 100).length;
-
-  // hours logged: this is sample data — reflect what the Log Hours page shows.
-  // If you later add per-task logged durations, update this calculation here.
-  const hoursLoggedText = "4h 30m";
-
-  const pendingTasks = tasks.filter((t) => t.status === "Pending").length;
+  const numAssigned = assignedTasks.length;
+  const numInProgress = assignedTasks.filter((t) => t.status === "in-progress").length;
+  const numCompleted = completedTasks.length;
+  const hoursLogged = formatSeconds(totalSeconds);
 
   const stats = [
-    { id: "active", label: "Active Services", value: activeCount, icon: Wrench },
-    { id: "completed", label: "Completed Today", value: completedToday, icon: CheckCircle2 },
-    { id: "hours", label: "Hours Logged", value: hoursLoggedText, icon: Clock3 },
-    { id: "pending", label: "Pending Tasks", value: pendingTasks, icon: ListChecks },
+    { id: "assigned", label: "Assigned Today", value: numAssigned, icon: ClipboardList, bgColor: "bg-gray-100", iconColor: "text-gray-700" },
+    { id: "progress", label: "In Progress", value: numInProgress, icon: Clock, bgColor: "bg-red-100", iconColor: "text-red-600" },
+    { id: "completed", label: "Completed", value: numCompleted, icon: CheckCircle2, bgColor: "bg-green-50", iconColor: "text-green-700" },
+    { id: "hours", label: "Hours Logged", value: hoursLogged, icon: Clock3, bgColor: "bg-blue-50", iconColor: "text-blue-700" },
   ];
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      {stats.map(({ id, label, value, icon: Icon }) => (
-        <div key={id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md hover:-translate-y-0.5">
-          <div className="flex items-center justify-between">
+      {stats.map(({ id, label, value, icon: Icon, bgColor, iconColor }) => (
+        <div key={id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-full ${bgColor}`}>
+              <Icon className={`h-5 w-5 ${iconColor}`} />
+            </div>
             <div>
               <div className="text-xs text-gray-500">{label}</div>
-              <div className="text-lg font-semibold mt-1">{value}</div>
+              <div className="text-lg font-semibold text-gray-900">{value}</div>
             </div>
-            <Icon className="h-5 w-5 text-red-600" />
           </div>
         </div>
       ))}
     </div>
   );
 }
+

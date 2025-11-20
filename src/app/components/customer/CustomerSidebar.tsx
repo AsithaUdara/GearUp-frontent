@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import {
   LucideCar,
@@ -11,21 +12,23 @@ import {
   LucideBot,
   LucideLogOut,
   LucideCreditCard,
-  LucideBell,
+  LucideWrench,
+  LucidePaintbrush,
+  LucideClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { auth, db } from "@/lib/firebase";
+import { signOut } from "@/lib/authService";
+import { doc, onSnapshot } from "firebase/firestore";
 
 const navItems = [
   { icon: LucideCar, label: "Dashboard", href: "/customer/dashboard" },
-  {
-    icon: LucideCalendar,
-    label: "Book Appointment",
-    href: "/customer/appointment",
-  },
-  { icon: LucideHistory, label: "Service History", href: "/customer/progress" },
+  { icon: LucideCalendar, label: "Book Appointment", href: "/customer/appointment" },
   { icon: LucideCar, label: "My Vehicles", href: "/customer/vehicles" },
+  { icon: LucidePaintbrush, label: "Visual Modification", href: "/customer/request-modification" },
+  { icon: LucideWrench, label: "Service Modification", href: "/customer/modification" },
+  { icon: LucideClipboardList, label: "Service Progress", href: "/customer/progress" },
   { icon: LucideCreditCard, label: "Payment", href: "/customer/payment" },
-  { icon: LucideBell, label: "Notifications", href: "/notifications" },
   { icon: LucideSettings, label: "Settings", href: "/customer/settings" },
   { icon: LucideBot, label: "AI Chatbot", href: "/customer/chatbot" },
 ];
@@ -34,12 +37,23 @@ export default function CustomerSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAuth();
+  const [profilePhone, setProfilePhone] = useState<string | null>(null);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    const ref = doc(db, 'users', user.uid);
+    const unsub = onSnapshot(ref, (snap) => {
+      const d = snap.data() as any;
+      setProfilePhone(d?.phone || null);
+      if (d?.photoURL) setProfilePhoto(d.photoURL);
+    });
+    return () => unsub();
+  }, [user]);
 
   const handleLogout = async () => {
     try {
-      // Clear any auth tokens or session data
-      localStorage.removeItem("userRole");
-      localStorage.removeItem("authToken");
+      await signOut();
       router.push("/");
     } catch (error) {
       console.error("Logout failed:", error);
@@ -61,22 +75,22 @@ export default function CustomerSidebar() {
             className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
             style={{
               backgroundImage: `url('${
-                user?.displayName || user?.email
+                profilePhoto || user?.photoURL ||
+                (user?.displayName || user?.email
                   ? "https://api.dicebear.com/7.x/initials/svg?seed=" +
-                    encodeURIComponent(
-                      user?.displayName || user?.email || "User"
-                    )
-                  : "https://api.dicebear.com/7.x/initials/svg?seed=User"
+                    encodeURIComponent(user?.displayName || user?.email || "User")
+                  : "https://api.dicebear.com/7.x/initials/svg?seed=User")
               }')`,
             }}
           />
           <div className="flex flex-col">
             <h1 className="text-[#181111] text-base font-medium leading-normal">
-              {user?.displayName || "Your name"}
+              {user?.displayName || (user?.email ? user.email.split("@")[0] : "Your name")}
             </h1>
-            <p className="text-gray-500 text-sm font-normal leading-normal">
-              {user?.email}
-            </p>
+            <p className="text-gray-500 text-sm font-normal leading-normal">{user?.email}</p>
+            {profilePhone && (
+              <p className="text-gray-500 text-sm font-normal leading-normal">{profilePhone}</p>
+            )}
           </div>
         </div>
         <nav className="flex flex-col gap-2 mb-6">
@@ -84,7 +98,7 @@ export default function CustomerSidebar() {
             const IconComponent = item.icon;
             const active = pathname === item.href;
             return (
-              <a
+              <Link
                 key={item.label}
                 href={item.href}
                 className={cn(
@@ -94,18 +108,11 @@ export default function CustomerSidebar() {
                     : "hover:bg-white/10 hover:backdrop-blur-sm hover:shadow text-[#181111]"
                 )}
               >
-                <IconComponent
-                  className={active ? "text-primary" : "text-[#181111]"}
-                />
-                <p
-                  className={cn(
-                    "text-sm font-medium leading-normal",
-                    active ? "text-primary" : "text-[#181111]"
-                  )}
-                >
+                <IconComponent className={active ? "text-primary" : "text-[#181111]"} />
+                <p className={cn("text-sm font-medium leading-normal", active ? "text-primary" : "text-[#181111]")}>
                   {item.label}
                 </p>
-              </a>
+              </Link>
             );
           })}
         </nav>
@@ -116,9 +123,7 @@ export default function CustomerSidebar() {
           className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 hover:backdrop-blur-sm hover:shadow cursor-pointer w-full transition-all duration-200"
         >
           <LucideLogOut className="text-[#181111]" />
-          <p className="text-[#181111] text-sm font-medium leading-normal">
-            Log Out
-          </p>
+          <p className="text-[#181111] text-sm font-medium leading-normal">Log Out</p>
         </button>
       </div>
     </aside>

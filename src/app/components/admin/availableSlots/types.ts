@@ -5,14 +5,12 @@ export type ServiceType =
   | 'Tire Rotation'
   | 'Brake Service';
 
-// Updated Booking type to include title property and time range
+// Updated Booking type to include title property
 export type Booking = {
   id: string;
   slotId: string;
   date: string; // ISO date string (yyyy-mm-dd)
-  time: string; // HH:mm (kept for backward compatibility, use startTime instead)
-  startTime: string; // HH:mm
-  endTime: string; // HH:mm
+  time: string; // HH:mm
   customer: string;
   serviceType: ServiceType;
   bay: string;

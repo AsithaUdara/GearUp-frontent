@@ -2,25 +2,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-// import { onAuthStateChanged, User } from 'firebase/auth';
-// import { auth } from '@/lib/firebase';
-
-// Mock User interface until Firebase is properly installed
-interface User {
-  uid: string;
-  email: string | null;
-  displayName: string | null;
-}
-
-// Mock auth state changed function
-const mockOnAuthStateChanged = (mockAuth: unknown, callback: (user: User | null) => void) => {
-  // Return a mock user for development
-  setTimeout(() => {
-    callback(null); // No user logged in by default
-  }, 100);
-  
-  return () => {}; // Mock unsubscribe function
-};
+import { onAuthStateChanged, User, reload } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 interface AuthContextType {
   user: User | null;
@@ -35,17 +18,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = mockOnAuthStateChanged(null, (user: User | null) => {
-      setUser(user);
+    // Subscribe to Firebase auth state changes
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      console.log('Auth state changed:', firebaseUser?.email || 'No user');
+      if (firebaseUser) {
+        console.log('Firebase UID:', firebaseUser.uid);
+      }
+      setUser(firebaseUser);
       setLoading(false);
     });
+    
     return () => unsubscribe();
   }, []);
 
   const refreshUser = async () => {
     if (!auth.currentUser) return;
     await reload(auth.currentUser);
-    // After reload, onAuthStateChanged won't fire automatically; manually set current user
+    // After reload, onAuthStateChanged will fire automatically
     setUser(auth.currentUser);
   };
 

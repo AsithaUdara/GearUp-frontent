@@ -23,23 +23,8 @@ function monthName(m: number) {
 
 export default function CalendarInteractive({ appointments = [], unavailableDates = [], onView }: Props) {
   const today = new Date();
-  // initialize calendar to the month containing the first unavailable date (if any),
-  // otherwise fall back to current month
-  const initialCurrent = (() => {
-    if (unavailableDates && unavailableDates.length > 0) {
-      const first = unavailableDates[0];
-      const [y, m] = first.split("-").map(Number);
-      if (!Number.isNaN(y) && !Number.isNaN(m)) return new Date(y, m - 1, 1);
-    }
-    if (appointments && appointments.length > 0) {
-      const d = appointments[0].date;
-      if (d) {
-        const [y, m] = d.split("-").map(Number);
-        if (!Number.isNaN(y) && !Number.isNaN(m)) return new Date(y, m - 1, 1);
-      }
-    }
-    return new Date(today.getFullYear(), today.getMonth(), 1);
-  })();
+  // Always initialize calendar to the current month
+  const initialCurrent = new Date(today.getFullYear(), today.getMonth(), 1);
 
   const [current, setCurrent] = useState(() => initialCurrent);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -83,7 +68,7 @@ export default function CalendarInteractive({ appointments = [], unavailableDate
 
   function jumpToDate(value: string) {
     if (!value) return;
-    const [y, m, d] = value.split("-").map(Number);
+    const [y, m] = value.split("-").map(Number);
     setCurrent(new Date(y, m - 1, 1));
     setSelectedDate(value);
   }

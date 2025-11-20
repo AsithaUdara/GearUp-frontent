@@ -15,10 +15,9 @@ import {
   FileText,
   Camera,
   MessageSquare,
-  RefreshCw
+  RefreshCw,
+  Bell
 } from 'lucide-react';
-import Header from '@/app/components/landing/Header';
-import Footer from '@/app/components/landing/Footer';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 
@@ -398,8 +397,6 @@ export default function ServiceProgress() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onLoginClick={() => {}} showDefaultActions={false} preserveActionSpace={true} />
-      
       <div className="pt-24 pb-16">
         <div className="container mx-auto px-6">
           {/* Header */}
@@ -794,15 +791,6 @@ export default function ServiceProgress() {
             </motion.div>
 
             {/* Customer Communication */}
-<<<<<<< HEAD:src/app/progress/page.tsx
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
-              className="bg-white rounded-lg shadow-lg p-8"
-            >
-              <div className="flex justify-between items-center mb-6">
-=======
             {/* The always-visible Messages card is removed as per request. */}
 
           </div>
@@ -842,7 +830,6 @@ export default function ServiceProgress() {
             </div>
           </motion.div>
         </div>
-      </div>
       
       {/* Floating Chat Icon */}
       <button
@@ -866,7 +853,6 @@ export default function ServiceProgress() {
           >
             <div className="bg-white rounded-lg shadow-xl p-6 flex flex-col h-96 border border-gray-200">
               <div className="flex justify-between items-center mb-4">
->>>>>>> origin/development:src/app/customer/progress/page.tsx
                 <h3 className="text-xl font-bold font-heading text-foreground">Messages</h3>
                 <button
                   onClick={() => setChatOpen(false)}
@@ -907,97 +893,11 @@ export default function ServiceProgress() {
                   Send
                 </button>
               </div>
-<<<<<<< HEAD:src/app/progress/page.tsx
-            </motion.div>
-          </div>
-
-          {/* Service Recommendations */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.9 }}
-            className="bg-white rounded-lg shadow-lg p-8 mt-8"
-          >
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold font-heading text-foreground">Service Recommendations</h3>
-              <button
-                onClick={() => setShowRecommendations(!showRecommendations)}
-                className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
-              >
-                <Wrench className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {serviceProgress.recommendations.map((rec) => (
-                <div key={rec.id} className="p-4 border border-gray-200 rounded-lg">
-                  <div className="flex justify-between items-start mb-3">
-                    <h4 className="font-semibold text-foreground">{rec.title}</h4>
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      rec.priority === 'high' ? 'bg-red-100 text-red-600' :
-                      rec.priority === 'medium' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'
-                    }`}>
-                      {rec.priority.toUpperCase()}
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-3">{rec.description}</p>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{rec.estimatedCost.toLocaleString()} LKR</p>
-                      <p className="text-xs text-muted-foreground">{rec.estimatedDuration} min</p>
-                    </div>
-                    <button className="px-4 py-2 bg-primary text-white text-sm rounded hover:bg-primary/90 transition-colors">
-                      Add to Service
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Service History */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.0 }}
-            className="bg-white rounded-lg shadow-lg p-8 mt-8"
-          >
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold font-heading text-foreground">Service History</h3>
-              <button
-                onClick={() => setShowServiceHistory(!showServiceHistory)}
-                className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
-              >
-                <Car className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {serviceProgress.serviceHistory.map((history) => (
-                <div key={history.id} className="p-4 border border-gray-200 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h4 className="font-semibold text-foreground">{history.serviceName}</h4>
-                      <p className="text-sm text-muted-foreground">{history.date}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-foreground">{history.cost.toLocaleString()} LKR</p>
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        history.status === 'completed' ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'
-                      }`}>
-                        {history.status.toUpperCase()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-=======
->>>>>>> origin/development:src/app/customer/progress/page.tsx
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-      <Footer />
+      </div>
     </div>
   );
 }

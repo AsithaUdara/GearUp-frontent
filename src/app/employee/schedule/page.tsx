@@ -23,6 +23,7 @@ type Appointment = {
 
 export default function EmployeeSchedulePage() {
   const [availabilityOpen, setAvailabilityOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [unavailableDates, setUnavailableDates] = useState<string[]>([
     // sample blocked dates
     "2025-10-25",
@@ -43,30 +44,6 @@ export default function EmployeeSchedulePage() {
     setDetailsOpen(true);
   }
 
-  function handleConfirm() {
-    if (!selected) return;
-    setAppointments((prev) => prev.map((a) => (a.id === selected.id ? { ...a, status: "Confirmed", communications: [...(a.communications ?? []), { title: "Confirmed", detail: "Employee confirmed the appointment.", at: new Date().toLocaleString() }] } : a)));
-    setDetailsOpen(false);
-  }
-
-  function handleConfirmRow(r: Appointment) {
-    const appt = appointments.find((a) => a.id === r.id);
-    if (!appt) return;
-    setSelected(appt);
-    setAppointments((prev) => prev.map((a) => (a.id === appt.id ? { ...a, status: "Confirmed", communications: [...(a.communications ?? []), { title: "Confirmed", detail: "Employee confirmed the appointment.", at: new Date().toLocaleString() }] } : a)));
-  }
-
-  function handleRequestReschedule() {
-    setRescheduleOpen(true);
-  }
-
-  function handleRequestRow(r: Appointment) {
-    const appt = appointments.find((a) => a.id === r.id);
-    if (!appt) return;
-    setSelected(appt);
-    setRescheduleOpen(true);
-  }
-
   function handleSubmitReschedule(payload: { preferredDate?: string; preferredTime?: string; reason?: string }) {
     if (!selected) return;
     const note = `Reschedule requested: ${payload.preferredDate ?? ""} ${payload.preferredTime ?? ""} - ${payload.reason ?? ""}`;
@@ -75,16 +52,32 @@ export default function EmployeeSchedulePage() {
     setDetailsOpen(false);
   }
 
-  const upcoming = appointments.filter((a) => !a.past);
-  const history = appointments.filter((a) => a.past);
+  // Filter appointments based on search query
+  const filteredAppointments = appointments.filter((appointment) => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    return (
+      appointment.customer.toLowerCase().includes(query) ||
+      appointment.vehicle.toLowerCase().includes(query) ||
+      appointment.service.toLowerCase().includes(query) ||
+      appointment.status.toLowerCase().includes(query) ||
+      appointment.date.includes(query) ||
+      appointment.time.toLowerCase().includes(query) ||
+      appointment.id.toLowerCase().includes(query)
+    );
+  });
+
+  const upcoming = filteredAppointments.filter((a) => !a.past);
+  const history = filteredAppointments.filter((a) => a.past);
 
   return (
     <div className="space-y-6">
-      <ScheduleToolbar />
+      <ScheduleToolbar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <CalendarInteractive
-            appointments={appointments.map(a => ({ id: a.id, date: a.date, time: a.time, customer: a.customer, vehicle: a.vehicle, service: a.service, status: a.status }))}
+            appointments={filteredAppointments.map(a => ({ id: a.id, date: a.date, time: a.time, customer: a.customer, vehicle: a.vehicle, service: a.service, status: a.status }))}
             unavailableDates={unavailableDates}
             onView={(a) => handleView(appointments.find((x) => x.id === a.id) as Appointment)}
           />
@@ -98,8 +91,6 @@ export default function EmployeeSchedulePage() {
         title="Upcoming Appointments"
         rows={upcoming.map((a) => ({ id: a.id, time: `${a.date} ${a.time}`, customer: a.customer, vehicle: a.vehicle, service: a.service, status: a.status }))}
         onView={(r) => handleView(appointments.find((x) => x.id === r.id) as Appointment)}
-        onConfirm={(r) => handleConfirmRow(appointments.find((x) => x.id === r.id) as Appointment)}
-        onRequest={(r) => handleRequestRow(appointments.find((x) => x.id === r.id) as Appointment)}
       />
 
       <UpcomingAppointmentsTable
@@ -127,9 +118,6 @@ export default function EmployeeSchedulePage() {
             communications: selected.communications,
           }}
           onClose={() => setDetailsOpen(false)}
-          onConfirm={handleConfirm}
-          onRequestReschedule={handleRequestReschedule}
-          allowActions={selected.status !== "Completed"}
         />
       )}
 

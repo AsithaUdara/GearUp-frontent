@@ -1,10 +1,10 @@
 // src/app/employee/tasks/[taskId]/page.tsx
 'use client';
 
-import React, { use, useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Clock, User, Car, Calendar, Wrench, Package, UploadCloud, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 
 // --- HELPER & MODAL COMPONENTS ---
 
@@ -99,7 +99,7 @@ const getMockTaskData = (taskId: string) => ({
   ]
 });
 
-type ParamsPromise = Promise<{ taskId: string }>;
+// Params are read on the client using useParams
 
 // --- STYLE MAPPINGS ---
 const statusStyles: Record<TaskStatus, string> = {
@@ -115,9 +115,10 @@ const partStatusStyles: Record<PartStatus, string> = {
 };
 
 // --- MAIN PAGE COMPONENT ---
-export default function TaskDetailPage({ params }: { params: ParamsPromise | { taskId: string } }) {
+export default function TaskDetailPage() {
   const router = useRouter();
-  const resolvedParams = use(params as ParamsPromise);
+  const params = useParams<{ taskId: string }>();
+  const resolvedParams = { taskId: params?.taskId as string };
   
   const [taskData] = useState(() => getMockTaskData(resolvedParams.taskId));
   

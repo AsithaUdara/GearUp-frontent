@@ -1,20 +1,18 @@
 // src/app/employee/page.tsx
-'use client'; 
+"use client"; 
+// Force dynamic rendering so Next won't try to prerender this client-heavy page
+export const dynamic = 'force-dynamic';
 
-import { useState } from 'react'; 
+import { useState, useEffect } from 'react'; 
 import AssignedTasksList, { Task } from "@/app/components/employee/dashboard/AssignedTasksList"; 
 import ScheduleCard from "@/app/components/employee/dashboard/ScheduleCard";
 import SmallCalendar from "@/app/components/employee/dashboard/SmallCalendar";
-import AppointmentManagementCard from "@/app/components/employee/dashboard/AppointmentManagementCard";
 // --- FIX: The WorkHoursSummaryCompactCard is no longer imported ---
 import TimeLoggingCard from "@/app/components/employee/dashboard/TimeLoggingCard";
 import StatsCards from "@/app/components/employee/dashboard/StatsCards";
-import ServiceProgressCard from "@/app/components/employee/dashboard/ServiceProgressCard";
-import NotificationsCard from "@/app/components/employee/dashboard/NotificationsCard";
-import AttendanceQuickAccess from "@/app/components/employee/dashboard/AttendanceQuickAccess";
 import UpcomingAppointmentsCard from "@/app/components/employee/dashboard/UpcomingAppointmentsCard";
-import QuickCommunicationCard from "@/app/components/employee/dashboard/QuickCommunicationCard";
-import MaterialRequestsCard from "@/app/components/employee/dashboard/MaterialRequestsCard";
+import { setServiceTasks } from "@/lib/serviceTasksStore";
+import { fetchTasksByEmployeeId } from "@/lib/workScheduleData";
 
 const mockTasks: Task[] = [
   { id: "1", title: "Oil Change - Toyota Camry", customer: "John Doe", vehicle: "V-XYZ123", status: "In Progress" },
@@ -28,6 +26,27 @@ export default function EmployeeOverviewPage() {
 
   // --- FIX: All state and handlers for `isClockedIn` have been removed ---
 
+  // Load service tasks data on mount
+  useEffect(() => {
+    let mounted = true;
+    const loadServiceTasks = async () => {
+      try {
+        // Using the same employee ID as service progress page
+        const employeeId = "emp-1";
+        const res = await fetchTasksByEmployeeId(employeeId);
+        if (mounted) {
+          setServiceTasks(res.assigned, res.completed);
+        }
+      } catch (error) {
+        console.error("Failed to load service tasks:", error);
+      }
+    };
+    loadServiceTasks();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const handleTaskSelect = (task: Task) => {
     setSelectedTask(task); 
   };
@@ -36,18 +55,9 @@ export default function EmployeeOverviewPage() {
     <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div className="lg:col-span-2 space-y-6">
   <StatsCards />
-        {/* Swap: show Time Logging above Service Progress for a tighter flow */}
-  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
-          <div className="md:col-span-2">
-            <TimeLoggingCard task={selectedTask} />
-          </div>
-          <div className="md:col-span-1">
-            <AttendanceQuickAccess />
-          </div>
-        </div>
+        {/* Time Logging Card - full width */}
+        <TimeLoggingCard task={selectedTask} />
 
-        <ServiceProgressCard />
-        
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <AssignedTasksList 
             tasks={tasks} 
@@ -64,16 +74,8 @@ export default function EmployeeOverviewPage() {
         {/* Quick communication and material requests were here but should span full page - moved to bottom */}
       </div>
       <div className="lg:col-span-1 space-y-6">
-        <NotificationsCard />
   <SmallCalendar />
   <ScheduleCard />
-      </div>
-      {/* Inline row for quick communication and material requests */}
-      <div className="col-span-1 lg:col-span-3">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <QuickCommunicationCard />
-          <MaterialRequestsCard />
-        </div>
       </div>
     </section>
   );
