@@ -4,11 +4,8 @@ import { Appointment } from "./types";
 
 import {
   DotIcon,
-  PhoneIcon,
-  MailIcon,
   ClockIcon,
   MoreHorizontalIcon,
-  InfoIcon,
   SearchIcon,
   ArrowUpDown,
   ChevronLeftIcon,
@@ -48,13 +45,13 @@ interface Props {
     advisor?: string,
     notifyCustomer?: boolean
   ) => void;
-  onAssign: (ids: number[]) => void; // New prop for bulk assign
-  onReject: (app: Appointment) => void; // New prop for rejecting an appointment
-  onCancel: (app: Appointment) => void; // New prop for cancelling an appointment
-  onReschedule: (app: Appointment) => void; // New prop for rescheduling an appointment
-  onOpenApproveDialog: (app: Appointment) => void; // New prop to open approve dialog
-  loading: boolean; // Add loading prop
-  error: string | null; // Add error prop
+  onAssign: (ids: number[]) => void;
+  onReject: (app: Appointment) => void;
+  onCancel: (app: Appointment) => void;
+  onReschedule: (app: Appointment) => void;
+  onOpenApproveDialog: (app: Appointment) => void;
+  loading: boolean;
+  error: string | null;
 }
 
 export default function AppointmentTable({
@@ -113,10 +110,9 @@ export default function AppointmentTable({
         .toLowerCase();
       return searchFields.includes(searchTerm.toLowerCase());
     })
-    .filter((app) => {
-      if (filterStatus === "all") return true;
-      return app.status === filterStatus;
-    });
+    .filter((app) =>
+      filterStatus === "all" ? true : app.status === filterStatus
+    );
 
   const sortedAppointments = [...filteredAppointments].sort((a, b) => {
     let compare = 0;
@@ -125,7 +121,6 @@ export default function AppointmentTable({
         new Date(a.timeSlot.slotDate).getTime() -
         new Date(b.timeSlot.slotDate).getTime();
     }
-
     return sortOrder === "asc" ? compare : -compare;
   });
 
@@ -143,58 +138,16 @@ export default function AppointmentTable({
     let interval: NodeJS.Timeout | undefined;
     if (autoRefresh) {
       interval = setInterval(() => {
-        // In a real application, you would re-fetch data here
-        // For now, we'll just update the timestamp
         setLastUpdated(new Date().toLocaleString());
-        // onRefresh(); // Assuming onRefresh prop exists for data fetching
-      }, 30000); // 30 seconds
+      }, 30000);
     }
     return () => clearInterval(interval);
   }, [autoRefresh]);
 
   const handleRefresh = () => {
     setLastUpdated(new Date().toLocaleString());
-    // onRefresh(); // Trigger actual data re-fetch
     toast.info("Refreshing appointments...");
   };
-
-  // Keyboard shortcuts
-  React.useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "/") {
-        event.preventDefault();
-        document.getElementById("global-search")?.focus();
-      } else if (event.key === "A" && event.shiftKey) {
-        event.preventDefault();
-        if (selectedAppointmentIds.length > 0) {
-          onAssign(selectedAppointmentIds); // Call the new onAssign prop
-          setSelectedAppointmentIds([]);
-          toast.info(`Assigned ${selectedAppointmentIds.length} appointments.`);
-        } else {
-          toast.info("No appointments selected for assignment.");
-        }
-      } else if (event.key === "a" || event.key === "A") {
-        event.preventDefault();
-        if (selectedAppointmentIds.length > 0) {
-          selectedAppointmentIds.forEach((id) =>
-            onApprove(id, "", undefined, true)
-          );
-          setSelectedAppointmentIds([]);
-          toast.success(
-            `Approved ${selectedAppointmentIds.length} appointments.`
-          );
-        } else {
-          toast.info("No appointments selected for approval.");
-        }
-      } else if (event.key === "r" || event.key === "R") {
-        event.preventDefault();
-        handleRefresh();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedAppointmentIds, onApprove, onAssign, handleRefresh]); // Dependencies
 
   const getStatusChipColor = (status: Appointment["status"]) => {
     switch (status) {
@@ -232,7 +185,8 @@ export default function AppointmentTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border shadow-sm bg-white">
+    <div className="overflow-visible rounded-lg border border-border shadow-sm bg-white p-4">
+      {/* Top filters */}
       <div className="flex items-center justify-between p-4">
         <div className="flex items-center space-x-2">
           <div className="relative">
@@ -241,33 +195,33 @@ export default function AppointmentTable({
               id="global-search"
               placeholder="Search all fields..."
               value={searchTerm}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setSearchTerm(e.target.value)
-              }
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-8 w-[200px]"
             />
           </div>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[180px] text-gray-900">
               <SelectValue placeholder="Filter Status" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
+            <SelectContent className="z-[9999] text-gray-900" position="popper">
+              <SelectItem value="ALL">All Statuses</SelectItem>
               <SelectItem value="PENDING">Pending</SelectItem>
               <SelectItem value="CONFIRMED">Confirmed</SelectItem>
             </SelectContent>
           </Select>
         </div>
+
         <div className="flex items-center space-x-2">
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Sort By" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="z-[9999]" position="popper">
               <SelectItem value="date">Date</SelectItem>
               <SelectItem value="priority">Priority</SelectItem>
             </SelectContent>
           </Select>
+
           <Button
             className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
             onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
@@ -299,6 +253,8 @@ export default function AppointmentTable({
           </p>
         </div>
       </div>
+
+      {/* Main table */}
       <table className="min-w-full text-left border-collapse">
         <thead>
           <tr className="bg-primary text-white uppercase text-sm tracking-wider">
@@ -311,7 +267,6 @@ export default function AppointmentTable({
             <th className="px-4 py-3 font-semibold w-[120px]">Booking ID</th>
             <th className="px-4 py-3 font-semibold">Service</th>
             <th className="px-4 py-3 font-semibold">Customer</th>
-            <th className="px-4 py-3 font-semibold">Contact</th>
             <th className="px-4 py-3 font-semibold">Date</th>
             <th className="px-4 py-3 font-semibold">Time</th>
             <th className="px-4 py-3 font-semibold">Status</th>
@@ -324,7 +279,7 @@ export default function AppointmentTable({
             paginatedAppointments.map((app) => (
               <tr
                 key={app.id}
-                className="hover:bg-primary/5 transition-colors duration-200 ease-in-out"
+                className="hover:bg-primary/5 transition-colors duration-200"
               >
                 <td className="px-4 py-3">
                   <Checkbox
@@ -336,17 +291,7 @@ export default function AppointmentTable({
                 </td>
                 <td className="px-4 py-3 font-medium w-[120px]">{app.id}</td>
                 <td className="px-4 py-3">{app.serviceName}</td>
-                <td className="px-4 py-3 font-medium">
-                  <span>{app.customerName}</span>
-                </td>
-                <td className="px-4 py-3 flex items-center space-x-2">
-                  <a href={`tel:${app.customerPhone}`}>
-                    <PhoneIcon size={16} className="text-blue-500" />
-                  </a>
-                  <a href={`mailto:${app.customerEmail}`}>
-                    <MailIcon size={16} className="text-blue-500" />
-                  </a>
-                </td>
+                <td className="px-4 py-3 font-medium">{app.customerName}</td>
                 <td className="px-4 py-3">{app.timeSlot.slotDate}</td>
                 <td className="px-4 py-3 flex items-center space-x-2">
                   <ClockIcon size={16} className="text-muted-foreground" />
@@ -361,7 +306,6 @@ export default function AppointmentTable({
                     <DotIcon className="h-4 w-4" /> {app.status}
                   </span>
                 </td>
-
                 <td className="px-4 py-3 text-center">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -371,11 +315,10 @@ export default function AppointmentTable({
                           "h-8 w-8 p-0"
                         )}
                       >
-                        <span className="sr-only">Open menu</span>
                         <MoreHorizontalIcon className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent className="z-[9999]" align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuItem
                         onClick={() => onOpenApproveDialog(app)}
@@ -394,13 +337,6 @@ export default function AppointmentTable({
                           Reject
                         </DropdownMenuItem>
                       )}
-                      <DropdownMenuItem onClick={() => onReschedule(app)}>
-                        Reschedule
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>Print job card</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onCancel(app)}>
-                        Cancel
-                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </td>
@@ -409,7 +345,7 @@ export default function AppointmentTable({
           ) : (
             <tr>
               <td
-                colSpan={6} // Adjusted colspan for removed columns
+                colSpan={8}
                 className="px-4 py-6 text-center text-muted-foreground font-medium"
               >
                 No appointments found.
@@ -418,6 +354,8 @@ export default function AppointmentTable({
           )}
         </tbody>
       </table>
+
+      {/* Pagination */}
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center space-x-2 text-sm text-muted-foreground">
           <p>Rows per page:</p>
@@ -425,13 +363,14 @@ export default function AppointmentTable({
             value={itemsPerPage.toString()}
             onValueChange={(value: string) => {
               setItemsPerPage(Number(value));
-              setCurrentPage(1); // Reset to first page when changing density
+              setCurrentPage(1);
             }}
           >
             <SelectTrigger className="w-[70px]">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            {/* 👇 add z-index + popper */}
+            <SelectContent className="z-[9999]" position="popper">
               <SelectItem value="10">10</SelectItem>
               <SelectItem value="25">25</SelectItem>
               <SelectItem value="50">50</SelectItem>
@@ -439,6 +378,7 @@ export default function AppointmentTable({
             </SelectContent>
           </Select>
         </div>
+
         <div className="flex items-center space-x-2">
           <Button
             className={cn(buttonVariants({ variant: "outline", size: "icon" }))}

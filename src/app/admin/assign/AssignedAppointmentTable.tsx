@@ -64,8 +64,8 @@ export default function AssignedAppointmentTable() {
 
       // Parallel fetch for better performance
       const [bookingsResponse, employeesResponse] = await Promise.all([
-        fetch("http://localhost:8084/api/bookings/assigned"),
-        fetch("http://localhost:8084/api/employees/available"),
+        fetch("http://localhost:8084/api/v1/bookings/assigned"),
+        fetch("http://localhost:8084/api/v1/employees/available"),
       ]);
 
       if (!bookingsResponse.ok) {
@@ -198,7 +198,7 @@ export default function AssignedAppointmentTable() {
   }
 
   return (
-    <div className="rounded-lg border bg-card shadow-sm">
+    <div className="rounded-lg border bg-card shadow-sm p-4">
       <div className="p-6 border-b flex flex-row items-center justify-between">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <UserIcon className="h-5 w-5" />

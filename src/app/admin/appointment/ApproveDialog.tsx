@@ -74,6 +74,7 @@ export default function ApproveDialog({
   const [conflictWarning, setConflictWarning] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [employeeFreeSlots, setEmployeeFreeSlots] = useState<string[]>([]);
+  const [assignError, setAssignError] = useState<string | null>(null); // 👈 new state for inline error
 
   // Reset local state when a new appointment is loaded
   useEffect(() => {
@@ -83,6 +84,7 @@ export default function ApproveDialog({
       );
       setServiceAdvisor("");
       setConflictWarning(false);
+      setAssignError(null);
     }
   }, [appointment]);
 
@@ -136,8 +138,10 @@ export default function ApproveDialog({
   }
 
   async function handleAssign() {
+    setAssignError(null); // 👈 clear previous error
+
     if (!appointment || !serviceAdvisor) {
-      toast.warning("Please select an employee to assign the appointment.");
+      setAssignError("Please select an employee to assign the appointment.");
       return;
     }
 
@@ -148,7 +152,7 @@ export default function ApproveDialog({
     });
 
     try {
-      const url = `http://localhost:8084/api/bookings/${
+      const url = `http://localhost:8084/api/v1/bookings/${
         appointment.id
       }/assign?employeeId=${serviceAdvisor}&timeSlot=${encodeURIComponent(
         newTimeSlot
@@ -156,11 +160,17 @@ export default function ApproveDialog({
       const res = await fetch(url, { method: "PUT" });
 
       if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+        const message =
+          text && text.length < 300
+            ? text
+            : `Failed to assign employee (HTTP ${res.status})`;
+        console.error(`❌ Backend error: ${message}`);
+        setAssignError(message); // 👈 show below button
+        return;
       }
 
       const updatedBooking = await res.json();
-
       console.log("✅ Employee assigned successfully!", {
         bookingId: updatedBooking.id,
         assignedEmployeeId: serviceAdvisor,
@@ -169,23 +179,20 @@ export default function ApproveDialog({
 
       toast.success("Employee assigned successfully!");
 
-      // Call the parent's assignment success handler
-      if (onAssignmentSuccess) {
-        onAssignmentSuccess();
-      }
-
+      if (onAssignmentSuccess) onAssignmentSuccess();
       onAssign(
         appointment.id,
         newTimeSlot,
         serviceAdvisor,
         onAssignmentSuccess
       );
+      onClose();
     } catch (err) {
       console.error("❌ Failed to assign employee:", err);
-      toast.error("Failed to assign employee. Please try again.");
+      setAssignError(
+        "Network error while assigning employee. Please try again."
+      );
     }
-
-    onClose();
   }
 
   if (!appointment) return null;
@@ -341,22 +348,34 @@ export default function ApproveDialog({
           </div>
         </div>
 
-        <AlertDialogFooter className="bg-gray-50 px-6 py-4 -mx-6 -mb-6 flex justify-between">
-          <AlertDialogCancel asChild>
-            <Button variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-          </AlertDialogCancel>
-          <Button
-            variant="secondary"
-            onClick={handleAssign}
-            disabled={!serviceAdvisor}
-          >
-            Assign Appointment
-          </Button>
-          <AlertDialogAction asChild>
-            <Button onClick={handleApprove}>Approve Appointment</Button>
-          </AlertDialogAction>
+        {/* Footer with error message below Assign button */}
+        <AlertDialogFooter className="bg-gray-50 px-6 py-4 -mx-6 -mb-6 flex flex-col space-y-2 items-end">
+          {/* Inline error message */}
+          {assignError && (
+            <p className="text-red-600 text-sm self-start">{assignError}</p>
+          )}
+
+          <div className="flex justify-between w-full">
+            <AlertDialogCancel asChild>
+              <Button variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+            </AlertDialogCancel>
+
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                onClick={handleAssign}
+                disabled={!serviceAdvisor}
+              >
+                Assign Appointment
+              </Button>
+
+              <AlertDialogAction asChild>
+                <Button onClick={handleApprove}>Approve Appointment</Button>
+              </AlertDialogAction>
+            </div>
+          </div>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

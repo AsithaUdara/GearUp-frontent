@@ -172,7 +172,7 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    const response = await fetch("http://localhost:8084/api/bookings", {
+    const response = await fetch("http://localhost:8084/api/v1/bookings", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

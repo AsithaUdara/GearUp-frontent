@@ -75,7 +75,7 @@ export default function AppointmentsPage() {
   async function handleApprove(id: number) {
     try {
       const res = await fetch(
-        `http://localhost:8084/api/bookings/${id}/approve`,
+        `http://localhost:8084/api/v1/bookings/${id}/approve`,
         { method: "PUT", headers: { "Content-Type": "application/json" } }
       );
       if (!res.ok) throw new Error("Failed to approve booking");
@@ -164,7 +164,7 @@ export default function AppointmentsPage() {
 
   // 🔹 Render
   return (
-    <div>
+    <div className="p-4">
       <h1 className="text-2xl font-heading font-bold mb-6 text-center">
         Appointments for Approval
       </h1>
