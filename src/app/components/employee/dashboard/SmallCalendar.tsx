@@ -28,12 +28,9 @@ export default function SmallCalendar({ appointments = [], unavailableDates = []
     () => emptyAppointmentsSnapshot
   );
 
-  
   const mergedAppointments = useMemo(() => {
     return (appointments && appointments.length > 0) ? [...appointments, ...storeAppointments] : storeAppointments;
   }, [appointments, storeAppointments]);
-
-  const mergedAppointments: Array<Appointment | StoreAppointment> = (appointments && appointments.length > 0) ? [...appointments, ...storeAppointments] : storeAppointments;
 
 
   const days = useMemo(() => {
