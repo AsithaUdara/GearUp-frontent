@@ -17,6 +17,7 @@ import {
   ModificationRequest,
   PartsRequest
 } from "@/lib/workScheduleData";
+import { setServiceTasks, updateAssignedTasks, updateCompletedTasks } from "@/lib/serviceTasksStore";
 import { ClipboardList, Clock, CheckCircle2, Bell, Car, User } from "lucide-react";
 
 export default function ServiceProgressPage() {
@@ -44,6 +45,9 @@ export default function ServiceProgressPage() {
       setAssignedTasks(res.assigned);
       setCompletedTasks(res.completed);
       
+      // Update the store for real-time sync with dashboard
+      setServiceTasks(res.assigned, res.completed);
+      
       // Load pending customer requests
       const pendingReqs = await fetchPendingModificationRequestsForEmployee(employeeId);
       if (!mounted) return;
@@ -68,8 +72,11 @@ export default function ServiceProgressPage() {
   }, [completedTasks]);
 
   // Group assigned tasks by vehicle
+  // Exclude completed tasks from the Assigned Tasks view per UX request
+  const filteredAssignedTasks = useMemo(() => assignedTasks.filter((t) => t.status !== 'completed'), [assignedTasks]);
+
   const groupedAssignedTasks = useMemo(() => {
-    const grouped = assignedTasks.reduce((acc, task) => {
+    const grouped = filteredAssignedTasks.reduce((acc, task) => {
       if (!acc[task.vehicle]) {
         acc[task.vehicle] = [];
       }
@@ -77,20 +84,25 @@ export default function ServiceProgressPage() {
       return acc;
     }, {} as Record<string, WorkTask[]>);
     return grouped;
-  }, [assignedTasks]);
+  }, [filteredAssignedTasks]);
 
-  const numAssigned = assignedTasks.length;
-  const numInProgress = assignedTasks.filter((t) => t.status === "in-progress").length;
+  const numAssigned = filteredAssignedTasks.length;
+  const numInProgress = filteredAssignedTasks.filter((t) => t.status === "in-progress").length;
   const numCompleted = completedTasks.length;
 
   const handleTaskUpdate = async (updated: WorkTask | null) => {
     if (!updated) return;
     setCurrentTask(updated);
-    setAssignedTasks((prev) => prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t)));
+    setAssignedTasks((prev) => {
+      const next = prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t));
+      updateAssignedTasks(() => next); // Update store
+      return next;
+    });
     if (updated.status === "completed") {
       setCompletedTasks((prev) => {
         const exists = prev.some((x) => x.id === updated.id);
         const next = exists ? prev.map((x) => (x.id === updated.id ? updated : x)) : [...prev, updated];
+        updateCompletedTasks(() => next); // Update store
         return next;
       });
       
@@ -144,7 +156,11 @@ export default function ServiceProgressPage() {
         employeeId,
         request.id
       );
-      setAssignedTasks((prev) => [...prev, newTask]);
+      setAssignedTasks((prev) => {
+        const next = [...prev, newTask];
+        updateAssignedTasks(() => next); // Update store
+        return next;
+      });
       setPendingRequests((prev) => prev.filter((r) => r.id !== request.id));
       setNotificationMessage(`New task created from customer request: ${request.title}`);
       setTimeout(() => setNotificationMessage(null), 5000);
@@ -167,10 +183,11 @@ export default function ServiceProgressPage() {
   };
 
   const statusBadge = (status: WorkTask["status"]) => {
+    // Make in-progress light blue and pending light orange per design request
     const styles: Record<WorkTask["status"], string> = {
-      "in-progress": "bg-red-100 text-red-700",
+      "in-progress": "bg-blue-50 text-blue-700",
       completed: "bg-green-50 text-green-700",
-      pending: "bg-gray-100 text-gray-700",
+      pending: "bg-amber-50 text-amber-700",
     };
     const textMap: Record<WorkTask["status"], string> = {
       "in-progress": "In Progress",
@@ -198,7 +215,7 @@ export default function ServiceProgressPage() {
           </button>
         </div>
       )}
-
+      
       {/* Top summary row to utilize header space */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -254,130 +271,17 @@ export default function ServiceProgressPage() {
           )}
 
           {/* Daily Summary - Moved to left column */}
-            <DailySummary 
-              summaryByVehicle={dailySummaryByVehicle}
-              onViewReport={handleViewCompletionReport}
-              fetchServicesByVehicle={fetchServicesByVehicle}
-              fetchModificationRequestsByVehicle={fetchModificationRequestsByVehicle}
-              fetchPartsRequestsByVehicle={fetchPartsRequestsByVehicle}
-            />
+          <DailySummary 
+            summaryByVehicle={dailySummaryByVehicle}
+            onViewReport={handleViewCompletionReport}
+            fetchServicesByVehicle={fetchServicesByVehicle}
+            fetchModificationRequestsByVehicle={fetchModificationRequestsByVehicle}
+            fetchPartsRequestsByVehicle={fetchPartsRequestsByVehicle}
+          />
         </div>
         
-        {/* Right: Assigned Tasks + New Customer Requests - 6/12 width */}
+        {/* Right: New Customer Requests + Assigned Tasks - 6/12 width */}
         <div className="lg:col-span-6 xl:col-span-6 space-y-6">
-          {/* Assigned Tasks Section */}
-          {Object.keys(groupedAssignedTasks).length > 0 && (
-            <div className="bg-white rounded-lg shadow-lg border border-gray-100 p-6">
-              {/* Header */}
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-red-100 rounded-lg">
-                    <ClipboardList className="h-5 w-5 text-red-600" />
-                  </div>
-                  <div>
-                    <div className="text-xl font-bold text-gray-900">Assigned Tasks</div>
-                    <div className="text-xs text-gray-500 mt-0.5">
-                      {assignedTasks.length} total {assignedTasks.length === 1 ? 'task' : 'tasks'} across {Object.keys(groupedAssignedTasks).length} {Object.keys(groupedAssignedTasks).length === 1 ? 'vehicle' : 'vehicles'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Tasks grouped by vehicle */}
-              <div className="space-y-5">
-                {Object.entries(groupedAssignedTasks).map(([vehicle, tasks]) => {
-                  const customer = tasks[0]?.customer || 'Unknown';
-                  const inProgressCount = tasks.filter(t => t.status === 'in-progress').length;
-                  const completedCount = tasks.filter(t => t.status === 'completed').length;
-                  const pendingCount = tasks.filter(t => t.status === 'pending').length;
-                  
-                  return (
-                    <div key={vehicle} className="border border-gray-200 rounded-xl p-5 bg-gradient-to-br from-gray-50 to-white hover:shadow-lg hover:border-gray-300 transition-all duration-200">
-                      {/* Vehicle Header */}
-                      <div className="mb-4 pb-4 border-b border-gray-200">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-3 flex-1">
-                            <div className="p-2 bg-red-100 rounded-lg mt-0.5">
-                              <Car className="h-4 w-4 text-red-600" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-bold text-gray-900 text-lg mb-1">{vehicle}</h3>
-                              <div className="flex items-center gap-4 text-xs text-gray-600">
-                                <div className="flex items-center gap-1.5">
-                                  <User className="h-3.5 w-3.5 text-red-600" />
-                                  <span>{customer}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                                  <span>{tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Status Summary */}
-                        <div className="flex items-center gap-3 mt-3 pt-3 border-t border-gray-100">
-                          {inProgressCount > 0 && (
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-2 h-2 bg-red-600 rounded-full"></div>
-                              <span className="text-xs text-gray-600">{inProgressCount} in progress</span>
-                            </div>
-                          )}
-                          {pendingCount > 0 && (
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
-                              <span className="text-xs text-gray-600">{pendingCount} pending</span>
-                            </div>
-                          )}
-                          {completedCount > 0 && (
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                              <span className="text-xs text-gray-600">{completedCount} completed</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Task List */}
-                      <ul className="space-y-3">
-                        {tasks.map((t, index) => (
-                          <li key={t.id} className="bg-white rounded-lg border border-gray-100 p-4 hover:border-gray-300 hover:shadow-md transition-all duration-200">
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-xs font-medium text-gray-400">#{index + 1}</span>
-                                  <div className="h-1 w-1 bg-gray-300 rounded-full"></div>
-                                  <span className="text-xs font-mono text-gray-500">{t.serviceId}</span>
-                                </div>
-                                <div className="font-semibold text-gray-900 mb-1">{t.serviceType}</div>
-                                {t.notes && (
-                                  <p className="text-xs text-gray-500 mt-1 line-clamp-1">{t.notes}</p>
-                                )}
-                              </div>
-                              
-                              <div className="flex items-center gap-2 flex-shrink-0">
-                                {statusBadge(t.status)}
-                                <button
-                                  type="button"
-                                  onClick={() => selectAssignedAsCurrent(t)}
-                                  className="rounded-lg bg-gray-900 px-4 py-2 text-xs font-semibold text-white hover:bg-gray-800 transition-all duration-200 shadow-sm hover:shadow"
-                                  title="Edit Task"
-                                >
-                                  Edit
-                                </button>
-                              </div>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {/* New Customer Requests Section */}
           {pendingRequests.length > 0 ? (
             <div className="bg-white rounded-lg shadow-md p-6">
@@ -424,6 +328,42 @@ export default function ServiceProgressPage() {
               </div>
               <div className="text-center py-8 text-gray-400 text-sm">
                 No new customer requests at this time
+              </div>
+            </div>
+          )}
+
+          {/* Assigned Tasks Section */}
+          {Object.keys(groupedAssignedTasks).length > 0 && (
+            <div className="bg-white rounded-lg shadow-lg border border-gray-100 p-6">
+              <div className="text-xl font-bold text-gray-900 mb-4">Assigned Tasks</div>
+              <div className="space-y-4 max-h-[calc(100vh-400px)] overflow-y-auto pr-2">
+                {Object.entries(groupedAssignedTasks).map(([vehicle, tasks]) => (
+                  <div key={vehicle} className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                      <Car className="h-4 w-4" />
+                      <span>{vehicle}</span>
+                    </div>
+                    {tasks.map((task) => (
+                      <div
+                        key={task.id}
+                        onClick={() => selectAssignedAsCurrent(task)}
+                        className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <div className="font-semibold text-gray-900">{task.serviceType}</div>
+                            <div className="text-xs text-gray-500 mt-1">{task.serviceId}</div>
+                          </div>
+                          {statusBadge(task.status)}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-gray-600 mt-2">
+                          <User className="h-3 w-3" />
+                          <span>{task.customer}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
               </div>
             </div>
           )}

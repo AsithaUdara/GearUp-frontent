@@ -7,7 +7,6 @@ import Link from "next/link";
 const getServerSnapshot = () => [];
 
 export default function AppointmentManagementCard() {
-
   const appointments = useSyncExternalStore(subscribeAppts, getAppointments, getServerSnapshot);
 
   // show only the next upcoming appointment (non-past), sorted by date then time

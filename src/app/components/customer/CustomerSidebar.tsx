@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { auth, db } from "@/lib/firebase";
-import { signOut } from "firebase/auth";
+import { signOut } from "@/lib/authService";
 import { doc, onSnapshot } from "firebase/firestore";
 
 const navItems = [
@@ -53,7 +53,7 @@ export default function CustomerSidebar() {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await signOut();
       router.push("/");
     } catch (error) {
       console.error("Logout failed:", error);

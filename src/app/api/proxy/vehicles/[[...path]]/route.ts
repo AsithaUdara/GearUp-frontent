@@ -5,7 +5,7 @@ export const runtime = 'nodejs';
 function getGatewayBase(): string {
   const gw = (process.env.NEXT_PUBLIC_GATEWAY_BASE as string | undefined)?.trim();
   const alt = (process.env.NEXT_PUBLIC_API_BASE as string | undefined)?.trim();
-  return (gw || alt || 'http://localhost:8080').replace(/\/$/, '');
+  return (gw || alt || 'http://localhost:9090').replace(/\/$/, '');
 }
 
 function getDirectServiceBase(): string {

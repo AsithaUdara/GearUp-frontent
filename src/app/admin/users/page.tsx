@@ -129,14 +129,17 @@ export default function UsersPage() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <h1 className="font-heading text-3xl font-bold">User Management</h1>
-      <p className="mt-1 text-muted-foreground">View, filter, and manage all users in the system.</p>
-      
-      {/* Auth Loading State */}
-      {authLoading && (
-        <div className="mt-8 flex items-center justify-center py-12">
-          <div className="text-lg text-muted-foreground">Authenticating...</div>
+      <div className="mx-auto max-w-6xl p-4 sm:p-6 lg:p-8">
+        <div className="mb-6">
+          <h1 className="text-3xl font-heading font-bold text-gray-900">User Management</h1>
+          <p className="mt-1 text-sm text-gray-600">View, filter, and manage all users in the system.</p>
         </div>
+
+        {/* Auth Loading State */}
+      {authLoading && (
+          <div className="mt-8 flex items-center justify-center py-12">
+            <div className="text-lg text-muted-foreground">Authenticating...</div>
+          </div>
       )}
       
       {/* Loading State */}
@@ -160,26 +163,31 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Content */}
-      {!authLoading && (!loading || users.length > 0) && !error && (
-        <>
-          <div className="mt-8">
-            <UsersToolbar 
-              onNewUser={handleNewUser} 
-              onSearch={setSearchQuery}
-              onFilterRole={setRoleFilter}
-              currentRole={roleFilter}
-            />
-          </div>
-          <div className="mt-6">
-            <UsersTable 
-              users={filteredUsers}
-              onEditUser={handleEditUser} 
-              onDeleteUser={handleDeleteUser} 
-            />
-          </div>
-        </>
-      )}
+        {/* Content */}
+        {!authLoading && (!loading || users.length > 0) && !error && (
+          <>
+            <div className="mb-6">
+              <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
+                <UsersToolbar 
+                  onNewUser={handleNewUser} 
+                  onSearch={setSearchQuery}
+                  onFilterRole={setRoleFilter}
+                  currentRole={roleFilter}
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
+                <UsersTable 
+                  users={filteredUsers}
+                  onEditUser={handleEditUser} 
+                  onDeleteUser={handleDeleteUser} 
+                />
+              </div>
+            </div>
+          </>
+        )}
       
       <UserEditModal 
         user={editingUser}
@@ -217,6 +225,7 @@ export default function UsersPage() {
           </motion.div>
         </div>
       )}
+      </div>
     </motion.div>
   );
 }

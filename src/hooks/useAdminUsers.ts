@@ -2,8 +2,8 @@
 import { useState } from 'react';
 import { auth } from '@/lib/firebase';
 
-// Default to API Gateway on 8080; override with NEXT_PUBLIC_API_BASE_URL if set
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+// Default to API Gateway on 9090; override with NEXT_PUBLIC_API_BASE_URL if set
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:9090';
 const ADMIN_USERS_ENDPOINT = `${API_BASE_URL}/api/v1/admin/users`;
 
 interface AdminUser {
