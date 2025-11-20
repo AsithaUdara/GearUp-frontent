@@ -22,7 +22,7 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
  * Get customer bills by email
  */
 export const getCustomerBills = async (email: string): Promise<CustomerBill[]> => {
-  const url = buildApiUrl('payment', `/api/payments/customer/bills?email=${encodeURIComponent(email)}`);
+  const url = buildApiUrl('payment', `/payments/customer/bills?email=${encodeURIComponent(email)}`);
   const response = await fetch(url);
   return handleResponse<CustomerBill[]>(response);
 };
@@ -36,7 +36,7 @@ export const getCustomerBillsByStatus = async (
 ): Promise<CustomerBill[]> => {
   const url = buildApiUrl(
     'payment',
-    `/api/payments/customer/bills?email=${encodeURIComponent(email)}&status=${status}`
+    `/payments/customer/bills?email=${encodeURIComponent(email)}&status=${status}`
   );
   const response = await fetch(url);
   return handleResponse<CustomerBill[]>(response);
@@ -46,7 +46,7 @@ export const getCustomerBillsByStatus = async (
  * Mark bill as paid
  */
 export const markBillAsPaid = async (billId: string): Promise<CustomerBill> => {
-  const url = buildApiUrl('payment', `/api/payments/customer/bills/${billId}/mark-paid`);
+  const url = buildApiUrl('payment', `/payments/customer/bills/${billId}/mark-paid`);
   const response = await fetch(url, {
     method: 'PUT',
     headers: {
@@ -60,7 +60,7 @@ export const markBillAsPaid = async (billId: string): Promise<CustomerBill> => {
  * Get bill by ID
  */
 export const getBillById = async (billId: string): Promise<CustomerBill> => {
-  const url = buildApiUrl('payment', `/api/payments/customer/bills/${billId}`);
+  const url = buildApiUrl('payment', `/payments/customer/bills/${billId}`);
   const response = await fetch(url);
   return handleResponse<CustomerBill>(response);
 };

@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_APPOINTMENT_SERVICE_URL || 'http://localhost:8084';
+const API_BASE_URL = process.env.NEXT_PUBLIC_APPOINTMENT_SERVICE_URL || 'http://localhost:9090/api/v1';
 
 export interface AppointmentData {
   serviceId: number;
@@ -72,8 +72,8 @@ export const checkBackendHealth = async (): Promise<boolean> => {
 // Get available services
 export const getServices = async (): Promise<ApiResponse<Service[]>> => {
   try {
-    console.log('Fetching services from:', `${API_BASE_URL}/api/services`);
-    const response = await fetch(`${API_BASE_URL}/api/services`, {
+    console.log('Fetching services from:', `${API_BASE_URL}/services`);
+    const response = await fetch(`${API_BASE_URL}/services`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -107,7 +107,7 @@ export const getAvailableTimeSlots = async (
   serviceId?: number
 ): Promise<ApiResponse<TimeSlot[]>> => {
   try {
-    let url = `${API_BASE_URL}/api/timeslots?date=${date}`;
+    let url = `${API_BASE_URL}/timeslots?date=${date}`;
     if (serviceId) {
       url += `&serviceId=${serviceId}`;
     }
@@ -145,7 +145,7 @@ export const getAvailableTimeSlots = async (
 export const createAppointment = async (appointmentData: AppointmentData): Promise<ApiResponse<BookingResponse>> => {
   try {
     console.log('Creating appointment with data:', appointmentData);
-    const response = await fetch(`${API_BASE_URL}/api/bookings`, {
+    const response = await fetch(`${API_BASE_URL}/bookings`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -178,7 +178,7 @@ export const createAppointment = async (appointmentData: AppointmentData): Promi
 // Get user's bookings
 export const getUserBookings = async (userId: string): Promise<ApiResponse<BookingResponse[]>> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/bookings?userId=${userId}`, {
+    const response = await fetch(`${API_BASE_URL}/bookings?userId=${userId}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -204,7 +204,7 @@ export const getUserBookings = async (userId: string): Promise<ApiResponse<Booki
 // Get booking by ID
 export const getBookingById = async (bookingId: number): Promise<ApiResponse<BookingResponse>> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/bookings/${bookingId}`, {
+    const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',

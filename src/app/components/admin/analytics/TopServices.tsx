@@ -21,7 +21,7 @@ export default function TopServices() {
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const response = await fetch('http://localhost:8087/api/analytics/services/top?limit=5');
+        const response = await fetch('http://localhost:9090/api/v1/analytics/services/top?limit=5');
         if (response.ok) {
           const data = await response.json();
           setServices(data);

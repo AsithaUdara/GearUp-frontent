@@ -22,7 +22,7 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
  * Get all payment requests (Admin)
  */
 export const getAllPaymentRequests = async (): Promise<PaymentRequest[]> => {
-  const url = buildApiUrl('payment', '/api/payments/admin/requests');
+  const url = buildApiUrl('payment', '/payments/admin/requests');
   const response = await fetch(url);
   return handleResponse<PaymentRequest[]>(response);
 };
@@ -31,7 +31,7 @@ export const getAllPaymentRequests = async (): Promise<PaymentRequest[]> => {
  * Filter payment requests by status (Admin)
  */
 export const getPaymentRequestsByStatus = async (status: PaymentStatus): Promise<PaymentRequest[]> => {
-  const url = buildApiUrl('payment', `/api/payments/admin/requests?status=${status}`);
+  const url = buildApiUrl('payment', `/payments/admin/requests?status=${status}`);
   const response = await fetch(url);
   return handleResponse<PaymentRequest[]>(response);
 };
@@ -40,7 +40,7 @@ export const getPaymentRequestsByStatus = async (status: PaymentStatus): Promise
  * Get payment request by ID (Admin)
  */
 export const getPaymentRequestById = async (id: string): Promise<PaymentRequest> => {
-  const url = buildApiUrl('payment', `/api/payments/admin/requests/${id}`);
+  const url = buildApiUrl('payment', `/payments/admin/requests/${id}`);
   const response = await fetch(url);
   return handleResponse<PaymentRequest>(response);
 };
@@ -49,7 +49,7 @@ export const getPaymentRequestById = async (id: string): Promise<PaymentRequest>
  * Approve payment request (Admin)
  */
 export const approvePaymentRequest = async (id: string): Promise<PaymentRequest> => {
-  const url = buildApiUrl('payment', `/api/payments/admin/requests/${id}/approve`);
+  const url = buildApiUrl('payment', `/payments/admin/requests/${id}/approve`);
   const response = await fetch(url, {
     method: 'PUT',
     headers: {
@@ -63,7 +63,7 @@ export const approvePaymentRequest = async (id: string): Promise<PaymentRequest>
  * Reject payment request (Admin)
  */
 export const rejectPaymentRequest = async (id: string, reason: string): Promise<PaymentRequest> => {
-  const url = buildApiUrl('payment', `/api/payments/admin/requests/${id}/reject`);
+  const url = buildApiUrl('payment', `/payments/admin/requests/${id}/reject`);
   const response = await fetch(url, {
     method: 'PUT',
     headers: {
@@ -78,7 +78,7 @@ export const rejectPaymentRequest = async (id: string, reason: string): Promise<
  * Delete payment request (Admin)
  */
 export const deletePaymentRequest = async (id: string): Promise<void> => {
-  const url = buildApiUrl('payment', `/api/payments/admin/requests/${id}`);
+  const url = buildApiUrl('payment', `/payments/admin/requests/${id}`);
   const response = await fetch(url, {
     method: 'DELETE',
   });
@@ -91,7 +91,7 @@ export const deletePaymentRequest = async (id: string): Promise<void> => {
  * Get payment statistics (Admin)
  */
 export const getPaymentStats = async (): Promise<PaymentStatsDTO> => {
-  const url = buildApiUrl('payment', '/api/payments/admin/stats');
+  const url = buildApiUrl('payment', '/payments/admin/stats');
   const response = await fetch(url);
   return handleResponse<PaymentStatsDTO>(response);
 };

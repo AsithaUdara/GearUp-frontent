@@ -4,17 +4,17 @@
  */
 
 // Toggle this to switch between direct service access and API Gateway
-const USE_API_GATEWAY = false;
+const USE_API_GATEWAY = true;
 
 // API Gateway base URL (when auth service is ready)
 const API_GATEWAY_URL = 'http://localhost:9090';
 
 // Direct service URLs (for development)
 const DIRECT_SERVICE_URLS = {
-  payment: 'http://localhost:8083',
-  auth: 'http://localhost:8082',
-  automobile: 'http://localhost:9090',
-  notification: 'http://localhost:8081',
+  payment: 'http://localhost:9090/api/v1',
+  auth: 'http://localhost:9090/api/v1',
+  automobile: 'http://localhost:9090/api/v1',
+  notification: 'http://localhost:9090/api/v1',
 };
 
 /**

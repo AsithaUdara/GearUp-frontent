@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_MODIFICATION_SERVICE_URL || 'http://localhost:8089';
+const API_BASE_URL = process.env.NEXT_PUBLIC_MODIFICATION_SERVICE_URL || 'http://localhost:9090/api/v1';
 
 export interface ModificationService {
   id: number;
@@ -47,8 +47,8 @@ export interface ApiResponse<T> {
 // Get all modification services
 export const getModificationServices = async (): Promise<ApiResponse<ModificationService[]>> => {
   try {
-    console.log('Fetching modification services from:', `${API_BASE_URL}/api/services`);
-    const response = await fetch(`${API_BASE_URL}/api/services`, {
+    console.log('Fetching modification services from:', `${API_BASE_URL}/services`);
+    const response = await fetch(`${API_BASE_URL}/services`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -80,7 +80,7 @@ export const getModificationServices = async (): Promise<ApiResponse<Modificatio
 export const createModificationRequest = async (requestData: ModificationRequest): Promise<ApiResponse<ModificationRequestResponse>> => {
   try {
     console.log('Creating modification request with data:', requestData);
-    const response = await fetch(`${API_BASE_URL}/api/service-modifications/${requestData.serviceId}/requests`, {
+    const response = await fetch(`${API_BASE_URL}/service-modifications/${requestData.serviceId}/requests`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -113,7 +113,7 @@ export const createModificationRequest = async (requestData: ModificationRequest
 // Get service by ID
 export const getModificationServiceById = async (serviceId: number): Promise<ApiResponse<ModificationService>> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/services/${serviceId}`, {
+    const response = await fetch(`${API_BASE_URL}/services/${serviceId}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',

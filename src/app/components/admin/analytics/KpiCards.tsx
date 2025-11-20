@@ -23,7 +23,7 @@ export default function KpiCards() {
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        const response = await fetch('http://localhost:8087/api/analytics/metrics');
+        const response = await fetch('http://localhost:9090/api/v1/analytics/metrics');
         if (response.ok) {
           const data = await response.json();
           setMetrics(data);

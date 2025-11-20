@@ -22,7 +22,7 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
  * Submit a new review (Customer)
  */
 export const submitReview = async (reviewData: ReviewSubmissionDTO): Promise<CustomerReview> => {
-  const url = buildApiUrl('payment', '/api/reviews/customer');
+  const url = buildApiUrl('payment', '/reviews/customer');
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -37,7 +37,7 @@ export const submitReview = async (reviewData: ReviewSubmissionDTO): Promise<Cus
  * Get customer's reviews by email
  */
 export const getMyReviews = async (email: string): Promise<CustomerReview[]> => {
-  const url = buildApiUrl('payment', `/api/reviews/customer?email=${encodeURIComponent(email)}`);
+  const url = buildApiUrl('payment', `/reviews/customer?email=${encodeURIComponent(email)}`);
   const response = await fetch(url);
   return handleResponse<CustomerReview[]>(response);
 };
@@ -48,7 +48,7 @@ export const getMyReviews = async (email: string): Promise<CustomerReview[]> => 
  * Get all reviews (Admin)
  */
 export const getAllReviews = async (): Promise<CustomerReview[]> => {
-  const url = buildApiUrl('payment', '/api/reviews/admin');
+  const url = buildApiUrl('payment', '/reviews/admin');
   const response = await fetch(url);
   return handleResponse<CustomerReview[]>(response);
 };
@@ -57,7 +57,7 @@ export const getAllReviews = async (): Promise<CustomerReview[]> => {
  * Filter reviews by status (Admin)
  */
 export const getReviewsByStatus = async (status: ReviewStatus): Promise<CustomerReview[]> => {
-  const url = buildApiUrl('payment', `/api/reviews/admin?status=${status}`);
+  const url = buildApiUrl('payment', `/reviews/admin?status=${status}`);
   const response = await fetch(url);
   return handleResponse<CustomerReview[]>(response);
 };
@@ -66,7 +66,7 @@ export const getReviewsByStatus = async (status: ReviewStatus): Promise<Customer
  * Publish a review (Admin)
  */
 export const publishReview = async (reviewId: string): Promise<CustomerReview> => {
-  const url = buildApiUrl('payment', `/api/reviews/admin/${reviewId}/publish`);
+  const url = buildApiUrl('payment', `/reviews/admin/${reviewId}/publish`);
   const response = await fetch(url, {
     method: 'PUT',
     headers: {
@@ -80,7 +80,7 @@ export const publishReview = async (reviewId: string): Promise<CustomerReview> =
  * Unpublish a review (Admin)
  */
 export const unpublishReview = async (reviewId: string): Promise<CustomerReview> => {
-  const url = buildApiUrl('payment', `/api/reviews/admin/${reviewId}/unpublish`);
+  const url = buildApiUrl('payment', `/reviews/admin/${reviewId}/unpublish`);
   const response = await fetch(url, {
     method: 'PUT',
     headers: {
@@ -94,7 +94,7 @@ export const unpublishReview = async (reviewId: string): Promise<CustomerReview>
  * Delete a review (Admin)
  */
 export const deleteReview = async (reviewId: string): Promise<void> => {
-  const url = buildApiUrl('payment', `/api/reviews/admin/${reviewId}`);
+  const url = buildApiUrl('payment', `/reviews/admin/${reviewId}`);
   const response = await fetch(url, {
     method: 'DELETE',
   });
@@ -107,7 +107,7 @@ export const deleteReview = async (reviewId: string): Promise<void> => {
  * Get review statistics (Admin)
  */
 export const getReviewStats = async (): Promise<ReviewStatsDTO> => {
-  const url = buildApiUrl('payment', '/api/reviews/admin/stats');
+  const url = buildApiUrl('payment', '/reviews/admin/stats');
   const response = await fetch(url);
   return handleResponse<ReviewStatsDTO>(response);
 };
@@ -118,7 +118,7 @@ export const getReviewStats = async (): Promise<ReviewStatsDTO> => {
  * Get published reviews for landing page (Public)
  */
 export const getPublishedReviews = async (): Promise<CustomerReview[]> => {
-  const url = buildApiUrl('payment', '/api/reviews/public');
+  const url = buildApiUrl('payment', '/reviews/public');
   const response = await fetch(url);
   return handleResponse<CustomerReview[]>(response);
 };
