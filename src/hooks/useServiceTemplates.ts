@@ -29,30 +29,35 @@ export function useServiceTemplates() {
   };
 
   const listTemplates = useCallback(async (activeOnly?: boolean) => {
+    return listTemplatesByPage(0, 10, activeOnly);
+  }, []);
+
+  const listTemplatesByPage = useCallback(async (page = 0, size = 10, activeOnly?: boolean) => {
     setLoading(true);
     setError(null);
     try {
       const { token, uid } = await getAuth();
       const url = new URL(ADMIN_TEMPLATES_ENDPOINT);
+      url.searchParams.set('page', String(page));
+      url.searchParams.set('size', String(size));
       if (activeOnly) url.searchParams.set('activeOnly', 'true');
       const res = await fetch(url.toString(), {
         headers: {
           Authorization: `Bearer ${token}`,
           'X-Forwarded-Uid': uid,
-          // In dev, gateway may not add roles; send ADMIN explicitly for admin pages
           'X-User-Roles': 'ADMIN'
         }
       });
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        let msg = `Failed to list templates (${res.status})`;
-        try { const j = await res.json(); msg = j?.message || j?.error || msg; } catch {}
+        let msg = json?.message || json?.error || `Failed to list templates (${res.status})`;
         if (res.status === 401 || res.status === 403) msg = 'Unauthorized: admin only.';
         throw new Error(msg);
       }
-      const json = await res.json();
-      const data = json.data as ServiceTemplateDto[];
-      setItems(data);
-      return data;
+      const pageData = json.data as { items: ServiceTemplateDto[]; totalElements: number; totalPages: number; page: number; size: number };
+      setItems(pageData.items || []);
+      // expose pagination data via returned object
+      return pageData;
     } finally { setLoading(false); }
   }, []);
 
@@ -131,5 +136,5 @@ export function useServiceTemplates() {
     } finally { setLoading(false); }
   }, []);
 
-  return { items, loading, error, listTemplates, createTemplate, updateTemplate, deleteTemplate };
+  return { items, loading, error, listTemplates, listTemplatesByPage, createTemplate, updateTemplate, deleteTemplate };
 }

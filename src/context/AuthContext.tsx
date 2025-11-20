@@ -21,6 +21,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Subscribe to Firebase auth state changes
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       console.log('Auth state changed:', firebaseUser?.email || 'No user');
+      if (firebaseUser) {
+        console.log('Firebase UID:', firebaseUser.uid);
+      }
       setUser(firebaseUser);
       setLoading(false);
     });
